@@ -168,11 +168,11 @@ public final class LogRecorder
      * </pre>
      * 
      * But adds one more predicate; the record's throwable is an <i>instance
-     * of</i> {@code error}.
+     * of</i> {@code thr}.
      * 
      * @param level record level predicate
      * @param messageStartsWith record message predicate
-     * @param error record error predicate
+     * @param thr record throwable predicate
      * 
      * @return an assert object of the throwable
      * 
@@ -183,15 +183,15 @@ public final class LogRecorder
      */
     public AbstractThrowableAssert<?, ? extends Throwable>
            assertRemove(System.Logger.Level level, String messageStartsWith,
-           Class<? extends Throwable> error)
+           Class<? extends Throwable> thr)
     {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
-        requireNonNull(error);
+        requireNonNull(thr);
         var rec = assertRemoveIf(r ->
                 r.getLevel().equals(jul) &&
                 r.getMessage().startsWith(messageStartsWith) &&
-                error.isInstance(r.getThrown()));
+                thr.isInstance(r.getThrown()));
         return assertThat(rec.getThrown());
     }
     
@@ -236,11 +236,11 @@ public final class LogRecorder
     
     /**
      * Returns immediately if a log record of the given level with the given
-     * message-prefix and error has been published, or await its arrival.
+     * message-prefix and a throwable has been published, or await its arrival.
      * 
      * @param level record level predicate
      * @param messageStartsWith record message predicate
-     * @param error record error predicate (must be an <i>instance of</i>)
+     * @param thr record throwable predicate (must be an <i>instance of</i>)
      * 
      * @return an assert object of the throwable
      * 
@@ -254,17 +254,17 @@ public final class LogRecorder
     public AbstractThrowableAssert<?, ? extends Throwable>
            assertAwaitRemove(
                System.Logger.Level level, String messageStartsWith,
-               Class<? extends Throwable> error)
+               Class<? extends Throwable> thr)
            throws InterruptedException
     {
         requireNonNull(level);
         requireNonNull(messageStartsWith);
-        requireNonNull(error);
+        requireNonNull(thr);
         return assertAwait(r ->
                    r.getLevel().equals(toJUL(level)) &&
                    r.getMessage().startsWith(messageStartsWith) &&
-                   error.isInstance(r.getThrown()))
-              .assertRemove(level, messageStartsWith, error);
+                   thr.isInstance(r.getThrown()))
+              .assertRemove(level, messageStartsWith, thr);
     }
     
     /**
