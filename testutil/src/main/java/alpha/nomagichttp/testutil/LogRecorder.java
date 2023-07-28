@@ -118,7 +118,7 @@ public final class LogRecorder
      * 
      * @return see JavaDoc
      */
-    public Stream<LogRecord> records() {
+    private Stream<LogRecord> records() {
         return handlers()
                 .flatMap(RecordHandler::recordsStream)
                 .sorted(comparing(LogRecord::getInstant));
