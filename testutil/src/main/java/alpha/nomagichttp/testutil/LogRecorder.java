@@ -2,7 +2,6 @@ package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpServer;
 import org.assertj.core.api.AbstractThrowableAssert;
-import org.assertj.core.api.ObjectAssert;
 import org.assertj.core.groups.Tuple;
 
 import java.util.ArrayList;
@@ -434,14 +433,10 @@ public final class LogRecorder
     }
     
     /**
-     * Stop recording log records and extract all observed records.
-     * 
-     * @return all log records recorded from start until now (orderly; FIFO)
+     * Stop recording log records.
      */
-    public Stream<LogRecord> stopRecording() {
-        return handlers().peek(r -> Logging.removeHandler(r.component(), r))
-                          .flatMap(RecordHandler::recordsStream)
-                          .sorted(comparing(LogRecord::getInstant));
+    public void stopRecording() {
+        handlers().forEach(r -> Logging.removeHandler(r.component(), r));
     }
     
     private Stream<RecordHandler> handlers() {
