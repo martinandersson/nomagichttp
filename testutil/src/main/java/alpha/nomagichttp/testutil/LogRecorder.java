@@ -3,11 +3,9 @@ package alpha.nomagichttp.testutil;
 import alpha.nomagichttp.HttpServer;
 import org.assertj.core.groups.Tuple;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -24,7 +22,6 @@ import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Comparator.comparing;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Stream.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -125,18 +122,6 @@ public final class LogRecorder
         return handlers()
                 .flatMap(RecordHandler::recordsStream)
                 .sorted(comparing(LogRecord::getInstant));
-    }
-    
-    /**
-     * Returns a Deque of all recorded errors.
-     * 
-     * @return see JavaDoc
-     */
-    public Deque<Throwable> recordedErrors() {
-        return records()
-                .map(LogRecord::getThrown)
-                .filter(Objects::nonNull)
-                .collect(toCollection(ArrayDeque::new));
     }
     
     /**
