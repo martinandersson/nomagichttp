@@ -266,8 +266,7 @@ public final class LogRecorder
     }
     
     /**
-     * Assertively awaits and removes the earliest record with a throwable of
-     * any type.
+     * Assertively awaits and removes the earliest record with a throwable.
      * 
      * @return an assert object of the throwable
      * 
@@ -280,40 +279,17 @@ public final class LogRecorder
            assertAwaitRemoveError()
            throws InterruptedException
     {
-        return assertAwaitRemoveError(Throwable.class);
-    }
-    
-    /**
-     * Assertively await and removes the earliest record with a throwable that
-     * is an instance of the given type.
-     * 
-     * @param error record error predicate (must be an <i>instance of</i>)
-     * 
-     * @return an assert object of the throwable
-     * 
-     * @throws NullPointerException
-     *             if {@code filter} is {@code null}
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     * @throws AssertionError
-     *             on timeout (throwable not observed)
-     */
-    public AbstractThrowableAssert<?, ? extends Throwable>
-           assertAwaitRemoveError(Class<? extends Throwable> error)
-           throws InterruptedException
-    {
-        requireNonNull(error);
         var match = new AtomicReference<LogRecord>();
         assertAwait(rec -> {
-            var t = rec.getThrown();
-            if (error.isInstance(t)) {
+            if (rec.getThrown() != null) {
                 match.set(rec);
                 return true;
             }
             return false;
         });
         var rec = match.get();
-        assertNotNull(removeIf(r -> r == rec));
+        assert rec != null;
+        removeIf(r -> r == rec);
         return assertThat(rec.getThrown());
     }
     
