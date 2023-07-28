@@ -58,7 +58,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                 "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
             
-            logRecorder().assertAwaitClosingChild();
+            assertAwaitClosingChild();
         }
     }
     
@@ -93,7 +93,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             logRecorder().assertAwait(
                 DEBUG, "EOS; server closed my read stream.");
             if (streamOnly) {
-                logRecorder().assertAwaitClosingChild();
+                assertAwaitClosingChild();
             } // Else no reason for DefaultServer.handleChild to call close (again)
         }
         // Implicit assert that no error was delivered to the error handler
@@ -322,7 +322,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             // Client send the rest
             client().write("Hi");
             // Server proactively close the child before we do
-            logRecorder().assertAwaitClosingChild();
+            assertAwaitClosingChild();
         }
         assertThat(received.poll(1, SECONDS)).isEqualTo("Hi");
     }

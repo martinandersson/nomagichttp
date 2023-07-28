@@ -37,7 +37,6 @@ import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Operates a {@link #server() server} and a {@link #client() client}.<p>
@@ -549,6 +548,36 @@ public abstract class AbstractRealTest
             server = null;
             start = null;
         }
+    }
+    
+    /**
+     * Assertively awaits a record to indicate that a child was accepted by the
+     * server.
+     * 
+     * @throws IllegalStateException
+     *             if log recording is not active
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     * @throws AssertionError
+     *             on timeout (record not observed)
+     */
+    public void assertAwaitChildAccept() throws InterruptedException {
+        logRecorder().assertAwait(DEBUG, "Accepted child:");
+    }
+    
+    /**
+     * Assertively awaits a record to indicate that a child is being closed by
+     * the server.
+     * 
+     * @throws IllegalStateException
+     *             if log recording is not active
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     * @throws AssertionError
+     *             on timeout (record not observed)
+     */
+    public void assertAwaitClosingChild() throws InterruptedException {
+        logRecorder().assertAwait(DEBUG, "Closing child:");
     }
     
     /**

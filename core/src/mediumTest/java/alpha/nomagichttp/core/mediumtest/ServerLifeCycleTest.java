@@ -116,7 +116,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 "Hi!");
             
             // Not dependent on the closure of client's connection
-            logRecorder().assertAwaitClosingChild();
+            assertAwaitClosingChild();
         }
         
         assertThat(fut.get(1, SECONDS)).isNull();
@@ -130,7 +130,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
         try (var conn = client().openConnection()) {
             // Wait for the server to confirm,
             // otherwise one can not deterministically test the log of "idling children"
-            logRecorder().assertAwaitChildAccept();
+            assertAwaitChildAccept();
             Instant before = now();
             stopServer();
             // Stopping should be completed more or less instantaneously

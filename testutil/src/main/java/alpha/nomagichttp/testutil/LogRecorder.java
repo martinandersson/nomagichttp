@@ -18,7 +18,6 @@ import java.util.logging.LogRecord;
 import java.util.stream.Stream;
 
 import static alpha.nomagichttp.testutil.LogRecords.toJUL;
-import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Comparator.comparing;
 import static java.util.Objects.requireNonNull;
@@ -181,9 +180,9 @@ public final class LogRecorder
      * @throws AssertionError
      *             if a match could not be found
      */
-    public AbstractThrowableAssert<?, ? extends Throwable> assertRemove(
-            System.Logger.Level level, String messageStartsWith,
-            Class<? extends Throwable> error)
+    public AbstractThrowableAssert<?, ? extends Throwable>
+           assertRemove(System.Logger.Level level, String messageStartsWith,
+           Class<? extends Throwable> error)
     {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
@@ -262,8 +261,9 @@ public final class LogRecorder
      * @throws AssertionError
      *             on timeout (record not observed)
      */
-    public LogRecorder assertAwait(System.Logger.Level level, String messageStartsWith)
-                throws InterruptedException {
+    public LogRecorder
+           assertAwait(System.Logger.Level level, String messageStartsWith)
+           throws InterruptedException {
         requireNonNull(level);
         requireNonNull(messageStartsWith);
         return assertAwait(r -> r.getLevel().equals(toJUL(level)) &&
@@ -304,32 +304,6 @@ public final class LogRecorder
     }
     
     /**
-     * Assertively awaits a record to indicate that a child was accepted by the
-     * server.
-     * 
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     * @throws AssertionError
-     *             on timeout (record not observed)
-     */
-    public void assertAwaitChildAccept() throws InterruptedException {
-        assertAwait(DEBUG, "Accepted child:");
-    }
-    
-    /**
-     * Assertively awaits a record to indicate that a child is being closed by
-     * the server.
-     * 
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     * @throws AssertionError
-     *             on timeout (record not observed)
-     */
-    public void assertAwaitClosingChild() throws InterruptedException {
-        assertAwait(DEBUG, "Closing child:");
-    }
-    
-    /**
      * Assertively awaits and removes the earliest record with a throwable of
      * any type.
      * 
@@ -363,7 +337,7 @@ public final class LogRecorder
      *             on timeout (throwable not observed)
      */
     public AbstractThrowableAssert<?, ? extends Throwable>
-    assertAwaitRemoveError(Class<? extends Throwable> filter)
+           assertAwaitRemoveError(Class<? extends Throwable> filter)
            throws InterruptedException
     {
         requireNonNull(filter);
