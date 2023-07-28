@@ -208,44 +208,6 @@ public final class LogRecorder
     }
     
     /**
-     * Returns immediately if a log record passing the given test has been
-     * published, or awaits its arrival.
-     * 
-     * @param test of record
-     * 
-     * @return this for chaining/fluency
-     * 
-     * @throws NullPointerException
-     *             if {@code test} is {@code null}
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     * @throws AssertionError
-     *             on timeout (record not observed)
-     */
-    public LogRecorder assertAwait(Predicate<LogRecord> test)
-                throws InterruptedException {
-        requireNonNull(test);
-        var latch = new CountDownLatch(1);
-        for (RecordHandler h : handlers) {
-            h.monitor(rec -> {
-                // Run callback only once
-                if (latch.getCount() == 0) {
-                    return;
-                }
-                if (test.test(rec)) {
-                    latch.countDown();
-                }
-            });
-            // optimization (no need to continue), that's all
-            if (latch.getCount() == 0) {
-                return this;
-            }
-        }
-        assertTrue(latch.await(timeout, unit));
-        return this;
-    }
-    
-    /**
      * Returns immediately if a log record of the given level with the given
      * message-prefix has been published, or await its arrival.
      * 
@@ -447,6 +409,44 @@ public final class LogRecorder
         }
         assertNotNull(match);
         return match;
+    }
+    
+    /**
+     * Returns immediately if a log record passing the given test has been
+     * published, or awaits its arrival.
+     * 
+     * @param test of record
+     * 
+     * @return this for chaining/fluency
+     * 
+     * @throws NullPointerException
+     *             if {@code test} is {@code null}
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     * @throws AssertionError
+     *             on timeout (record not observed)
+     */
+    private LogRecorder assertAwait(Predicate<LogRecord> test)
+                throws InterruptedException {
+        requireNonNull(test);
+        var latch = new CountDownLatch(1);
+        for (RecordHandler h : handlers) {
+            h.monitor(rec -> {
+                // Run callback only once
+                if (latch.getCount() == 0) {
+                    return;
+                }
+                if (test.test(rec)) {
+                    latch.countDown();
+                }
+            });
+            // optimization (no need to continue), that's all
+            if (latch.getCount() == 0) {
+                return this;
+            }
+        }
+        assertTrue(latch.await(timeout, unit));
+        return this;
     }
     
     private static final class RecordHandler extends Handler {
