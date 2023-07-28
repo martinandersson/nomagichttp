@@ -24,6 +24,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Stream.of;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -132,8 +133,8 @@ public final class LogRecorder
             System.Logger.Level level, String messageStartsWith) {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
-        take(r -> r.getLevel().equals(jul) &&
-                  r.getMessage().startsWith(messageStartsWith));
+        assertNotNull(take(r -> r.getLevel().equals(jul) &&
+                  r.getMessage().startsWith(messageStartsWith)));
     }
     
     /**
@@ -173,9 +174,11 @@ public final class LogRecorder
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
         requireNonNull(error);
-        return take(r -> r.getLevel().equals(jul) &&
+        var rec = take(r -> r.getLevel().equals(jul) &&
                          r.getMessage().startsWith(messageStartsWith) &&
-                         error.isInstance(r.getThrown())).getThrown();
+                         error.isInstance(r.getThrown()));
+        assertNotNull(rec);
+        return rec.getThrown();
     }
     
     /**
@@ -189,7 +192,9 @@ public final class LogRecorder
      * @see #take(System.Logger.Level, String, Class)
      */
     public Throwable takeError() {
-        return take(r -> r.getThrown() != null).getThrown();
+        var rec = take(r -> r.getThrown() != null).getThrown();
+        assertNotNull(rec);
+        return rec;
     }
     
     /**
@@ -362,7 +367,7 @@ public final class LogRecorder
             return false;
         });
         var rec = match.get();
-        take(r -> r == rec);
+        assertNotNull(take(r -> r == rec));
         return rec.getThrown();
     }
     
@@ -438,9 +443,6 @@ public final class LogRecorder
                     break search;
                 }
             }
-        }
-        if (match == null) {
-            throw new AssertionError("No log record match");
         }
         return match;
     }
