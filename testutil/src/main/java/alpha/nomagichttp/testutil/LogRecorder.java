@@ -109,21 +109,6 @@ public final class LogRecorder
              unit     = SECONDS;
     }
     
-    private Stream<RecordHandler> handlers() {
-        return Stream.of(handlers);
-    }
-    
-    /**
-     * Returns a Stream of all records.
-     * 
-     * @return see JavaDoc
-     */
-    private Stream<LogRecord> records() {
-        return handlers()
-                .flatMap(RecordHandler::recordsStream)
-                .sorted(comparing(LogRecord::getInstant));
-    }
-    
     /**
      * Takes the earliest matched record.<p>
      * 
@@ -205,25 +190,6 @@ public final class LogRecorder
      */
     public Throwable takeError() {
         return take(r -> r.getThrown() != null).getThrown();
-    }
-    
-    private LogRecord take(Predicate<LogRecord> test) {
-        LogRecord match = null;
-        search: for (var h : handlers) {
-            var it = h.recordsDeque().iterator();
-            while (it.hasNext()) {
-                var r = it.next();
-                if (test.test(r)) {
-                    it.remove();
-                    match = r;
-                    break search;
-                }
-            }
-        }
-        if (match == null) {
-            throw new AssertionError("No log record match");
-        }
-        return match;
     }
     
     /**
@@ -448,6 +414,35 @@ public final class LogRecorder
         return handlers().peek(r -> Logging.removeHandler(r.component(), r))
                           .flatMap(RecordHandler::recordsStream)
                           .sorted(comparing(LogRecord::getInstant));
+    }
+    
+    private Stream<RecordHandler> handlers() {
+        return Stream.of(handlers);
+    }
+    
+    private Stream<LogRecord> records() {
+        return handlers()
+                .flatMap(RecordHandler::recordsStream)
+                .sorted(comparing(LogRecord::getInstant));
+    }
+    
+    private LogRecord take(Predicate<LogRecord> test) {
+        LogRecord match = null;
+        search: for (var h : handlers) {
+            var it = h.recordsDeque().iterator();
+            while (it.hasNext()) {
+                var r = it.next();
+                if (test.test(r)) {
+                    it.remove();
+                    match = r;
+                    break search;
+                }
+            }
+        }
+        if (match == null) {
+            throw new AssertionError("No log record match");
+        }
+        return match;
     }
     
     private static final class RecordHandler extends Handler {
