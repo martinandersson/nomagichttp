@@ -538,7 +538,7 @@ public abstract class AbstractRealTest
             server.stop(Duration.ofSeconds(STOP_GRACEFUL_SECONDS));
             assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
-            assertThatServerStopsNormally(start);
+            assertServerStopsNormally(start);
             if (recorder != null) {
                 logRecorder().assertContainsOnlyOnce(rec(DEBUG, clean ?
                     "All exchanges finished within the graceful period." :
@@ -620,7 +620,7 @@ public abstract class AbstractRealTest
      * 
      * @param fut representing the {@code start} method call
      */
-    protected static void assertThatServerStopsNormally(Future<Void> fut) {
+    protected static void assertServerStopsNormally(Future<Void> fut) {
         assertThatThrownBy(() -> fut.get(1, SECONDS))
             .isExactlyInstanceOf(ExecutionException.class)
             .hasNoSuppressedExceptions()
