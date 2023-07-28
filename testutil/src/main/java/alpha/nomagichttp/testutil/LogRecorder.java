@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Is a util for asserting and awaiting log records.<p>
+ * Is a util for asserting and optionally await log records.<p>
  * 
  * Methods that await log records will by default timeout at most 3 seconds.
  * This can be configured differently using
@@ -127,7 +127,10 @@ public final class LogRecorder
     }
     
     /**
-     * Takes the earliest matched record.<p>
+     * Removes the earliest matched record.<p>
+     * 
+     * This method is useful to extract log records and limit subsequent
+     * assertions to what is left behind.<p>
      * 
      * For a record to be a match, all tests of the record's mapped values must
      * pass:
@@ -147,33 +150,25 @@ public final class LogRecorder
      * @throws AssertionError
      *             if a match could not be found
      */
-    public LogRecorder assertTake(
+    public LogRecorder assertRemove(
             System.Logger.Level level, String messageStartsWith) {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
-        assertNotNull(take(r -> r.getLevel().equals(jul) &&
+        assertNotNull(removeIf(r -> r.getLevel().equals(jul) &&
                   r.getMessage().startsWith(messageStartsWith)));
         return this;
     }
     
     /**
-     * Takes the earliest matched record.<p>
+     * Removes the earliest matched record.<p>
      * 
-     * This method is useful to extract log records and limit subsequent
-     * assertions to what is left behind.<p>
+     * This method is equivalent to:
+     * <pre>
+     *   {@link #assertRemove(System.Logger.Level, String)}
+     * </pre>
      * 
-     * For example, to ensure that a specific log record of an error was the
-     * only logged error, call this method and then
-     * {@link #assertNoThrowable()}.<p>
-     * 
-     * For a record to be a match, all tests of the record's mapped values must
-     * pass:
-     * 
-     * <ul>
-     *   <li>The level is <i>equal to</i> the given level
-     *   <li>The message starts with the given string
-     *   <li>The throwable is an <i>instance of</i> {@code error}
-     * </ul>
+     * But adds one more predicate; the record's throwable is an <i>instance
+     * of</i> {@code error}.
      * 
      * @param level record level predicate
      * @param messageStartsWith record message predicate
@@ -186,31 +181,31 @@ public final class LogRecorder
      * @throws AssertionError
      *             if a match could not be found
      */
-    public AbstractThrowableAssert<?, ? extends Throwable> assertTake(
+    public AbstractThrowableAssert<?, ? extends Throwable> assertRemove(
             System.Logger.Level level, String messageStartsWith,
             Class<? extends Throwable> error)
     {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
         requireNonNull(error);
-        var rec = take(r -> r.getLevel().equals(jul) &&
+        var rec = removeIf(r -> r.getLevel().equals(jul) &&
                             r.getMessage().startsWith(messageStartsWith) &&
                             error.isInstance(r.getThrown()));
         return assertThat(rec.getThrown());
     }
     
     /**
-     * Takes the earliest record which has a throwable.
+     * Removes the earliest record which has a throwable.
      * 
      * @return an assert object of the throwable
      * 
      * @throws AssertionError
      *             if a match could not be found
      * 
-     * @see #assertTake(System.Logger.Level, String, Class)
+     * @see #assertRemove(System.Logger.Level, String, Class)
      */
-    public AbstractThrowableAssert<?, ? extends Throwable> assertTakeError() {
-        return assertThat(take(r -> r.getThrown() != null).getThrown());
+    public AbstractThrowableAssert<?, ? extends Throwable> assertRemoveError() {
+        return assertThat(removeIf(r -> r.getThrown() != null).getThrown());
     }
     
     /**
@@ -293,7 +288,7 @@ public final class LogRecorder
      *             on timeout (record not observed)
      */
     public AbstractThrowableAssert<?, ? extends Throwable>
-           assertAwaitTake(
+           assertAwaitRemove(
                System.Logger.Level level, String messageStartsWith,
                Class<? extends Throwable> error)
            throws InterruptedException
@@ -305,11 +300,12 @@ public final class LogRecorder
                    r.getLevel().equals(toJUL(level)) &&
                    r.getMessage().startsWith(messageStartsWith) &&
                    error.isInstance(r.getThrown()))
-              .assertTake(level, messageStartsWith, error);
+              .assertRemove(level, messageStartsWith, error);
     }
     
     /**
-     * Assertively await on the server log to indicate a child was accepted.
+     * Assertively awaits a record to indicate that a child was accepted by the
+     * server.
      * 
      * @throws InterruptedException
      *             if the current thread is interrupted while waiting
@@ -321,8 +317,8 @@ public final class LogRecorder
     }
     
     /**
-     * Assertively await on the server log to indicate a child is being
-     * closed.
+     * Assertively awaits a record to indicate that a child is being closed by
+     * the server.
      * 
      * @throws InterruptedException
      *             if the current thread is interrupted while waiting
@@ -334,7 +330,8 @@ public final class LogRecorder
     }
     
     /**
-     * Assertively await and take the first logged error of any type.
+     * Assertively awaits and removes the earliest record with a throwable of
+     * any type.
      * 
      * @return an assert object of the throwable
      * 
@@ -344,15 +341,15 @@ public final class LogRecorder
      *             on timeout (record not observed)
      */
     public AbstractThrowableAssert<?, ? extends Throwable>
-           assertAwaitTakeError()
+           assertAwaitRemoveError()
            throws InterruptedException
     {
-        return assertAwaitTakeError(Throwable.class);
+        return assertAwaitRemoveError(Throwable.class);
     }
     
     /**
-     * Assertively await and take the first logged error that is an instance of
-     * the given type.
+     * Assertively await and removes the earliest record with a throwable that
+     * is an instance of the given type.
      * 
      * @param filter type expected
      * 
@@ -366,7 +363,7 @@ public final class LogRecorder
      *             on timeout (throwable not observed)
      */
     public AbstractThrowableAssert<?, ? extends Throwable>
-           assertAwaitTakeError(Class<? extends Throwable> filter)
+    assertAwaitRemoveError(Class<? extends Throwable> filter)
            throws InterruptedException
     {
         requireNonNull(filter);
@@ -380,12 +377,12 @@ public final class LogRecorder
             return false;
         });
         var rec = match.get();
-        assertNotNull(take(r -> r == rec));
+        assertNotNull(removeIf(r -> r == rec));
         return assertThat(rec.getThrown());
     }
     
     /**
-     * Assert that no observed log record contains a throwable.
+     * Asserts that no record has a throwable.
      * 
      * @return this for chaining/fluency
      */
@@ -403,7 +400,7 @@ public final class LogRecorder
     }
     
     /**
-     * Asserts that no log record exists with a level greater than {@code INFO},
+     * Asserts that no record exists with a level greater than {@code INFO},
      * nor anyone that has a throwable.
      * 
      * @return this for chaining/fluency
@@ -416,7 +413,7 @@ public final class LogRecorder
     }
     
     /**
-     * Assert that observed log records contain the given values only once.
+     * Assert that observed records contain the given values only once.
      * 
      * @param values use {@link LogRecords#rec(System.Logger.Level, String, Throwable error)}
      * 
@@ -449,7 +446,7 @@ public final class LogRecorder
                 .sorted(comparing(LogRecord::getInstant));
     }
     
-    private LogRecord take(Predicate<LogRecord> test) {
+    private LogRecord removeIf(Predicate<LogRecord> test) {
         LogRecord match = null;
         search: for (var h : handlers) {
             var it = h.recordsDeque().iterator();

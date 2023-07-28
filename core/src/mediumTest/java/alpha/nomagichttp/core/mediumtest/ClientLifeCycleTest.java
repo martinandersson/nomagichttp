@@ -80,7 +80,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                   .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
             assertThat(rsp)
                   .isEmpty();
-            logRecorder().assertAwaitTake(
+            logRecorder().assertAwaitRemove(
                   WARNING,
                   "Output stream is not open, can not handle this error.",
                   // This I can't really explain. lol?
@@ -213,7 +213,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                 DEBUG, "Read operation failed, shutting down input stream.");
         }
         // From the test worker's TestClient
-        logRecorder().assertTake(WARNING, "About to crash");
+        logRecorder().assertRemove(WARNING, "About to crash");
     }
     
     // Client writes request,

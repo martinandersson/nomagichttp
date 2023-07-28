@@ -782,7 +782,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(rsp)
               .isEmpty();
         // But the exceptions were logged
-        logRecorder().assertAwaitTakeError()
+        logRecorder().assertAwaitRemoveError()
               .isExactlyInstanceOf(OopsException.class)
               .hasMessage("first")
               .hasNoCause()
@@ -860,7 +860,7 @@ final class ErrorTest extends AbstractRealTest
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
         // The second one caused some problems
         // TODO: See below, is repeated in next test case
-        logRecorder().assertAwaitTake(
+        logRecorder().assertAwaitRemove(
                 ERROR, """
                     Response bytes already sent, \
                     can not handle this error (closing child).""",
@@ -894,7 +894,7 @@ final class ErrorTest extends AbstractRealTest
                 Content-Length: 6\r
                 \r
                 Hello\s""");
-        logRecorder().assertTake(
+        logRecorder().assertRemove(
                 DEBUG, "Error while discarding request trailers, shutting down the input stream.",
                 HeaderParseException.class)
             .hasToString("""

@@ -28,8 +28,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.logging.LogRecord;
-import java.util.stream.Stream;
 
 import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.testutil.LogRecords.rec;
@@ -58,7 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * If any kind of errors and/or warnings are expected, then the test must
  * consume exceptions using {@link #pollServerError()}, or take records from the
- * recorder using {@link LogRecorder#assertTake(System.Logger.Level, String)}.
+ * recorder using {@link LogRecorder#assertRemove(System.Logger.Level, String)}.
  * If it is expected that an exception is both handled and logged, one can use
  * {@link #assertThatServerErrorObservedAndLogged()}.<p>
  * 
@@ -555,7 +553,7 @@ public abstract class AbstractRealTest
     
     /**
      * Asserts that {@link #pollServerError()} and
-     * {@link LogRecorder#assertAwaitTakeError()} is the same instance.<p>
+     * {@link LogRecorder#assertAwaitRemoveError()} is the same instance.<p>
      * 
      * May be used when a test case needs to assert that the base error handler
      * was delivered a particular error <i>and</i> logged it (or, someone did).
@@ -573,7 +571,7 @@ public abstract class AbstractRealTest
     {
         requireServerIsRunning();
         return logRecorder()
-                   .assertAwaitTakeError()
+                   .assertAwaitRemoveError()
                    .isSameAs(pollServerError());
     }
     
