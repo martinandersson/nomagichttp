@@ -215,7 +215,7 @@ public abstract class AbstractRealTest
             }
         } finally {
             if (useLogRecording) {
-                logRecorderStop();
+                logRecorder().stopRecording();
             }
         }
         LOG.log(DEBUG, () -> "Finished " + toString(test));
@@ -501,15 +501,6 @@ public abstract class AbstractRealTest
             throw new IllegalStateException("Log recording is not active.");
         }
         return recorder;
-    }
-    
-    /**
-     * Stop log recording.
-     * 
-     * @return all logged records
-     */
-    private Stream<LogRecord> logRecorderStop() {
-        return recorder.stopRecording();
     }
     
     /**
