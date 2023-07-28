@@ -416,6 +416,16 @@ public final class LogRecorder
     }
     
     /**
+     * Asserts that no log record exists with a level greater than {@code INFO},
+     * nor anyone that has a throwable.
+     */
+    public void assertThatNoWarningOrErrorIsLogged() {
+        assertThat(records())
+            .noneMatch(v -> v.getLevel().intValue() > java.util.logging.Level.INFO.intValue())
+            .noneMatch(v -> v.getThrown() != null);
+    }
+    
+    /**
      * Assert that observed log records contain the given values only once.
      * 
      * @param values use {@link LogRecords#rec(System.Logger.Level, String, Throwable error)}

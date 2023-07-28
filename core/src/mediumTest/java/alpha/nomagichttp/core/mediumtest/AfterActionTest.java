@@ -72,7 +72,7 @@ class AfterActionTest extends AbstractRealTest
                 
                 "bye");
             
-            assertThatNoWarningOrErrorIsLogged();
+            logRecorder().assertThatNoWarningOrErrorIsLogged();
         }
     }
     

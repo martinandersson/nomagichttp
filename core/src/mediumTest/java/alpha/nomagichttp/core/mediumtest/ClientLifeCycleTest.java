@@ -107,7 +107,7 @@ class ClientLifeCycleTest extends AbstractRealTest
         client().openConnection().close();
         logRecorder().assertAwait(
               DEBUG, "Closing the child because client aborted the exchange.");
-        assertThatNoWarningOrErrorIsLogged();
+        logRecorder().assertThatNoWarningOrErrorIsLogged();
     }
     
     /**
@@ -191,7 +191,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             rec(DEBUG, "EOS, shutting down input stream."));
         stopServer();
         // No warnings or errors!
-        assertThatNoWarningOrErrorIsLogged();
+        logRecorder().assertThatNoWarningOrErrorIsLogged();
         logRecorder().assertThatLogContainsOnlyOnce(
             rec(DEBUG, "Saw \"Connection: close\", shutting down output."));
     }
@@ -292,7 +292,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             "Closing child: java.nio.channels.SocketChannel[connected oshut local=" :
             // or the next exchange actually started, but immediately aborted
             "Closing the child because client aborted the exchange.");
-        assertThatNoWarningOrErrorIsLogged();
+        logRecorder().assertThatNoWarningOrErrorIsLogged();
     }
     
     // Server shuts down output after response, can still read request
@@ -342,7 +342,7 @@ class ClientLifeCycleTest extends AbstractRealTest
             .isEqualTo(
                 "HTTP/1.1 204 No Content" + CRLF +
                 "Connection: close"       + CRLF + CRLF);
-        assertThatNoWarningOrErrorIsLogged();
+        logRecorder().assertThatNoWarningOrErrorIsLogged();
         // We saw the effect already; "Connection: close"
         // (this asserts why)
         logRecorder().assertAwait(DEBUG, """

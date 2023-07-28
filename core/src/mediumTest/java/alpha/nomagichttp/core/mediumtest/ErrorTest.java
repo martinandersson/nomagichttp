@@ -392,7 +392,7 @@ final class ErrorTest extends AbstractRealTest
         assertThat(pollServerError())
                 .isExactlyInstanceOf(MethodNotAllowedException.class)
                 .hasMessage("No handler found for method token \"OPTIONS\".");
-        assertThatNoWarningOrErrorIsLogged();
+        logRecorder().assertThatNoWarningOrErrorIsLogged();
     }
     
     @Test
@@ -632,7 +632,7 @@ final class ErrorTest extends AbstractRealTest
             "Done!");
         logRecorder().assertAwait(DEBUG,
                 "Ignoring 1XX (Informational) response for HTTP/1.0 client.");
-        assertThatNoWarningOrErrorIsLogged();
+        logRecorder().assertThatNoWarningOrErrorIsLogged();
     }
     
     // TODO: fileResponse_blockedByWriteLock

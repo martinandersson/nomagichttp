@@ -230,6 +230,6 @@ final class MessageTest extends AbstractRealTest
             Content-Length: 13\r
             \r
             Hello, World!""");
-        assertThatNoWarningOrErrorIsLogged();
+        logRecorder().assertThatNoWarningOrErrorIsLogged();
     }
 }

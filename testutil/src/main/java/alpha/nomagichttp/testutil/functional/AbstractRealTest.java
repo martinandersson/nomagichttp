@@ -554,7 +554,7 @@ public abstract class AbstractRealTest
                 logRecorder().assertThatLogContainsOnlyOnce(rec(DEBUG, clean ?
                     "All exchanges finished within the graceful period." :
                     "Graceful deadline expired; shutting down scope."));
-                assertThatNoWarningOrErrorIsLogged();
+                logRecorder().assertThatNoWarningOrErrorIsLogged();
             }
         } finally {
             server = null;
@@ -583,16 +583,6 @@ public abstract class AbstractRealTest
         Throwable t = pollServerError();
         assertSame(t, logRecorder().assertAwaitTakeError());
         return assertThat(t);
-    }
-    
-    /**
-     * Asserts that no log record exists with a level greater than {@code INFO},
-     * nor anyone that has a throwable.
-     */
-    protected final void assertThatNoWarningOrErrorIsLogged() {
-        assertThat(logRecorder().records())
-            .noneMatch(v -> v.getLevel().intValue() > java.util.logging.Level.INFO.intValue())
-            .noneMatch(v -> v.getThrown() != null);
     }
     
     /**
