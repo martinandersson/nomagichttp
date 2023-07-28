@@ -78,7 +78,7 @@ class BeforeActionTest extends AbstractRealTest
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error"      + CRLF +
             "Content-Length: 0"                       + CRLF + CRLF);
-        assertServerHandledAndAndLogged()
+        assertAwaitHandledAndLoggedExc()
             .isExactlyInstanceOf(RuntimeException.class)
             .hasMessage("Oops!")
             .hasNoCause()

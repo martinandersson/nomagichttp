@@ -58,7 +58,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * the recorder using
  * {@link LogRecorder#assertRemove(System.Logger.Level, String)}. If it is
  * expected that an exception is both handled and logged, one can use
- * {@link #assertServerHandledAndAndLogged()}.<p>
+ * {@link #assertAwaitHandledAndLoggedExc()}.<p>
  * 
  * {@snippet :
  *   class MyTest extends AbstractRealTest {
@@ -538,7 +538,7 @@ public abstract class AbstractRealTest
             server.stop(Duration.ofSeconds(STOP_GRACEFUL_SECONDS));
             assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
-            assertServerStopsNormally(start);
+            assertAwaitNormalStop(start);
             if (recorder != null) {
                 logRecorder().assertContainsOnlyOnce(rec(DEBUG, clean ?
                     "All exchanges finished within the graceful period." :
@@ -597,7 +597,7 @@ public abstract class AbstractRealTest
      *             if log recording is not active
      */
     protected final AbstractThrowableAssert<?, ? extends Throwable>
-            assertServerHandledAndAndLogged() throws InterruptedException
+            assertAwaitHandledAndLoggedExc() throws InterruptedException
     {
         requireServerIsRunning();
         return logRecorder()
@@ -620,7 +620,7 @@ public abstract class AbstractRealTest
      * 
      * @param fut representing the {@code start} method call
      */
-    protected static void assertServerStopsNormally(Future<Void> fut) {
+    protected static void assertAwaitNormalStop(Future<Void> fut) {
         assertThatThrownBy(() -> fut.get(1, SECONDS))
             .isExactlyInstanceOf(ExecutionException.class)
             .hasNoSuppressedExceptions()
