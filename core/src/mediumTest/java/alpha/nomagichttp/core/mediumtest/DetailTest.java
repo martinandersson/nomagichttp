@@ -247,7 +247,7 @@ class DetailTest extends AbstractRealTest
         logRecorder().assertContainsOnlyOnce(
                 // First ignored 100 Continue silently logged
                 rec(DEBUG, "Ignoring repeated 100 (Continue)."));
-        logRecorder().take(
+        logRecorder().assertTake(
                 // But any more than that and level escalates
                 WARNING, "Ignoring repeated 100 (Continue).");
     }

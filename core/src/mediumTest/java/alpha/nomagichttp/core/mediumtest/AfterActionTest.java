@@ -135,7 +135,7 @@ class AfterActionTest extends AbstractRealTest
               .writeReadTextUntilEOS("GET / HTTP/1.1" + CRLF + CRLF);
         assertThat(rsp)
               .isEmpty();
-        assertThat(logRecorder().takeError()).hasToString(
+        assertThat(logRecorder().assertTakeError()).hasToString(
               "alpha.nomagichttp.core.AfterActionException: " +
               "java.lang.NullPointerException");
     }

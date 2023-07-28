@@ -922,7 +922,7 @@ final class ErrorTest extends AbstractRealTest
                 Content-Length: 6\r
                 \r
                 Hello\s""");
-        var thr = logRecorder().take(
+        var thr = logRecorder().assertTake(
             DEBUG, "Error while discarding request trailers, shutting down the input stream.",
             HeaderParseException.class);
         assertThat(thr)

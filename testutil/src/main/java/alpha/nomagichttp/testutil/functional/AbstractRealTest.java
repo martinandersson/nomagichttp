@@ -58,8 +58,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * If any kind of errors and/or warnings are expected, then the test must
  * consume exceptions using {@link #pollServerError()}, or take records from the
- * recorder using {@link LogRecorder#take(System.Logger.Level, String)}. If it
- * is expected that an exception is both handled and logged, one can use
+ * recorder using {@link LogRecorder#assertTake(System.Logger.Level, String)}.
+ * If it is expected that an exception is both handled and logged, one can use
  * {@link #assertThatServerErrorObservedAndLogged()}.<p>
  * 
  * {@snippet :

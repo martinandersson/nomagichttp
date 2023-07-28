@@ -129,11 +129,11 @@ public final class LogRecorder
      * @throws AssertionError
      *             if a match could not be found
      */
-    public void take(
+    public void assertTake(
             System.Logger.Level level, String messageStartsWith) {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
-        assertNotNull(take(r -> r.getLevel().equals(jul) &&
+        assertNotNull(assertTake(r -> r.getLevel().equals(jul) &&
                   r.getMessage().startsWith(messageStartsWith)));
     }
     
@@ -167,14 +167,14 @@ public final class LogRecorder
      * @throws AssertionError
      *             if a match could not be found
      */
-    public Throwable take(
+    public Throwable assertTake(
             System.Logger.Level level, String messageStartsWith,
             Class<? extends Throwable> error)
     {
         var jul = toJUL(level);
         requireNonNull(messageStartsWith);
         requireNonNull(error);
-        var rec = take(r -> r.getLevel().equals(jul) &&
+        var rec = assertTake(r -> r.getLevel().equals(jul) &&
                          r.getMessage().startsWith(messageStartsWith) &&
                          error.isInstance(r.getThrown()));
         assertNotNull(rec);
@@ -189,10 +189,10 @@ public final class LogRecorder
      * @throws AssertionError
      *             if a match could not be found
      * 
-     * @see #take(System.Logger.Level, String, Class)
+     * @see #assertTake(System.Logger.Level, String, Class)
      */
-    public Throwable takeError() {
-        var rec = take(r -> r.getThrown() != null).getThrown();
+    public Throwable assertTakeError() {
+        var rec = assertTake(r -> r.getThrown() != null).getThrown();
         assertNotNull(rec);
         return rec;
     }
@@ -296,7 +296,7 @@ public final class LogRecorder
         assertAwait(r -> r.getLevel().equals(toJUL(level)) &&
                          r.getMessage().startsWith(messageStartsWith) &&
                          error.isInstance(r.getThrown()));
-        return take(level, messageStartsWith, error);
+        return assertTake(level, messageStartsWith, error);
     }
     
     /**
@@ -367,7 +367,7 @@ public final class LogRecorder
             return false;
         });
         var rec = match.get();
-        assertNotNull(take(r -> r == rec));
+        assertNotNull(assertTake(r -> r == rec));
         return rec.getThrown();
     }
     
@@ -431,7 +431,7 @@ public final class LogRecorder
                 .sorted(comparing(LogRecord::getInstant));
     }
     
-    private LogRecord take(Predicate<LogRecord> test) {
+    private LogRecord assertTake(Predicate<LogRecord> test) {
         LogRecord match = null;
         search: for (var h : handlers) {
             var it = h.recordsDeque().iterator();

@@ -213,7 +213,7 @@ class ClientLifeCycleTest extends AbstractRealTest
                 DEBUG, "Read operation failed, shutting down input stream.");
         }
         // From the test worker's TestClient
-        logRecorder().take(WARNING, "About to crash");
+        logRecorder().assertTake(WARNING, "About to crash");
     }
     
     // Client writes request,
