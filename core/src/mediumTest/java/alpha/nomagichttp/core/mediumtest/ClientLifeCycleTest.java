@@ -186,12 +186,12 @@ class ClientLifeCycleTest extends AbstractRealTest
             throws InterruptedException, IOException {
         logRecorder().assertAwait(
             DEBUG, "Sent 400 (Bad Request)");
-        logRecorder().assertThatLogContainsOnlyOnce(
+        logRecorder().assertContainsOnlyOnce(
             rec(DEBUG, "EOS, shutting down input stream."));
         stopServer();
         // No warnings or errors!
         logRecorder().assertNoThrowableNorWarning();
-        logRecorder().assertThatLogContainsOnlyOnce(
+        logRecorder().assertContainsOnlyOnce(
             rec(DEBUG, "Saw \"Connection: close\", shutting down output."));
     }
     

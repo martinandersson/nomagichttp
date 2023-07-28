@@ -551,7 +551,7 @@ public abstract class AbstractRealTest
             assertThat(errors).isEmpty();
             assertThatServerStopsNormally(start);
             if (recorder != null) {
-                logRecorder().assertThatLogContainsOnlyOnce(rec(DEBUG, clean ?
+                logRecorder().assertContainsOnlyOnce(rec(DEBUG, clean ?
                     "All exchanges finished within the graceful period." :
                     "Graceful deadline expired; shutting down scope."));
                 logRecorder().assertNoThrowableNorWarning();

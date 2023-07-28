@@ -430,7 +430,7 @@ public final class LogRecorder
      * 
      * @param values use {@link LogRecords#rec(System.Logger.Level, String, Throwable error)}
      */
-    public void assertThatLogContainsOnlyOnce(Tuple... values) {
+    public void assertContainsOnlyOnce(Tuple... values) {
         assertThat(records())
             .extracting(
                 LogRecord::getLevel,

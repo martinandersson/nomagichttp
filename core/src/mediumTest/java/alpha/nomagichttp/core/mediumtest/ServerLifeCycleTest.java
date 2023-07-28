@@ -137,7 +137,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
             assertThat(Duration.between(before, now()))
                 .isLessThan(ofSeconds(1));
             assertNewConnectionIsRejected();
-            logRecorder().assertThatLogContainsOnlyOnce(rec(
+            logRecorder().assertContainsOnlyOnce(rec(
                 DEBUG, "Closed 1 idling children of a total 1."));
             logRecorder().assertNoThrowableNorWarning();
         }
@@ -159,7 +159,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
             // Stopping completes after a 1-second graceful period
             assertThat(Duration.between(before, now()))
                 .isGreaterThanOrEqualTo(ofSeconds(1));
-            logRecorder().assertThatLogContainsOnlyOnce(rec(
+            logRecorder().assertContainsOnlyOnce(rec(
                 DEBUG, "Closing the child because thread interrupted."));
             logRecorder().assertNoThrowableNorWarning();
         }
