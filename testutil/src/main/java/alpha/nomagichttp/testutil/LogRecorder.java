@@ -30,18 +30,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Is a util for waiting on and asserting log records.<p>
+ * Is a util for asserting and awaiting log records.<p>
  * 
- * {@code await()} methods (and derivatives such as {@code assertAwait()}) will
- * by default wait at most 3 seconds. This can be configured differently using
- * {@link #timeoutAfter(long, TimeUnit)}.
+ * Methods that await log records will by default timeout at most 3 seconds.
+ * This can be configured differently using
+ * {@link #timeoutAfter(long, TimeUnit)}.<p>
+ * 
+ * WARNING: Recording is implemented through adding a handler to each targeted
+ * logger. The handler's {@code publish(LogRecord)} method is
+ * {@code synchronized}. This lock is not expected to be contended. Nonetheless,
+ * the recording feature should not be used in time-critical code.
  * 
  * @see #startRecording(Class, Class[])
  */
 public final class LogRecorder
 {
     /**
-     * Start global log recording.<p>
+     * Starts global log recording.<p>
      * 
      * An invocation of this method behaves in exactly the same way as the
      * invocation
@@ -59,7 +64,7 @@ public final class LogRecorder
     }
     
     /**
-     * Start recording log records from the loggers of the packages that the
+     * Starts recording log records from the loggers of the packages that the
      * given components belong to.<p>
      * 
      * Recording should eventually be stopped using {@link #stopRecording()}.<p>
@@ -67,20 +72,14 @@ public final class LogRecorder
      * Recording is especially useful for running assertions on the server's
      * generated log.<p>
      * 
-     * The returned recorder supports {@linkplain
-     * LogRecorder#await(System.Logger.Level, String) awaiting} a particular log record. This is
-     * crucial for tests asserting records produced by other threads than the
-     * test worker, which applies to most server components as the server is
-     * fully asynchronous. Otherwise, there could be timing issues.<p>
+     * The returned recorder supports waiting on the arrival of a particular log
+     * record. This is crucial for tests asserting records produced by other
+     * threads than the test worker, which applies to most server components as
+     * the server runs in a different thread. Otherwise, there could be timing
+     * issues.<p>
      * 
      * The awaiting feature can also be used solely as a mechanism to await a
-     * particular quote unquote "event" before moving on.<p>
-     * 
-     * WARNING: Recording is implemented through adding a handler to each
-     * targeted logger. The handler's {@code publish(LogRecord)} method is
-     * {@code synchronized}. This lock is not expected to be contended.
-     * Nonetheless, the recording feature should not be used in time-critical
-     * code.
+     * particular event before moving on.
      * 
      * @param firstComponent at least one
      * @param more may be provided
@@ -141,7 +140,7 @@ public final class LogRecorder
     }
     
     /**
-     * Take the earliest matched record.<p>
+     * Takes the earliest matched record.<p>
      * 
      * For a record to be a match, all tests of the record's mapped values must
      * pass:
@@ -168,7 +167,7 @@ public final class LogRecorder
     }
     
     /**
-     * Take the earliest matched record.<p>
+     * Takes the earliest matched record.<p>
      * 
      * This method is useful to extract log records and limit subsequent
      * assertions to what is left behind.<p>
@@ -210,7 +209,7 @@ public final class LogRecorder
     }
     
     /**
-     * Take the earliest record which has a throwable.
+     * Takes the earliest record which has a throwable.
      * 
      * @return the record (never {@code null})
      * 
@@ -243,7 +242,7 @@ public final class LogRecorder
     }
     
     /**
-     * Set a new timeout for {@code await()} methods.<p>
+     * Sets a new timeout for {@code await()} methods.<p>
      * 
      * This method is not thread-safe.
      * 
@@ -258,103 +257,8 @@ public final class LogRecorder
     }
     
     /**
-     * Return immediately if a log record passing the given test has been
-     * published, or await its arrival.<p>
-     * 
-     * WARNING: This method may block the publication of a log record
-     * temporarily and if so, the block is minuscule. Nonetheless, awaiting
-     * should not be done by time-critical code.
-     * 
-     * @param test of record
-     * 
-     * @return {@code true} when target record is observed, or
-     *         {@code false} on timeout (record not observed)
-     * 
-     * @throws NullPointerException
-     *             if {@code test} is {@code null}
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     */
-    public boolean await(Predicate<LogRecord> test) throws InterruptedException {
-        requireNonNull(test);
-        var latch = new CountDownLatch(1);
-        for (RecordHandler h : handlers) {
-            h.monitor(rec -> {
-                // Run callback only once
-                if (latch.getCount() == 0) {
-                    return;
-                }
-                if (test.test(rec)) {
-                    latch.countDown();
-                }
-            });
-            // optimization (no need to continue), that's all
-            if (latch.getCount() == 0) {
-                return true;
-            }
-        }
-        return latch.await(timeout, unit);
-    }
-    
-    /**
-     * Return immediately if a log record of the given level with the given
-     * message-prefix has been published, or await its arrival.<p>
-     * 
-     * Uses {@link #await(Predicate)} under the hood. Same warning apply.
-     * 
-     * @param level record level predicate
-     * @param messageStartsWith record message predicate
-     * 
-     * @return {@code true} when target record is observed, or
-     *         {@code false} on timeout (record not observed)
-     * 
-     * @throws NullPointerException
-     *             if any arg is {@code null}
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     */
-    public boolean await(System.Logger.Level level, String messageStartsWith)
-            throws InterruptedException {
-        requireNonNull(level);
-        requireNonNull(messageStartsWith);
-        return await(r -> r.getLevel().equals(toJUL(level)) &&
-                          r.getMessage().startsWith(messageStartsWith));
-    }
-    
-    /**
-     * Return immediately if a log record of the given level with the given
-     * message-prefix and error has been published, or await its arrival.<p>
-     * 
-     * Uses {@link #await(Predicate)} under the hood. Same warning apply.
-     * 
-     * @param level record level predicate
-     * @param messageStartsWith record message predicate
-     * @param error record error predicate (record's error must be instance of)
-     * 
-     * @return {@code true} when target record is observed, or
-     *         {@code false} on timeout (record not observed)
-     * 
-     * @throws NullPointerException
-     *             if any arg is {@code null}
-     * @throws InterruptedException
-     *             if the current thread is interrupted while waiting
-     */
-    public boolean await(
-            System.Logger.Level level, String messageStartsWith, Class<? extends Throwable> error)
-            throws InterruptedException
-    {
-        requireNonNull(level);
-        requireNonNull(messageStartsWith);
-        requireNonNull(error);
-        return await(r -> r.getLevel().equals(toJUL(level)) &&
-                          r.getMessage().startsWith(messageStartsWith) &&
-                          error.isInstance(r.getThrown()));
-    }
-    
-    /**
-     * This method behaves the same as {@link #await(Predicate)}, except it
-     * returns normally instead of {@code true}, and it returns
-     * exceptionally instead of {@code false}.
+     * Returns immediately if a log record passing the given test has been
+     * published, or awaits its arrival.
      * 
      * @param test of record
      * 
@@ -366,13 +270,12 @@ public final class LogRecorder
      *             on timeout (record not observed)
      */
     public void assertAwait(Predicate<LogRecord> test) throws InterruptedException {
-        assertTrue(await(test));
+        assertTrue(await0(test));
     }
     
     /**
-     * This method behaves the same as {@link #await(System.Logger.Level, String)}, except
-     * it returns normally instead of {@code true}, and it returns
-     * exceptionally instead of {@code false}.
+     * Returns immediately if a log record of the given level with the given
+     * message-prefix has been published, or await its arrival.
      * 
      * @param level record level predicate
      * @param messageStartsWith record message predicate
@@ -387,17 +290,19 @@ public final class LogRecorder
     public void assertAwait(
             System.Logger.Level level, String messageStartsWith)
             throws InterruptedException {
-        assertTrue(await(level, messageStartsWith));
+        assertTrue(await0(level, messageStartsWith));
     }
     
     /**
-     * This method behaves the same as {@link #await(System.Logger.Level, String, Class)},
-     * except it returns normally instead of {@code true}, and it returns
-     * exceptionally instead of {@code false}.
+     * Returns immediately if a log record of the given level with the given
+     * message-prefix and error has been published, or await its arrival.
      * 
      * @param level record level predicate
      * @param messageStartsWith record message predicate
-     * @param error record error predicate (record's error must be instance of)
+     * @param error record error predicate (must be an <i>instance of</i>)
+     * 
+     * @return {@code true} when target record is observed, or
+     *         {@code false} on timeout (record not observed)
      * 
      * @throws NullPointerException
      *             if any arg is {@code null}
@@ -409,7 +314,7 @@ public final class LogRecorder
     public Throwable assertAwaitTake(
             System.Logger.Level level, String messageStartsWith, Class<? extends Throwable> error)
             throws InterruptedException {
-        assertTrue(await(level, messageStartsWith, error));
+        assertTrue(await0(level, messageStartsWith, error));
         return take(level, messageStartsWith, error);
     }
     
@@ -523,6 +428,100 @@ public final class LogRecorder
         return handlers().peek(r -> Logging.removeHandler(r.component(), r))
                           .flatMap(RecordHandler::recordsStream)
                           .sorted(comparing(LogRecord::getInstant));
+    }
+    
+    /**
+     * Return immediately if a log record passing the given test has been
+     * published, or await its arrival.<p>
+     * 
+     * WARNING: This method may block the publication of a log record
+     * temporarily and if so, the block is minuscule. Nonetheless, awaiting
+     * should not be done by time-critical code.
+     * 
+     * @param test of record
+     * 
+     * @return {@code true} when target record is observed, or
+     *         {@code false} on timeout (record not observed)
+     * 
+     * @throws NullPointerException
+     *             if {@code test} is {@code null}
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     */
+    private boolean await0(Predicate<LogRecord> test) throws InterruptedException {
+        requireNonNull(test);
+        var latch = new CountDownLatch(1);
+        for (RecordHandler h : handlers) {
+            h.monitor(rec -> {
+                // Run callback only once
+                if (latch.getCount() == 0) {
+                    return;
+                }
+                if (test.test(rec)) {
+                    latch.countDown();
+                }
+            });
+            // optimization (no need to continue), that's all
+            if (latch.getCount() == 0) {
+                return true;
+            }
+        }
+        return latch.await(timeout, unit);
+    }
+    
+    /**
+     * Return immediately if a log record of the given level with the given
+     * message-prefix has been published, or await its arrival.<p>
+     * 
+     * Uses {@link #await0(Predicate)} under the hood. Same warning apply.
+     * 
+     * @param level record level predicate
+     * @param messageStartsWith record message predicate
+     * 
+     * @return {@code true} when target record is observed, or
+     *         {@code false} on timeout (record not observed)
+     * 
+     * @throws NullPointerException
+     *             if any arg is {@code null}
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     */
+    private boolean await0(System.Logger.Level level, String messageStartsWith)
+            throws InterruptedException {
+        requireNonNull(level);
+        requireNonNull(messageStartsWith);
+        return await0(r -> r.getLevel().equals(toJUL(level)) &&
+                          r.getMessage().startsWith(messageStartsWith));
+    }
+    
+    /**
+     * Return immediately if a log record of the given level with the given
+     * message-prefix and error has been published, or await its arrival.<p>
+     * 
+     * Uses {@link #await0(Predicate)} under the hood. Same warning apply.
+     * 
+     * @param level record level predicate
+     * @param messageStartsWith record message predicate
+     * @param error record error predicate (record's error must be instance of)
+     * 
+     * @return {@code true} when target record is observed, or
+     *         {@code false} on timeout (record not observed)
+     * 
+     * @throws NullPointerException
+     *             if any arg is {@code null}
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     */
+    private boolean await0(
+            System.Logger.Level level, String messageStartsWith, Class<? extends Throwable> error)
+            throws InterruptedException
+    {
+        requireNonNull(level);
+        requireNonNull(messageStartsWith);
+        requireNonNull(error);
+        return await0(r -> r.getLevel().equals(toJUL(level)) &&
+                          r.getMessage().startsWith(messageStartsWith) &&
+                          error.isInstance(r.getThrown()));
     }
     
     private static final class RecordHandler extends Handler {
