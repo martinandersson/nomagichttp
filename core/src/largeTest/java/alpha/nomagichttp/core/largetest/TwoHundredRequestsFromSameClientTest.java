@@ -6,7 +6,9 @@ import alpha.nomagichttp.testutil.functional.HttpClientFacade;
 import alpha.nomagichttp.testutil.functional.HttpClientFacade.ResponseFacade;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -24,11 +26,13 @@ import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
+import static alpha.nomagichttp.testutil.functional.Constants.TEST_CLIENT;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.REACTOR;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.createAll;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.createAllExceptFor;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 
 /**
  * POSTs one hundred small requests and one hundred big requests using the same
@@ -48,12 +52,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 // TODO: Assert persistent connections (e.g. by counting children on the server)
 final class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
 {
-    // One hundred small bodies + one hundred big bodies = 200 requests
-    private static final int REQUESTS_PER_BATCH = 100;
+    // One hundred small + big bodies = 200 requests
+    private static final int REQUESTS_PER_SIZE = 100;
     
     private static final Map<String, LongStream.Builder> STATS = new HashMap<>();
     
-    private Channel conn;
+    private static Channel CONN;
+    
     @BeforeAll
     void addHandler() throws IOException {
         // Echo the body
@@ -63,8 +68,8 @@ final class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
     
     @AfterAll
     void closeConn() throws IOException {
-        if (conn != null) {
-            conn.close();
+        if (CONN != null) {
+            CONN.close();
         }
     }
     
@@ -82,42 +87,84 @@ final class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
                 .build().map(NANOSECONDS::toMillis).skip(1).summaryStatistics()));
     }
     
-    @ParameterizedTest(name = "small/TestClient")
-    @MethodSource("smallBodies")
-    void small(String requestBody, TestInfo info) throws Exception {
-        postAndAssertResponseUsingTestClient(requestBody, info);
+    @Nested
+    @TestInstance(PER_CLASS)
+    class Small {
+        @ParameterizedTest(name = TEST_CLIENT)
+        @MethodSource("bodies")
+        void testClient(String requestBody, TestInfo info) throws Exception {
+            postAndAssertResponseUsingTestClient(requestBody, info);
+        }
+        
+        @ParameterizedTest(name = "{1}") // e.g. "Small/Apache"
+        @MethodSource("bodiesAndClient")
+        void compatibility(
+                String requestBody, HttpClientFacade client, TestInfo info)
+                throws Exception {
+            postAndAssertResponseUsing(requestBody, client, info);
+        }
+        
+        private static Stream<String> bodies() {
+            return requestBodies(REQUESTS_PER_SIZE, 0, 10);
+        }
+        
+        private Stream<Arguments> bodiesAndClient() {
+            // bodies() may return a 0-length body, and Reactor (surprise!)
+            // will then return a null response causing NPE.
+            // TODO: Either remove this phenomenally shitty client altogether or hack
+            //       the implementation just as we had to hack HttpClientFacade.getEmpty().
+            var clients = createAllExceptFor(serverPort(), REACTOR);
+            return mapToBodyAndClientArgs(clients, Small::bodies);
+        }
     }
     
-    // Default name would have been msg argument, which is a super huge string!
-    // This renders the html report file 50 MB large and extremely slow to open.
-    // @DisplayName normally changes the "test name" but has no effect at all
-    // for parameterized tests. So we must use the name attribute instead.
-    // https://github.com/gradle/gradle/issues/5975
-    @ParameterizedTest(name = "big/TestClient")
-    @MethodSource("bigBodies")
-    void big(String requestBody, TestInfo info) throws Exception {
-        postAndAssertResponseUsingTestClient(requestBody, info);
+    @Nested
+    @TestInstance(PER_CLASS)
+    class Big {
+        /*
+         * The default name would have been the requestBody argument, which is a
+         * super huge string. This renders the HTML report file 50 MB large and
+         * extremely slow to open.
+         * 
+         * @DisplayName normally changes the "test name" but has no effect at
+         * all for parameterized tests. So one must use the name attribute
+         * instead.
+         * 
+         * https://github.com/gradle/gradle/issues/5975
+         */
+        @ParameterizedTest(name = TEST_CLIENT)
+        @MethodSource("bodies")
+        void testClient(String requestBody, TestInfo info) throws Exception {
+            postAndAssertResponseUsingTestClient(requestBody, info);
+        }
+        
+        @ParameterizedTest(name = "{1}")
+        @MethodSource("bodiesAndClient")
+        void compatibility(
+                String requestBody, HttpClientFacade client, TestInfo info)
+                throws Exception {
+            postAndAssertResponseUsing(requestBody, client, info);
+        }
+        
+        private static Stream<String> bodies() {
+            // ChannelReader#BUFFER_SIZE
+            final int bufSize  = 512,
+                      oneThird = bufSize / 3,
+                      tenTimes = bufSize * 10;
+            return requestBodies(REQUESTS_PER_SIZE, oneThird, tenTimes);
+        }
+        
+        private Stream<Arguments> bodiesAndClient() {
+            var clients = createAll(serverPort());
+            return mapToBodyAndClientArgs(clients, Big::bodies);
+        }
     }
     
-    @ParameterizedTest(name = "small/{1}") // e.g. "small/Apache"
-    @MethodSource("smallBodiesAndClient")
-    void small_compatibility(String requestBody, HttpClientFacade client, TestInfo info)
-            throws Exception
+    private void postAndAssertResponseUsingTestClient(
+            String body, TestInfo info) throws Exception
     {
-        postAndAssertResponseUsing(requestBody, client, info);
-    }
-    
-    @ParameterizedTest(name = "big/{1}")
-    @MethodSource("bigBodiesAndClient")
-    void big_compatibility(String requestBody, HttpClientFacade client, TestInfo info)
-            throws Exception
-    {
-        postAndAssertResponseUsing(requestBody, client, info);
-    }
-    
-    private void postAndAssertResponseUsingTestClient(String body, TestInfo info) throws Exception {
-        if (conn == null) {
-            conn = client().openConnection();
+        if (CONN == null) {
+            CONN = client().openConnection();
         }
         
         final String b = body + "EOM";
@@ -146,34 +193,6 @@ final class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
         assertThat(rsp.version()).isEqualTo("HTTP/1.1");
         assertThat(rsp.statusCode()).isEqualTo(200);
         assertThat(rsp.body()).isEqualTo(body);
-    }
-    
-    private static Stream<String> smallBodies() {
-        return requestBodies(REQUESTS_PER_BATCH, 0, 10);
-    }
-    
-    private static Stream<String> bigBodies() {
-        // ChannelReader#BUFFER_SIZE
-        final int bufSize  = 512,
-                  oneThird = bufSize / 3,
-                  tenTimes = bufSize * 10;
-        return requestBodies(REQUESTS_PER_BATCH, oneThird, tenTimes);
-    }
-    
-    private Stream<Arguments> smallBodiesAndClient() {
-        // smallBodies() may return a 0-length body, and Reactor (surprise!)
-        // will then return a null response causing NPE.
-        // TODO: Either remove this phenomenally shitty client altogether or hack
-        //       the implementation just as we had to hack HttpClientFacade.getEmpty().
-        var clients = createAllExceptFor(serverPort(), REACTOR);
-        return mapToBodyAndClientArgs(clients,
-                TwoHundredRequestsFromSameClientTest::smallBodies);
-    }
-    
-    private Stream<Arguments> bigBodiesAndClient() {
-        var clients = createAll(serverPort());
-        return mapToBodyAndClientArgs(clients,
-                TwoHundredRequestsFromSameClientTest::bigBodies);
     }
     
     private static Stream<Arguments> mapToBodyAndClientArgs(
