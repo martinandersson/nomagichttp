@@ -1,6 +1,6 @@
 [versions]
 jdk     = '20'
-junit   = '5.9.3'
+junit   = '5.10.0'
 assertj = '3.24.1'
 mockito = '4.11.0'
 okhttp  = '4.10.0'
