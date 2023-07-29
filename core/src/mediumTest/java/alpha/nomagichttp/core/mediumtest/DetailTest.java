@@ -26,6 +26,7 @@ import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
+import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
@@ -405,5 +406,27 @@ final class DetailTest extends AbstractRealTest
             "Content-Length: 5"                            + CRLF + CRLF +
             
             "hello");
+    }
+    
+    @Test
+    void interimResponseIgnoredForOldClient()
+            throws IOException, InterruptedException
+    {
+        server().add("/", GET().apply(req -> {
+            channel().write(processing()); // <-- rejected
+            return text("Done!");
+        }));
+        // ... because "HTTP/1.0"
+        String rsp = client().writeReadTextUntil(
+            "GET / HTTP/1.0"                          + CRLF + CRLF, "Done!");
+        assertThat(rsp).isEqualTo(
+            "HTTP/1.1 200 OK"                         + CRLF +
+            "Content-Type: text/plain; charset=utf-8" + CRLF +
+            "Connection: close"                       + CRLF +
+            "Content-Length: 5"                       + CRLF + CRLF +
+            
+            "Done!");
+        logRecorder().assertAwait(DEBUG,
+            "Ignoring 1XX (Informational) response for HTTP/1.0 client.");
     }
 }
