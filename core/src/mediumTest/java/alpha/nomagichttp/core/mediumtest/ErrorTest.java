@@ -824,7 +824,8 @@ final class ErrorTest extends AbstractRealTest
         }
         
         /**
-         * The error version of {@link ExampleTest#RequestTrailers()}.
+         * The error version of
+         * {@link ExampleTest.NonPublicExamples#RequestTrailers()}.
          */
         @Test
         void requestTrailersDiscarded_errorNotHandled() throws IOException {
