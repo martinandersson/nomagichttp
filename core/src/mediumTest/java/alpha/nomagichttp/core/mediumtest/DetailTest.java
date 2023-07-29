@@ -207,6 +207,10 @@ final class DetailTest extends AbstractRealTest
         }
     }
     
+    /**
+     * @see #interimResponseIgnoredForOldClient()
+     * @see MessageTest#expect100Continue_onFirstBodyAccess()
+     */
     @Nested
     class Expect100Continue {
         @Test
@@ -229,9 +233,6 @@ final class DetailTest extends AbstractRealTest
                 "end");
         }
         
-        /**
-         * Also see {@link MessageTest#expect100Continue_onFirstBodyAccess()}
-         */
         @Test
         void repeatedIgnored() throws IOException {
             server().add("/", GET().apply(req -> {
@@ -408,6 +409,9 @@ final class DetailTest extends AbstractRealTest
             "hello");
     }
     
+    /**
+     * @see Expect100Continue
+     */
     @Test
     void interimResponseIgnoredForOldClient()
             throws IOException, InterruptedException

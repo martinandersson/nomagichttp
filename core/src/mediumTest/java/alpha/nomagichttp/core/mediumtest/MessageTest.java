@@ -86,7 +86,9 @@ final class MessageTest extends AbstractRealTest
     
     // TODO: Lots of so called HTTP clients will likely not be able to receive
     //       multiple responses, just ignore them.
-    /** Also see {@link DetailTest.Expect100Continue} */
+    /**
+     * @see DetailTest.Expect100Continue
+     */
     @Test
     void expect100Continue_onFirstBodyAccess() throws IOException {
         server().add("/", POST().apply(req ->
