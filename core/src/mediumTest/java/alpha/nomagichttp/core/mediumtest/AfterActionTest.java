@@ -20,7 +20,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class AfterActionTest extends AbstractRealTest
+final class AfterActionTest extends AbstractRealTest
 {
     @Test
     void javadoc_ex() throws IOException {

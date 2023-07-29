@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 // TODO: A similar test, but with loads of concurrent clients
 // TODO: Assert persistent connections (e.g. by counting children on the server)
-class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
+final class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
 {
     // One hundred small bodies + one hundred big bodies = 200 requests
     private static final int REQUESTS_PER_BATCH = 100;

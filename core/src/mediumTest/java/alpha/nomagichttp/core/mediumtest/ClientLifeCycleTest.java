@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * 
  * @author Martin Andersson (webmaster at martinanderssonI.com)
  */
-class ClientLifeCycleTest extends AbstractRealTest
+final class ClientLifeCycleTest extends AbstractRealTest
 {
     // Good src on investigating connection status
     // https://stackoverflow.com/questions/10240694/java-socket-api-how-to-tell-if-a-connection-has-been-closed/10241044#10241044

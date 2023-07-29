@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * I
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class BeforeActionTest extends AbstractRealTest
+final class BeforeActionTest extends AbstractRealTest
 {
     @Test
     void triple() throws IOException {

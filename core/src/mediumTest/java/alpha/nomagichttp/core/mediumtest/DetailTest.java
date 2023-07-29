@@ -51,7 +51,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class DetailTest extends AbstractRealTest
+final class DetailTest extends AbstractRealTest
 {
     // TODO: Extract ConnectionTest (includes discarding)
     
