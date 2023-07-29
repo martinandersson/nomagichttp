@@ -36,9 +36,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 class ClientLifeCycleTest extends AbstractRealTest
 {
-    private static final System.Logger LOG
-            = System.getLogger(ClientLifeCycleTest.class.getPackageName());
-    
     // Good src on investigating connection status
     // https://stackoverflow.com/questions/10240694/java-socket-api-how-to-tell-if-a-connection-has-been-closed/10241044#10241044
     // https://stackoverflow.com/questions/155243/why-is-it-impossible-without-attempting-i-o-to-detect-that-tcp-socket-was-grac
