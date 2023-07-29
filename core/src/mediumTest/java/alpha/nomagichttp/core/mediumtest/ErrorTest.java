@@ -35,12 +35,12 @@ import java.io.IOException;
 import java.nio.channels.InterruptedByTimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
+import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.handler.RequestHandler.TRACE;
-import static alpha.nomagichttp.mediumtest.util.TestRequests.get;
-import static alpha.nomagichttp.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.noContent;

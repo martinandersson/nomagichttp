@@ -16,11 +16,11 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 
+import static alpha.nomagichttp.core.mediumtest.util.TestRequestHandlers.respondIsBodyEmpty;
+import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
+import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
-import static alpha.nomagichttp.mediumtest.util.TestRequestHandlers.respondIsBodyEmpty;
-import static alpha.nomagichttp.mediumtest.util.TestRequests.get;
-import static alpha.nomagichttp.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.message.Responses.noContent;

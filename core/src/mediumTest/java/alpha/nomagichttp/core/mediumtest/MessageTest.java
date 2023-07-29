@@ -12,11 +12,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.core.mediumtest.util.TestRequestHandlers.respondIsBodyEmpty;
+import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
+import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
-import static alpha.nomagichttp.mediumtest.util.TestRequestHandlers.respondIsBodyEmpty;
-import static alpha.nomagichttp.mediumtest.util.TestRequests.get;
-import static alpha.nomagichttp.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.Assertions.assertHeaders;

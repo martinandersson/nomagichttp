@@ -1,4 +1,4 @@
-package alpha.nomagichttp.mediumtest.util;
+package alpha.nomagichttp.core.mediumtest.util;
 
 import alpha.nomagichttp.handler.RequestHandler;
 
