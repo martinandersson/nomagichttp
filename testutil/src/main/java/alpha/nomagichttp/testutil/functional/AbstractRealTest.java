@@ -4,6 +4,7 @@ import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.testutil.LogRecorder;
 import alpha.nomagichttp.testutil.Logging;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.AfterEach;
@@ -21,27 +22,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.logging.LogRecord;
-import java.util.stream.Stream;
 
 import static alpha.nomagichttp.Config.DEFAULT;
-import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Operates a {@link #server() server} and a {@link #client() client}.<p>
@@ -51,12 +45,19 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * 
  * Both the server and client APIs are easy to use on their own. The added value
  * of this class is packaging both into one class, together with some extra
- * features such as automatic log recording, and collection/verification of
- * server errors.<p>
+ * features such as enabled log recording, and the collection of exceptions
+ * delivered to the server's error handler(s).<p>
  * 
- * This class will assert on server-stop that no errors were delivered to an
- * error handler. If errors are expected, then the test must consume all errors
- * using {@link #pollServerError()}.<p>
+ * When the server is stopped, this class asserts that no exceptions were
+ * handled, and that no log record was logged on a level greater than
+ * {@code INFO}, and that no log record has a throwable.<p>
+ * 
+ * If any kind of exceptions and/or warnings are expected, then the test must
+ * consume exceptions using {@link #pollServerError()} and/or take records from
+ * the recorder using
+ * {@link LogRecorder#assertRemove(System.Logger.Level, String)}. If it is
+ * expected that an exception is both handled and logged, one can use
+ * {@link #assertAwaitHandledAndLoggedExc()}.<p>
  * 
  * {@snippet :
  *   class MyTest extends AbstractRealTest {
@@ -113,10 +114,10 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * }
  * 
  * This class will in a static {@code @BeforeAll} method named "beforeAll" call
- * {@code Logging.setLevel(ALL)} in order to enable very detailed logging, such
- * as each byte processed in the request head. Tests that run a large number of
- * requests and/or are concerned with performance ought to stop JUnit from
- * calling the method by hiding it.<p>
+ * {@link Logging#everything()} to enable very detailed logging, such as each
+ * byte processed in the request head. Tests that run a large number of requests
+ * and/or are concerned with performance ought to stop JUnit from calling the
+ * method by hiding it.<p>
  * 
  * {@snippet :
  *   class MyQuietTest extends AbstractRealTest {
@@ -131,9 +132,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * {@code AbstractLargeRealTest}.<p>
  * 
  * Please note that currently, the {@code TestClient} is not thread-safe nor is
- * this class (well, except for the collection and retrieval of server errors).
- * This may change when work commences to add tests that execute requests in
- * parallel.
+ * this class. This may change when work commences to add tests that execute
+ * requests in parallel.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -179,7 +179,7 @@ public abstract class AbstractRealTest
         this.onError = new HashMap<>();
     }
     
-    private Logging.Recorder key;
+    private LogRecorder recorder;
     private HttpServer server;
     private Future<Void> start;
     private Config config;
@@ -197,7 +197,7 @@ public abstract class AbstractRealTest
     final void beforeEach(TestInfo test) {
         LOG.log(DEBUG, () -> "Executing " + toString(test));
         if (useLogRecording) {
-            key = Logging.startRecording();
+            recorder = LogRecorder.startRecording();
         }
     }
     
@@ -212,7 +212,7 @@ public abstract class AbstractRealTest
             }
         } finally {
             if (useLogRecording) {
-                logRecorderStop();
+                logRecorder().stopRecording();
             }
         }
         LOG.log(DEBUG, () -> "Finished " + toString(test));
@@ -486,27 +486,18 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Returns the test log recorder.
+     * Returns the log recorder instance.
      * 
      * @return see JavaDoc
      * 
      * @throws IllegalStateException
      *             if log recording is not active
      */
-    protected final Logging.Recorder logRecorder() {
-        if (key == null) {
+    protected final LogRecorder logRecorder() {
+        if (recorder == null) {
             throw new IllegalStateException("Log recording is not active.");
         }
-        return key;
-    }
-    
-    /**
-     * Stop log recording.
-     * 
-     * @return all logged records
-     */
-    private Stream<LogRecord> logRecorderStop() {
-        return Logging.stopRecording(key);
+        return recorder;
     }
     
     /**
@@ -529,7 +520,10 @@ public abstract class AbstractRealTest
      * 
      * The parameter {@code clean} has an effect only if log recording is
      * active, and then it affects what debug message is logged by the server
-     * implementation.
+     * implementation.<p>
+     * 
+     * If log recording is enabled, this method calls
+     * {@link LogRecorder#assertNoProblem()}.
      * 
      * @param clean asserts the log; exchanges finish within the graceful period
      * 
@@ -546,11 +540,12 @@ public abstract class AbstractRealTest
             server.stop(Duration.ofSeconds(STOP_GRACEFUL_SECONDS));
             assertThat(server.isRunning()).isFalse();
             assertThat(errors).isEmpty();
-            assertThatServerStopsNormally(start);
-            if (key != null) { logRecorder()
-                .assertThatLogContainsOnlyOnce(rec(DEBUG, clean ?
+            assertAwaitNormalStop(start);
+            if (recorder != null) {
+                logRecorder().assertContainsOnlyOnce(DEBUG, clean ?
                     "All exchanges finished within the graceful period." :
-                    "Graceful deadline expired; shutting down scope."));
+                    "Graceful deadline expired; shutting down scope.");
+                logRecorder().assertNoProblem();
             }
         } finally {
             server = null;
@@ -559,9 +554,38 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Asserts that {@link #pollServerError()} and
-     * {@link Logging.Recorder#assertAwaitFirstLogError()} is the same
-     * instance.<p>
+     * Assertively awaits a record to indicate that a child was accepted by the
+     * server.
+     * 
+     * @throws IllegalStateException
+     *             if log recording is not active
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     * @throws AssertionError
+     *             on timeout (record not observed)
+     */
+    public void assertAwaitChildAccept() throws InterruptedException {
+        logRecorder().assertAwait(DEBUG, "Accepted child:");
+    }
+    
+    /**
+     * Assertively awaits a record to indicate that a child is being closed by
+     * the server.
+     * 
+     * @throws IllegalStateException
+     *             if log recording is not active
+     * @throws InterruptedException
+     *             if the current thread is interrupted while waiting
+     * @throws AssertionError
+     *             on timeout (record not observed)
+     */
+    public void assertAwaitClosingChild() throws InterruptedException {
+        logRecorder().assertAwait(DEBUG, "Closing child:");
+    }
+    
+    /**
+     * Calls {@link LogRecorder#assertAwaitRemoveThrown()} and asserts that
+     * {@link #pollServerError()} returns the same instance.<p>
      * 
      * May be used when a test case needs to assert that the base error handler
      * was delivered a particular error <i>and</i> logged it (or, someone did).
@@ -571,59 +595,16 @@ public abstract class AbstractRealTest
      * @throws InterruptedException
      *             if interrupted while waiting
      * @throws IllegalStateException
+     *             if the server is not running, or
      *             if log recording is not active
      */
     protected final AbstractThrowableAssert<?, ? extends Throwable>
-            assertThatServerErrorObservedAndLogged() throws InterruptedException
+            assertAwaitHandledAndLoggedExc() throws InterruptedException
     {
         requireServerIsRunning();
-        Throwable t = pollServerError();
-        assertSame(t, logRecorder().assertAwaitFirstLogError());
-        return assertThat(t);
-    }
-    
-    /**
-     * Will gracefully stop the server (to capture all log records) and assert
-     * that no log record was found with a level greater than {@code INFO}.
-     * 
-     * @throws IOException
-     *           on I/O error
-     * @throws InterruptedException
-     *           if interrupted while waiting on client connections to terminate
-     */
-    protected final void assertThatNoWarningOrErrorIsLogged()
-            throws IOException, InterruptedException {
-        assertThatNoWarningOrErrorIsLoggedExcept();
-    }
-    
-    /**
-     * Will gracefully stop the server (to capture all log records) and assert
-     * that no log record was found with a level greater than {@code INFO}.
-     * 
-     * @param excludeClasses classes that are allowed to log waring/error
-     * 
-     * @throws IOException
-     *           on I/O error
-     * @throws InterruptedException
-     *           if interrupted while waiting on client connections to terminate
-     */
-    protected final void assertThatNoWarningOrErrorIsLoggedExcept(
-            Class<?>... excludeClasses)
-            throws IOException, InterruptedException
-    {
-        requireServerIsRunning();
-        stopServer();
-        
-        Set<String> excl = excludeClasses.length == 0 ? Set.of() :
-                Stream.of(excludeClasses).map(Class::getName).collect(toSet());
-        
-        Predicate<String> match = source -> source != null &&
-                                  excl.stream().anyMatch(source::startsWith);
-        
-        assertThat(logRecorderStop()
-                .filter(r -> !match.test(r.getSourceClassName()))
-                .mapToInt(r -> r.getLevel().intValue()))
-                .noneMatch(v -> v > java.util.logging.Level.INFO.intValue());
+        return logRecorder()
+                   .assertAwaitRemoveThrown()
+                   .isSameAs(pollServerError());
     }
     
     /**
@@ -641,7 +622,7 @@ public abstract class AbstractRealTest
      * 
      * @param fut representing the {@code start} method call
      */
-    protected static void assertThatServerStopsNormally(Future<Void> fut) {
+    protected static void assertAwaitNormalStop(Future<Void> fut) {
         assertThatThrownBy(() -> fut.get(1, SECONDS))
             .isExactlyInstanceOf(ExecutionException.class)
             .hasNoSuppressedExceptions()

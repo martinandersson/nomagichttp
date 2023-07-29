@@ -5,7 +5,6 @@ import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.Deque;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.X_CORRELATION_ID;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -21,10 +20,10 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-class AfterActionTest extends AbstractRealTest
+final class AfterActionTest extends AbstractRealTest
 {
     @Test
-    void javadoc_ex() throws IOException, InterruptedException {
+    void javadoc_ex() throws IOException {
         server()
             .before("/*", (req, chain) -> {
                 if (req.headers().isMissingOrEmpty(X_CORRELATION_ID)) {
@@ -72,8 +71,6 @@ class AfterActionTest extends AbstractRealTest
                 "Content-Length: 3"                       + CRLF + CRLF +
                 
                 "bye");
-            
-            assertThatNoWarningOrErrorIsLogged();
         }
     }
     
@@ -94,7 +91,7 @@ class AfterActionTest extends AbstractRealTest
             "X-Count: 2"             + CRLF +
             "Content-Length: 0"      + CRLF + CRLF);
         
-        assertThatServerErrorObservedAndLogged()
+        assertAwaitHandledAndLoggedExc()
                 .isExactlyInstanceOf(NoRouteFoundException.class)
                 .hasMessage("/404")
                 .hasNoCause()
@@ -113,18 +110,14 @@ class AfterActionTest extends AbstractRealTest
               "GET / HTTP/1.1" + CRLF + CRLF);
         assertThat(rsp)
               .isEmpty();
-        // First error is handed to the error handler, who also logs it
-        assertThatServerErrorObservedAndLogged()
+        // The first error is handed off to the error handler, who also logs it
+        assertAwaitHandledAndLoggedExc()
               .isExactlyInstanceOf(NoRouteFoundException.class)
               .hasMessage("/")
               .hasNoCause()
               .hasNoSuppressedExceptions();
         // The subsequent after-action exception is logged, but no error handler
-        Deque<Throwable> errors = logRecorder().recordedErrors();
-        assertThat(errors.size())
-              .isEqualTo(2);
-        // The first error already asserted; NoRouteFoundException
-        assertThat(errors.getLast())
+        logRecorder().assertAwaitRemoveThrown()
               .hasToString(
                   "alpha.nomagichttp.core.AfterActionException: " +
                       "java.lang.IllegalStateException: boom!");
@@ -140,10 +133,7 @@ class AfterActionTest extends AbstractRealTest
               .writeReadTextUntilEOS("GET / HTTP/1.1" + CRLF + CRLF);
         assertThat(rsp)
               .isEmpty();
-        // Error handler is not called, but error logged
-        Deque<Throwable> errors = logRecorder().recordedErrors();
-        assertThat(errors.size()).isEqualTo(1);
-        assertThat(errors.getLast()).hasToString(
+        logRecorder().assertRemoveThrown().hasToString(
               "alpha.nomagichttp.core.AfterActionException: " +
               "java.lang.NullPointerException");
     }

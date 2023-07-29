@@ -1,4 +1,4 @@
-package alpha.nomagichttp.mediumtest.util;
+package alpha.nomagichttp.core.mediumtest.util;
 
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 

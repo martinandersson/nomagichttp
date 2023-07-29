@@ -39,10 +39,8 @@ import static java.nio.ByteBuffer.allocateDirect;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO:
-//    1) Must ensure we have a "echo large body" test,
+// TODO: Must ensure we have a "echo large body" test,
 //       i.e. reader and writer active at the same time
-//    2) Implement exception if buf is released back without new position 2x in a row
 public final class ChannelReader implements ByteBufferIterable
 {
     private static final System.Logger
@@ -65,7 +63,7 @@ public final class ChannelReader implements ByteBufferIterable
     private       ByteBuffer view;
     private boolean started;
     private volatile boolean startedVol;
-    private Throwable thr;
+    private IOException thr;
     private final ByteBufferIterator it;
     // Number of bytes remaining to be read from the upstream
     private long desire;
@@ -107,13 +105,13 @@ public final class ChannelReader implements ByteBufferIterable
     }
     
     /**
-     * Returns the throwable that caused a read operation to fail.<p>
+     * Returns the exception that caused a read operation to fail.<p>
      * 
      * This method returns {@code null} if no read operation has failed.
      * 
      * @return see JavaDoc
      */
-    Throwable getThrowable() {
+    IOException getThrown() {
         return thr;
     }
     
@@ -319,8 +317,9 @@ public final class ChannelReader implements ByteBufferIterable
             try {
                 return src.read(dst);
             } catch (Throwable t) {
-                thr = t;
                 forceDismiss();
+                assert t instanceof IOException;
+                thr = (IOException) t;
                 shutdownInput("Read operation failed");
                 throw t;
             } finally {

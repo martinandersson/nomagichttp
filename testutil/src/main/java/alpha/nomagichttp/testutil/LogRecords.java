@@ -28,33 +28,18 @@ public final class LogRecords {
     }
     
     /**
-     * Create an AssertJ Tuple consisting of a log- level and message.
+     * Create an AssertJ Tuple of a log level and message.
      * 
      * @param level of log record
      * @param msg of log record
      * @return a tuple
      * 
      * @throws NullPointerException
-     *             if {@code level} is {@code null}, perhaps also for {@code msg}
+     *             if any argument is {@code null}
      */
     public static Tuple rec(Level level, String msg) {
-        return rec(level, msg, null);
-    }
-    
-    /**
-     * Create an AssertJ Tuple consisting of a log- level, message and error.
-     * 
-     * @param level of log record
-     * @param msg of log record
-     * @param error of log record
-     * @return a tuple
-     * 
-     * @throws NullPointerException
-     *             if {@code level} is {@code null},
-     *             perhaps also for the other arguments
-     */
-    public static Tuple rec(Level level, String msg, Throwable error) {
-        return tuple(toJUL(level), msg, error);
+        requireNonNull(msg);
+        return tuple(toJUL(level), msg);
     }
     
     /**
@@ -65,7 +50,7 @@ public final class LogRecords {
      * 
      * Internally, a new instance of a formatter class is used to produce the
      * string and so this method should only be used when programmatically
-     * peeking log records from a {@link Logging.Recorder}.<p>
+     * peeking log records from a {@link LogRecorder}.<p>
      * 
      * The same formatting is automagically applied to the Gradle report if test
      * calls {@link Logging#setLevel(Class, Level)}, except the

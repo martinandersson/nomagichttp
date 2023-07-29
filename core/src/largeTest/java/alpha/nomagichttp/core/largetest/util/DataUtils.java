@@ -1,28 +1,32 @@
-package alpha.nomagichttp.core.largetest;
+package alpha.nomagichttp.core.largetest.util;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
- * Static util methods for producing data.
+ * Utils for producing data.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class DataUtils
+public final class DataUtils
 {
     private DataUtils() {
         // Private
     }
     
-    
-    static byte[] bytes(int length) {
-        byte[] b = new byte[length];
-        
+    /**
+     * Returns a new {@code byte[]} of sequentially filled data.
+     * 
+     * @param length of array
+     * 
+     * @return see JavaDoc
+     */
+    public static byte[] bytes(int length) {
+        var data = new byte[length];
         byte v = Byte.MIN_VALUE;
         for (int i = 0; i < length; ++i) {
-            b[i] = v++;
+            data[i] = v++;
         }
-        
-        return b;
+        return data;
     }
     
     /**
@@ -34,7 +38,7 @@ final class DataUtils
      * @return a char sequence of all printable ASCII letters, repeated over and
      * over again as necessary to reach specified {@code length} of string
      */
-    static String text(int length) {
+    public static String text(int length) {
         byte[] source = lettersRange('!', '~');
         byte[] target = new byte[length];
         

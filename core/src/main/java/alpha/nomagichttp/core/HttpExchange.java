@@ -28,9 +28,9 @@ import java.util.Optional;
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.core.ErrorHandlerException.unchecked;
 import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
 import static alpha.nomagichttp.handler.ErrorHandler.BASE;
-import static alpha.nomagichttp.core.ErrorHandlerException.unchecked;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static java.lang.Integer.parseInt;
@@ -160,7 +160,7 @@ final class HttpExchange
             if (child.areBothStreamsOpen()) {
                 throw new AssertionError(e);
             }
-            // Else considered handled and ignored
+            // Else considered handled and consequently ignored
         }
     }
     
@@ -374,28 +374,34 @@ final class HttpExchange
      *             see JavaDoc
      */
     private Optional<Response> tryProcessException(Exception e) throws Exception {
+        assert e != null;
         if (e instanceof InterruptedException) {
             // There's no spurious interruption
             closeChannel("thread interrupted");
             throw e;
         }
-        if (e == reader.getThrowable() &&
-            e instanceof ClosedChannelException &&
-            !server.isRunning()) {
-            // DefaultServer.stop() cascaded into closing an inactive child
+        
+        // TODO: Raise events for channel I/O errors and client aborts
+        if (e == reader.getThrown()) {
+            if (e instanceof ClosedChannelException && !server.isRunning()) {
+                // DefaultServer.stop() cascaded into closing an inactive child
+                throw e;
+            }
+            // Most likely broken pipe
             throw e;
         }
-        // Most likely, the client closed his output (reader EOS)
         if (e instanceof RequestLineParseException pe && pe.byteCount() == 0) {
+            // Most likely, the client closed his output (reader EOS)
             closeChannel("client aborted the exchange");
             throw e;
-            // TODO: We may want to raise events for these aborts,
+            // TODO: For the event, we have one of two possible reasons
             //       1) Clean abort with no previous communication
             //          = suspicious!
             //       2) We have a previous request
             //          = bad client software did not set "Connection: close"
-            //            (we save and report the user-agent)
+            //            (report the user-agent in event)
         }
+        
         if (e instanceof AfterActionException) {
             closeChannel(ERROR, "Breach of developer contract", e);
             throw e;
