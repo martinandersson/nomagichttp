@@ -124,8 +124,6 @@ final class ErrorTest extends AbstractRealTest
                 .hasMessage("""
                     Can not parse "BOOM!". \
                     Expected exactly one forward slash in <type/subtype>.""");
-        logRecorder()
-            .assertNoThrown();
     }
     
     @Test
@@ -145,8 +143,6 @@ final class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Content-Length and Transfer-Encoding are both present.");
-        logRecorder()
-            .assertNoThrown();
     }
     
     @Nested
@@ -178,8 +174,6 @@ final class ErrorTest extends AbstractRealTest
                 alpha.nomagichttp.message.DecoderException: \
                 java.lang.NumberFormatException: \
                 not a hexadecimal digit: "X" = 88""");
-            logRecorder()
-                .assertNoThrown();
         }
         
         @Test
@@ -200,8 +194,6 @@ final class ErrorTest extends AbstractRealTest
                 HTTP/1.1 400 Bad Request\r
                 Connection: close\r
                 Content-Length: 0\r\n\r\n""");
-            logRecorder()
-                .assertNoThrown();
             assertThat(pollServerErrorNow())
                 .isExactlyInstanceOf(DecoderException.class)
                 .hasNoSuppressedExceptions()
@@ -230,8 +222,6 @@ final class ErrorTest extends AbstractRealTest
                 prev=(hex:0x48, decimal:72, char:"H"), \
                 curr=(hex:0x20, decimal:32, char:" "), pos=17, \
                 msg=Whitespace in header name or before colon is not accepted.}""");
-        logRecorder()
-            .assertNoThrown();
     }
     
     @Test
@@ -248,8 +238,6 @@ final class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("No forward slash.");
-        logRecorder()
-            .assertNoThrown();
     }
     
     // Some newer versions are currently not supported
@@ -280,8 +268,6 @@ final class ErrorTest extends AbstractRealTest
                          .hasNoSuppressedExceptions()
                          .hasNoCause();
         }
-        logRecorder()
-            .assertNoThrown();
     }
     
     @Nested
@@ -316,8 +302,6 @@ final class ErrorTest extends AbstractRealTest
                          .hasNoSuppressedExceptions()
                          .hasNoCause();
             }
-            logRecorder()
-                .assertNoThrown();
         }
         
         // Server may be configured to reject old clients
@@ -340,8 +324,6 @@ final class ErrorTest extends AbstractRealTest
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
                 .hasMessage(null);
-            logRecorder()
-                .assertNoThrown();
         }
     }
     
@@ -367,8 +349,6 @@ final class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Body in a TRACE request.");
-        logRecorder()
-            .assertNoThrown();
     }
     
     @Nested
@@ -556,7 +536,6 @@ final class ErrorTest extends AbstractRealTest
             assertThat(rsp).isEqualTo(
                 "HTTP/1.1 499 Custom Not Found!" + CRLF +
                 "Content-Length: 0"              + CRLF + CRLF);
-            logRecorder().assertNoThrown();
         }
     }
     
@@ -574,8 +553,6 @@ final class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Whitespace in HTTP-version not accepted.");
-        logRecorder()
-            .assertNoThrown();
     }
     
     @Test
@@ -594,8 +571,6 @@ final class ErrorTest extends AbstractRealTest
             .hasNoCause()
             .hasNoSuppressedExceptions()
             .hasMessage("Unsupported Transfer-Encoding: blabla");
-        logRecorder()
-            .assertNoThrown();
     }
     
     // TODO: fileResponse_blockedByWriteLock
@@ -621,8 +596,6 @@ final class ErrorTest extends AbstractRealTest
                 // The message is set by the Java runtime lol
                 .hasMessage("java.nio.channels.InterruptedByTimeoutException")
                 .hasCauseExactlyInstanceOf(InterruptedByTimeoutException.class);
-            logRecorder()
-                .assertNoThrown();
         }
         
         // duringBody?

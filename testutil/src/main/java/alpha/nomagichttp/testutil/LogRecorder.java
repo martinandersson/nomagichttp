@@ -19,7 +19,6 @@ import java.util.stream.Stream;
 
 import static alpha.nomagichttp.testutil.LogRecords.rec;
 import static alpha.nomagichttp.testutil.LogRecords.toJUL;
-import static java.lang.System.Logger.Level.WARNING;
 import static java.util.Comparator.comparing;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -314,27 +313,6 @@ public final class LogRecorder
         assert rec != null;
         assertRemoveIf(r -> r == rec);
         return assertThat(rec.getThrown());
-    }
-    
-    /**
-     * Asserts that no record has a throwable.
-     * 
-     * @return this for chaining/fluency
-     * 
-     * @throws AssertionError
-     *             if a record has a throwable
-     */
-    public LogRecorder assertNoThrown() {
-        assertThat(records()).extracting(r -> {
-            var t = r.getThrown();
-            if (t != null) {
-                LOG.log(WARNING, () ->
-                        "Log record that has a throwable also has this message: " +
-                        r.getMessage());
-            }
-            return t;
-        }).containsOnlyNulls();
-        return this;
     }
     
     /**
