@@ -13,8 +13,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
-import static alpha.nomagichttp.core.mediumtest.Constants.OTHER;
-import static alpha.nomagichttp.core.mediumtest.Constants.TEST_CLIENT;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
@@ -26,6 +24,8 @@ import static alpha.nomagichttp.testutil.Assertions.assertHeaders;
 import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static alpha.nomagichttp.testutil.TestFiles.writeTempFile;
+import static alpha.nomagichttp.testutil.functional.Constants.OTHER;
+import static alpha.nomagichttp.testutil.functional.Constants.TEST_CLIENT;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.JDK;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.JETTY;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofFile;

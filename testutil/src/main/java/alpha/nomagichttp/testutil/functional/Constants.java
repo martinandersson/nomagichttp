@@ -1,11 +1,11 @@
-package alpha.nomagichttp.core.mediumtest;
+package alpha.nomagichttp.testutil.functional;
 
 /**
- * Constants for medium tests.
+ * Constants for functional tests.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-final class Constants {
+public final class Constants {
     private Constants() {
         // Empty
     }
@@ -13,10 +13,10 @@ final class Constants {
     /**
      * Use {@value} to name/identity a test executed by the test client.
      */
-    static final String TEST_CLIENT = "TestClient";
+    public static final String TEST_CLIENT = "TestClient";
     
     /**
      * Use {@value} to name/identity the client of a compatibility test.
      */
-    static final String OTHER = "{0}";
+    public static final String OTHER = "{0}";
 }
