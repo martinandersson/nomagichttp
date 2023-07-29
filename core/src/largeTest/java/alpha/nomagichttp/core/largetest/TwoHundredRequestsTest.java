@@ -50,7 +50,7 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
  */
 // TODO: A similar test, but with loads of concurrent clients
 // TODO: Assert persistent connections (e.g. by counting children on the server)
-final class TwoHundredRequestsFromSameClientTest extends AbstractLargeRealTest
+final class TwoHundredRequestsTest extends AbstractLargeRealTest
 {
     // One hundred small + big bodies = 200 requests
     private static final int REQUESTS_PER_SIZE = 100;
