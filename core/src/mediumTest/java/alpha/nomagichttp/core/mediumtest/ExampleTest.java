@@ -28,6 +28,8 @@ import java.util.function.BiConsumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static alpha.nomagichttp.core.mediumtest.Constants.OTHER;
+import static alpha.nomagichttp.core.mediumtest.Constants.TEST_CLIENT;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
@@ -55,9 +57,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 final class ExampleTest extends AbstractRealTest
 {
-    private static final String
-            TEST_CLIENT = "TestClient", OTHER = "{0}";
-    
     @Nested
     class HelloWorld {
         @Test
