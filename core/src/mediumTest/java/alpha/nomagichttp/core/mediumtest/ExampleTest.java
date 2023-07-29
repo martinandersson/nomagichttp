@@ -349,13 +349,19 @@ final class ExampleTest extends AbstractRealTest
                 throws IOException, ExecutionException,
                        InterruptedException, TimeoutException
         {
+            // Checking a Set instead of "impl != APACHE" for the type system.
+            // Rather have a static trace of failed clients instead of
+            // successful ones (see the next comment).
             if (EnumSet.of(JDK, OKHTTP, JETTY, REACTOR).contains(impl)) {
-                // Only Apache (and curl!) will pass this test lol.
-                // JDK takes everything after the first 102 (Processing) as the response body.
+                // Only Apache and Curl will pass this test lol.
+                // 
+                // JDK takes everything after the first 102 (Processing) as
+                // the response body.
+                // 
                 // OkHttp and Jetty yields an empty body ("").
-                // Reactor does what Reactor does best; crashes with a NullPointerException.
-                // Oh, and checking a Set instead of "impl != APACHE" for the type system.
-                // Prefer to have a trace of failed clients instead of successful ones.
+                // 
+                // Reactor does what Reactor does best; crashes with a
+                // NullPointerException.
                 throw new TestAbortedException();
             }
             
