@@ -55,8 +55,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * be timing issues.<p>
  * 
  * Methods with "remove" in their name will remove and return the earliest
- * record which is a match, meaning that the matched record will never be
- * matched again. The purpose is to limit subsequent assertions to what is left
+ * record which is a match, meaning that the matched record will not be matched
+ * again. The purpose is to limit subsequent assertions to what is left
  * behind.<p>
  * 
  * For example:
@@ -65,11 +65,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *              // @link substring="assertRemove" target="#assertRemove(System.Logger.Level, String)" :
  *     recorder.assertRemove(WARNING, "Exceptional event")
  *              // ...but no other warnings or records with a throwable are expected
- *              // @link substring="assertNoThrownNorWarning" target="#assertNoThrownNorWarning()" :
- *             .assertNoThrownNorWarning();
+ *              // @link substring="assertNoProblem" target="#assertNoProblem()" :
+ *             .assertNoProblem();
  * }
  * 
- * Removing warnings and records with a throwable is required by
+ * Removing records with a warning or a throwable is required by
  * {@link AbstractRealTest}, which after each test asserts a problem-free
  * log.<p>
  * 
@@ -325,7 +325,7 @@ public final class LogRecorder
      *             if a record has a throwable
      *             or a level greater than {@code INFO}
      */
-    public LogRecorder assertNoThrownNorWarning() {
+    public LogRecorder assertNoProblem() {
         assertThat(records())
             .noneMatch(v -> v.getLevel().intValue() > java.util.logging.Level.INFO.intValue())
             .noneMatch(v -> v.getThrown() != null);

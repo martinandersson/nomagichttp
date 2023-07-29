@@ -523,7 +523,7 @@ public abstract class AbstractRealTest
      * implementation.<p>
      * 
      * If log recording is enabled, this method calls
-     * {@link LogRecorder#assertNoThrownNorWarning()}.
+     * {@link LogRecorder#assertNoProblem()}.
      * 
      * @param clean asserts the log; exchanges finish within the graceful period
      * 
@@ -545,7 +545,7 @@ public abstract class AbstractRealTest
                 logRecorder().assertContainsOnlyOnce(DEBUG, clean ?
                     "All exchanges finished within the graceful period." :
                     "Graceful deadline expired; shutting down scope.");
-                logRecorder().assertNoThrownNorWarning();
+                logRecorder().assertNoProblem();
             }
         } finally {
             server = null;
