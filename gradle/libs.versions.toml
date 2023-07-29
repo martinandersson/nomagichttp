@@ -1,7 +1,7 @@
 [versions]
 jdk     = '20'
 junit   = '5.10.0'
-assertj = '3.24.1'
+assertj = '3.24.2'
 mockito = '4.11.0'
 okhttp  = '4.10.0'
 apache  = '5.1.1'
