@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.IOException;
 import java.nio.channels.Channel;
 import java.util.HashMap;
+import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
@@ -30,6 +31,7 @@ import static alpha.nomagichttp.testutil.functional.Constants.TEST_CLIENT;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.REACTOR;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.createAll;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.createAllExceptFor;
+import static java.util.Comparator.comparingDouble;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
@@ -71,20 +73,6 @@ final class TwoHundredRequestsTest extends AbstractLargeRealTest
         if (CONN != null) {
             CONN.close();
         }
-    }
-    
-    @AfterAll
-    void statsDump() {
-        // This guy is so freakin' fast we have to do microseconds lol
-        var tc = STATS.remove("small/TestClient");
-        if (tc != null) {
-            System.out.println("small/TestClient (μs): " +
-                    // Skip first (possible connection setup)
-                    tc.build().map(NANOSECONDS::toMicros).skip(1).summaryStatistics());
-        }
-        STATS.forEach((test, elapsed) ->
-            System.out.println(test + " (ms): " + elapsed
-                .build().map(NANOSECONDS::toMillis).skip(1).summaryStatistics()));
     }
     
     @Nested
@@ -218,11 +206,15 @@ final class TwoHundredRequestsTest extends AbstractLargeRealTest
         return Stream.generate(s).limit(n);
     }
     
-    private static <R> R takeTime(TestInfo info, ResponseSupplier<R> rsp) throws Exception {
+    private static <R> R takeTime(
+            TestInfo info, ResponseSupplier<R> rsp) throws Exception {
         long before = System.nanoTime();
         R r = rsp.get();
         long after = System.nanoTime();
-        STATS.compute(info.getDisplayName(), (k, b) -> {
+        // E.g. "Small/TestClient"
+        String name = info.getTestClass().get().getSimpleName() + "/" +
+                      info.getDisplayName();
+        STATS.compute(name, (k, b) -> {
             if (b == null) {
                 b = LongStream.builder();
             }
@@ -230,6 +222,35 @@ final class TwoHundredRequestsTest extends AbstractLargeRealTest
             return b;
         });
         return r;
+    }
+    
+    @AfterAll
+    static void statsDumpEverything() {
+        statsDumpGroup(Small.class);
+        statsDumpGroup(Big.class);
+    }
+    
+    private static void statsDumpGroup(Class<?> grp) {
+        record Tuple(String test, LongSummaryStatistics result) {
+            public String toString() {
+                return result.toString().replace(
+                        LongSummaryStatistics.class.getSimpleName(), test);
+            }
+        }
+        STATS.entrySet()
+             .stream()
+             .filter(e -> e.getKey().startsWith(grp.getSimpleName()))
+             .map(e -> {
+                 var res = e.getValue()
+                            .build()
+                            .map(NANOSECONDS::toMillis)
+                            // Skip first (possible connection setup)
+                            .skip(1)
+                            .summaryStatistics();
+                 return new Tuple(e.getKey(), res);
+             })
+             .sorted(comparingDouble(t -> t.result().getAverage()))
+             .forEach(System.out::println);
     }
     
     @FunctionalInterface
