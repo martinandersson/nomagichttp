@@ -8,6 +8,7 @@ import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.UnsupportedTransferCodingException;
+import alpha.nomagichttp.util.FileLockTimeoutException;
 import alpha.nomagichttp.util.JvmPathLock;
 import alpha.nomagichttp.util.Throwing;
 
@@ -23,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRANSFER_ENCODING;
@@ -148,7 +148,7 @@ final class RequestBody implements Request.Body
     
     @Override
     public long toFile(Path path, OpenOption... options)
-            throws InterruptedException, TimeoutException, IOException {
+            throws InterruptedException, FileLockTimeoutException, IOException {
         var dur = httpServer().getConfig().timeoutFileLock();
         return toFile(path, toNanosOrMaxValue(dur), NANOSECONDS, Set.of(options));
     }
@@ -157,7 +157,7 @@ final class RequestBody implements Request.Body
     public long toFile(
             Path path, long timeout, TimeUnit unit,
             Set<? extends OpenOption> opts, FileAttribute<?>... attrs)
-            throws InterruptedException, TimeoutException, IOException
+            throws InterruptedException, FileLockTimeoutException, IOException
     {
         try (var lck = JvmPathLock.readLock(path, 1, SECONDS)) {
             return toFile0(path, opts, attrs);

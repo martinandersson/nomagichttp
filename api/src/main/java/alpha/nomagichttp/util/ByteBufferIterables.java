@@ -461,7 +461,7 @@ public final class ByteBufferIterables
         
         @Override
         public ByteBufferIterator iterator()
-                throws InterruptedException, TimeoutException, IOException {
+                throws InterruptedException, FileLockTimeoutException, IOException {
             return new Iterator();
         }
         
@@ -478,7 +478,7 @@ public final class ByteBufferIterables
             private long count;
             
             Iterator()
-                  throws InterruptedException, TimeoutException, IOException {
+                  throws InterruptedException, FileLockTimeoutException, IOException {
                 this.buf = allocateDirect(BUF_SIZE);
                 // The view is created with no remaining to force-read on first
                 // call to next()
@@ -490,7 +490,7 @@ public final class ByteBufferIterables
             }
             
             private JvmPathLock readLock()
-                    throws InterruptedException, TimeoutException {
+                    throws InterruptedException, FileLockTimeoutException {
                 final Duration dur = timeout == null ?
                         httpServer().getConfig().timeoutFileLock() :
                         Duration.of(timeout, unit.toChronoUnit());

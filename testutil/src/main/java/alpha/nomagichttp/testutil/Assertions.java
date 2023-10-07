@@ -3,6 +3,7 @@ package alpha.nomagichttp.testutil;
 import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.HeaderHolder;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
+import alpha.nomagichttp.util.FileLockTimeoutException;
 import org.assertj.core.api.MapAssert;
 
 import java.io.IOException;
@@ -79,7 +80,7 @@ public final class Assertions {
      * 
      * @throws InterruptedException
      *             if interrupted while waiting on something
-     * @throws TimeoutException
+     * @throws FileLockTimeoutException
      *             when a blocking operation times out
      * @throws IOException
      *             on I/O error
@@ -87,7 +88,7 @@ public final class Assertions {
     public static void assertIterable(
             ResourceByteBufferIterable iterable,
             ByteBuffer first, ByteBuffer... more)
-            throws InterruptedException, TimeoutException, IOException {
+            throws InterruptedException, FileLockTimeoutException, IOException {
         long len;
         var actual = new ArrayList<>();
         try (var it = iterable.iterator()) {

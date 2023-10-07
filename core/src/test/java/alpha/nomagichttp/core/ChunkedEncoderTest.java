@@ -1,11 +1,11 @@
 package alpha.nomagichttp.core;
 
+import alpha.nomagichttp.util.FileLockTimeoutException;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
 import static alpha.nomagichttp.util.ByteBufferIterables.just;
@@ -20,7 +20,7 @@ final class ChunkedEncoderTest
 {
     @Test
     void happyPath()
-        throws InterruptedException, TimeoutException, IOException {
+        throws InterruptedException, FileLockTimeoutException, IOException {
         var testee = encode(
             asciiBytes("hello"),
             asciiBytes("world!"));
@@ -36,7 +36,7 @@ final class ChunkedEncoderTest
     
     @Test
     void empty()
-        throws InterruptedException, TimeoutException, IOException {
+        throws InterruptedException, FileLockTimeoutException, IOException {
         assertIterable(encode(), asciiBytes("0\r\n"));
     }
     

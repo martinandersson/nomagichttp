@@ -10,10 +10,10 @@ import alpha.nomagichttp.message.ContentHeaders;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.FileLockTimeoutException;
 import alpha.nomagichttp.util.ScopedValues;
 
 import java.io.IOException;
-import java.util.concurrent.TimeoutException;
 
 /**
  * A transmitter of data from a response to a byte channel.<p>
@@ -91,7 +91,7 @@ public interface ChannelWriter
      * @throws InterruptedException
      *             if interrupted while waiting on a write-lock
      *             (may only be applicable for a file-backed response body)
-     * @throws TimeoutException
+     * @throws FileLockTimeoutException
      *             if waiting on a write-lock timed out
      *             (may only be applicable for a file-backed response body)
      * @throws IOException
@@ -100,7 +100,7 @@ public interface ChannelWriter
      *              destination channel)
      */
     long write(Response rsp)
-            throws InterruptedException, TimeoutException, IOException;
+            throws InterruptedException, FileLockTimeoutException, IOException;
     
     /**
      * Returns whether a final response has been sent.

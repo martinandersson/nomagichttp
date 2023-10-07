@@ -7,11 +7,11 @@ import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.FileLockTimeoutException;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
@@ -23,8 +23,8 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
 import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
-import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
 import static alpha.nomagichttp.core.HttpExchange.skeletonRequest;
+import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
 import static alpha.nomagichttp.util.Blah.getOrClose;
 import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static alpha.nomagichttp.util.ScopedValues.channel;
@@ -90,14 +90,14 @@ final class ResponseProcessor
      * 
      * @throws InterruptedException
      *             from {@link ResourceByteBufferIterable#iterator()}
-     * @throws TimeoutException
+     * @throws FileLockTimeoutException
      *             from {@link ResourceByteBufferIterable#iterator()}
      * @throws IOException
      *             from {@link ResourceByteBufferIterable#iterator()}, or
      *             from {@link ResourceByteBufferIterable#length()}
      */
     static Result process(Response app, SkeletonRequest req, Version reqVer)
-            throws InterruptedException, TimeoutException, IOException {
+            throws InterruptedException, FileLockTimeoutException, IOException {
         Response mod1 = tryCloseNonPersistentConn(app, req, reqVer);
         final var upstream = mod1.body();
         final var it = upstream.iterator();

@@ -6,8 +6,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * A thread holding a read-lock attempted to acquire a write-lock.<p>
  * 
- * The resolution for this exception is quite simple; release the read-lock
- * before attempting to acquire a write-lock.
+ * The fix for this exception is quite simple; release the read-lock before
+ * attempting to acquire a write-lock.
  * 
  * @see JvmPathLock#writeLock(Path, long, TimeUnit) 
  */

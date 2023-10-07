@@ -1,12 +1,12 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.util.FileLockTimeoutException;
 import alpha.nomagichttp.util.JvmPathLock;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.util.concurrent.TimeoutException;
 
 /**
  * An {@code Iterable} of {@code ByteBuffer}s, backed by a closeable
@@ -45,12 +45,12 @@ public interface ResourceByteBufferIterable
     /**
      * Returns an iterator of bytebuffers.<p>
      * 
-     * These are the expected origins when an implementation obtained from the
+     * These are the expected origins if an implementation obtained from the
      * NoMagicHTTP library throws a checked exception:
      * 
      * <ul>
      *   <li>{@code InterruptedException}: {@link JvmPathLock}</li>
-     *   <li>{@code TimeoutException}: {@link JvmPathLock}</li>
+     *   <li>{@code FileLockTimeoutException}: {@link JvmPathLock}</li>
      *   <li>{@code IOException}: {@link
      *           FileChannel#open(Path, OpenOption...) FileChannel.open}</li>
      * </ul>
@@ -59,13 +59,13 @@ public interface ResourceByteBufferIterable
      * 
      * @throws InterruptedException
      *             if interrupted while waiting on something
-     * @throws TimeoutException
-     *             when a blocking operation times out
+     * @throws FileLockTimeoutException
+     *             if a file lock is not acquired within an acceptable time frame
      * @throws IOException
      *             on I/O error
      */
     ByteBufferIterator iterator()
-            throws InterruptedException, TimeoutException, IOException;
+            throws InterruptedException, FileLockTimeoutException, IOException;
     
     /**
      * Returns the number of iterable bytes.<p>

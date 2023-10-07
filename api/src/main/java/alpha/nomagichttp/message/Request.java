@@ -7,6 +7,7 @@ import alpha.nomagichttp.action.BeforeAction;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.route.Route;
+import alpha.nomagichttp.util.FileLockTimeoutException;
 import alpha.nomagichttp.util.IllegalLockUpgradeException;
 import alpha.nomagichttp.util.JvmPathLock;
 import alpha.nomagichttp.util.ScopedValues;
@@ -18,7 +19,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.FileAlreadyExistsException;
@@ -33,7 +33,6 @@ import java.util.Optional;
 import java.util.RandomAccess;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
 /**
@@ -908,13 +907,13 @@ public interface Request extends HeaderHolder, AttributeHolder
          *             if the current thread holds a read-lock for the same path
          * @throws InterruptedException
          *             if the current thread is interrupted while acquiring a lock
-         * @throws TimeoutException
-         *             if a lock is not acquired within the specified duration
+         * @throws FileLockTimeoutException
+         *             if a lock is not acquired within a configured timeout duration
          * @throws IOException
          *             if an I/O error occurs
          */
         long toFile(Path path, OpenOption... opts)
-                throws InterruptedException, TimeoutException, IOException;
+                throws InterruptedException, FileLockTimeoutException, IOException;
         
         /**
          * Saves the remaining body bytes to a file.<p>
@@ -945,7 +944,7 @@ public interface Request extends HeaderHolder, AttributeHolder
          *             if the current thread holds a read-lock for the same path
          * @throws InterruptedException
          *             if the current thread is interrupted while acquiring a lock
-         * @throws TimeoutException
+         * @throws FileLockTimeoutException
          *             if a lock is not acquired within the specified duration
          * @throws IOException
          *             if an I/O error occurs
@@ -953,7 +952,7 @@ public interface Request extends HeaderHolder, AttributeHolder
         long toFile(
                 Path path, long timeout, TimeUnit unit,
                 Set<? extends OpenOption> opts, FileAttribute<?>... attrs)
-                throws InterruptedException, TimeoutException, IOException;
+                throws InterruptedException, FileLockTimeoutException, IOException;
         
         /**
          * Saves the remaining body bytes to a file.<p>

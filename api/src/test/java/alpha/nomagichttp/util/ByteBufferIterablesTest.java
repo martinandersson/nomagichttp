@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.MalformedInputException;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.testutil.Assertions.assertIterable;
 import static alpha.nomagichttp.testutil.ScopedValues.whereServerIsBound;
@@ -32,7 +31,7 @@ final class ByteBufferIterablesTest
     
     @Test
     void just_iterable()
-            throws InterruptedException, TimeoutException, IOException {
+            throws InterruptedException, FileLockTimeoutException, IOException {
         var col = List.of(HELLO, WORLD);
         var testee = just(col);
         assertIterable(testee, HELLO, WORLD);
@@ -74,7 +73,7 @@ final class ByteBufferIterablesTest
     
     @Test
     void ofSupplier()
-            throws InterruptedException, TimeoutException, IOException {
+            throws InterruptedException, FileLockTimeoutException, IOException {
         var empty = allocate(0);
         var col = List.of(HELLO, WORLD, empty);
         var testee = ByteBufferIterables.ofSupplier(col.iterator()::next);

@@ -35,7 +35,7 @@ final class JvmPathLockTest
     
     @Test
     void happyPath()
-         throws InterruptedException, TimeoutException {
+         throws InterruptedException, FileLockTimeoutException {
          var r = readLock();
          assertLocksHeld(1, 0);
          r.close();
@@ -48,7 +48,7 @@ final class JvmPathLockTest
     
     @Test
     void manyReadLocks_oneThread()
-         throws InterruptedException, TimeoutException {
+         throws InterruptedException, FileLockTimeoutException {
          try (var r1 = readLock();
               var r2 = readLock()) {
               assertLocksHeld(2, 0);
@@ -57,7 +57,7 @@ final class JvmPathLockTest
     
     @Test
     void manyReadLocks_twoThreads()
-         throws InterruptedException, TimeoutException {
+         throws InterruptedException, FileLockTimeoutException {
          try (var r1 = readLock()) {
               var other = commonPool().submit(() -> {
                   try (var r2 = readLock()) {
@@ -72,7 +72,7 @@ final class JvmPathLockTest
     
     @Test
     void manyWriteLocks_oneThread_okay()
-         throws InterruptedException, TimeoutException {
+         throws InterruptedException, FileLockTimeoutException {
          try (var w1 = writeLock();
               var w2 = writeLock()) {
               assertLocksHeld(0, 2);
@@ -81,23 +81,23 @@ final class JvmPathLockTest
     
     @Test
     void manyWriteLocks_twoThreads_fails()
-         throws InterruptedException, TimeoutException {
+         throws InterruptedException, FileLockTimeoutException {
         acquireWriteLockThen(() -> writeLock(), "write");
     }
     
     @Test
     void writeLockBlocksRead()
-         throws InterruptedException, TimeoutException {
+         throws InterruptedException, FileLockTimeoutException {
          acquireWriteLockThen(() -> readLock(), "read");
     }
     
     private void acquireWriteLockThen(
             Throwing.Supplier<JvmPathLock, Exception> otherLock, String name)
-         throws InterruptedException, TimeoutException {
+         throws InterruptedException, FileLockTimeoutException {
          try (var w = writeLock()) {
               var other = commonPool().submit(() -> {
                   assertThatThrownBy(otherLock::get)
-                      .isExactlyInstanceOf(TimeoutException.class)
+                      .isExactlyInstanceOf(FileLockTimeoutException.class)
                       .hasMessage("Wanted a "+ name +" lock for path: " + blabla)
                       .hasNoCause()
                       .hasNoSuppressedExceptions();
@@ -109,7 +109,7 @@ final class JvmPathLockTest
     
     @Test
     void lockDowngrading_okay()
-         throws InterruptedException, TimeoutException {
+         throws InterruptedException, FileLockTimeoutException {
          try (var w = writeLock();
               var r = readLock()) {
               assertLocksHeld(1, 1);
@@ -119,7 +119,7 @@ final class JvmPathLockTest
     @ParameterizedTest
     @ValueSource(ints = {0, 9999})
     void lockUpgrading_crash(int timeout)
-            throws InterruptedException, TimeoutException {
+            throws InterruptedException, FileLockTimeoutException {
          var r = readLock();
          // Unlike the JDK (which would block until timeout), our API crashes,
          // and no matter the specified timeout; it happens at once
@@ -150,7 +150,7 @@ final class JvmPathLockTest
     
     @Test
     void differentPathsDifferentLocks()
-         throws InterruptedException, TimeoutException {
+         throws InterruptedException, FileLockTimeoutException {
          // Read-to-write upgrading not okay for the same path
          try (var r = readLock();
               var w = JvmPathLock.writeLock(Path.of("other"), 1, SECONDS)) {
@@ -180,7 +180,7 @@ final class JvmPathLockTest
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
     void closeTwice_nop(boolean readOrWrite)
-            throws InterruptedException, TimeoutException {
+            throws InterruptedException, FileLockTimeoutException {
         var x = readOrWrite ? readLock() : writeLock();
         x.close();
         assertLocksHeld(0, 0);
@@ -190,12 +190,12 @@ final class JvmPathLockTest
     }
     
     private static JvmPathLock readLock()
-            throws InterruptedException, TimeoutException {
+            throws InterruptedException, FileLockTimeoutException {
         return JvmPathLock.readLock(blabla, 0, SECONDS);
     }
     
     private static JvmPathLock writeLock()
-            throws InterruptedException, TimeoutException {
+            throws InterruptedException, FileLockTimeoutException {
         return JvmPathLock.writeLock(blabla, 0, SECONDS);
     }
     

@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
@@ -34,12 +33,12 @@ import static java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
  * many write locks.<p>
  * 
  * The lock is semantically associated with a specified {@link Path}, which is
- * likely to be a file, but could as well be a directory (this class does not
- * enforce any kind of hierarchy rules). The path object is only used as a key
- * in an internal cache; this class does not perform any I/O operations whilst
- * acquiring or unlocking.<p>
+ * likely to represent a file, but could as well be a directory (this class does
+ * not enforce any kind of hierarchy rules). The path object is only used as a
+ * key in an internal cache; this class does not perform any I/O operations
+ * whilst acquiring or unlocking.<p>
  * 
- * Locks acquired by this class has no effect outside the currently running
+ * Locks acquired by this class have no effect outside the currently running
  * JVM, nor are they specified for a subregion of a file. An application that
  * needs to co-ordinate file access with other system processes, or co-ordinate
  * subregion access, should likely be using a {@link FileLock} instead
@@ -47,19 +46,18 @@ import static java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
  * 
  * Inter-process co-ordination is usually not needed, however. Processes should
  * be entitled to and assume ownership of files. For example, it would be weird
- * if App X writes to a settings' file used by App Y. Furthermore, even when
- * different processes does access the same file, co-ordination is many times
- * not desired. For example, log files are often read by a terminal, live, at
- * the same time they are being written to.<p>
+ * if App X writes to a settings' file used by App Y. Furthermore, if different
+ * processes do access the same file, these operations should be read-only. For
+ * example, terminals trailing a log file.<p>
  * 
  * With that said, the NoMagicHTTP library's
  * {@link Request.Body#toFile(Path, long, TimeUnit, Set, FileAttribute[]) Request.Body.toFile(Path, ...)}
  * and
  * {@link ByteBufferIterables#ofFile(Path, long, TimeUnit) ByteBufferIterables.ofFile(Path, ...)}
- * do use write and read locks from this class, respectively. Reason being that
- * most files that are received by an endpoint or sent out from an endpoint, is
- * expected to be sufficiently small, user-scoped files. For example, a
- * Pingwin-avatar (<i>not</i> torrents nor log files).<p>
+ * do use write and read locks from this class, respectively. The reason is that
+ * most files received by an endpoint or sent out from an endpoint, are expected
+ * to be sufficiently small, user-scoped files. For example, a Pingwin-avatar 
+ * (<i>not</i> torrents nor log files).<p>
  * 
  * The {@code close} method is what other lock APIs may have called
  * <i>unlock</i>. The {@code close} method must be called by the end of the
@@ -169,14 +167,14 @@ public final class JvmPathLock implements AutoCloseable
      *             if any argument is {@code null}
      * @throws InterruptedException
      *             if the current thread is interrupted while acquiring the lock
-     * @throws TimeoutException
+     * @throws FileLockTimeoutException
      *             if the lock is not acquired within the permissible time frame
      * 
      * @see JvmPathLock
      */
     public static JvmPathLock readLock(
             Path path, long timeout, TimeUnit unit)
-            throws InterruptedException, TimeoutException {
+            throws InterruptedException, FileLockTimeoutException {
         return acquire(ReentrantReadWriteLock::readLock, path, timeout, unit);
     }
     
@@ -200,21 +198,21 @@ public final class JvmPathLock implements AutoCloseable
      *             if the calling thread holds a read-lock for the same path
      * @throws InterruptedException
      *             if the current thread is interrupted while acquiring the lock
-     * @throws TimeoutException
+     * @throws FileLockTimeoutException
      *             if the lock is not acquired within the permissible time frame
      * 
      * @see JvmPathLock
      */
     public static JvmPathLock writeLock(
             Path path, long timeout, TimeUnit unit)
-            throws InterruptedException, TimeoutException {
+            throws InterruptedException, FileLockTimeoutException {
         return acquire(ReentrantReadWriteLock::writeLock, path, timeout, unit);
     }
     
     private static JvmPathLock acquire(
             Function<ReentrantReadWriteLock, Lock> impl,
             Path path, long timeout, TimeUnit unit)
-            throws InterruptedException, TimeoutException
+            throws InterruptedException, FileLockTimeoutException
     {
         var start = Instant.now();
         var key = path.toAbsolutePath();
@@ -237,11 +235,11 @@ public final class JvmPathLock implements AutoCloseable
                 // Hmm, a different lock was installed.
                 // Exceptional, but could happen. So we abandon it and start racing.
                 return acquire(impl, path,
-                           remaining(start, timeout, unit), NANOSECONDS);
+                         remaining(start, timeout, unit), NANOSECONDS);
             }
         } else {
             tryRemove(key, outer);
-            throw new TimeoutException(format(
+            throw new FileLockTimeoutException(format(
                 "Wanted a %s lock for path: %s", isWrite ? "write" : "read", path));
         }
     }

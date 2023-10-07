@@ -330,7 +330,7 @@ public interface ErrorHandler
      *   </tbody>
      * </table>
      */
-    // TODO: TimeoutException; ask client to "retry later"
+    // TODO: [Any?]TimeoutException; ask client to "retry later"?
     ErrorHandler BASE = (exc, chainIsNull, req) -> {
         final Response res;
         try {
@@ -394,6 +394,7 @@ public interface ErrorHandler
             //   AmbiguousHandlerException
             //   IllegalResponseBodyException
             //   IllegalLockUpgradeException
+            //   FileLockTimeoutException
             log(exc);
             res = internalServerError();
         }

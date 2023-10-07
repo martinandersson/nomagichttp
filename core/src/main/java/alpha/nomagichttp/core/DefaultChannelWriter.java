@@ -3,13 +3,14 @@ package alpha.nomagichttp.core;
 import alpha.nomagichttp.ChannelWriter;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.action.AfterAction;
-import alpha.nomagichttp.event.ResponseSent;
-import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.core.DefaultActionRegistry.Match;
 import alpha.nomagichttp.core.ResponseProcessor.Result;
+import alpha.nomagichttp.event.ResponseSent;
+import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.FileLockTimeoutException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -17,19 +18,18 @@ import java.nio.channels.WritableByteChannel;
 import java.time.Duration;
 import java.util.List;
 import java.util.StringJoiner;
-import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
-import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.CLIENT_PROTOCOL_DOES_NOT_SUPPORT;
-import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED;
 import static alpha.nomagichttp.core.DefaultRequest.requestWithParams;
 import static alpha.nomagichttp.core.HttpExchange.skeletonRequest;
 import static alpha.nomagichttp.core.ResponseProcessor.process;
 import static alpha.nomagichttp.core.VThreads.CHANNEL_BLOCKING;
+import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.CLIENT_PROTOCOL_DOES_NOT_SUPPORT;
+import static alpha.nomagichttp.handler.ResponseRejectedException.Reason.CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED;
 import static alpha.nomagichttp.util.Blah.addExactOrCap;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static alpha.nomagichttp.util.ScopedValues.channel;
@@ -115,7 +115,7 @@ final class DefaultChannelWriter implements ChannelWriter
     
     @Override
     public long write(final Response r)
-            throws InterruptedException, TimeoutException, IOException {
+            throws InterruptedException, FileLockTimeoutException, IOException {
         requireNonNull(r);
         requireValidState();
         var req = skeletonRequest().orElse(null);
