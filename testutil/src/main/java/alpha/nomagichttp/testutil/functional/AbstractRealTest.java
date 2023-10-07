@@ -219,39 +219,26 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Tailor the server's configuration.<p>
+     * Returns a hot API for setting the future server configuration.<p>
      * 
-     * Consider using the more compact form provided by {@link
-     * #usingConfiguration()}.
+     * With <i>hot</i> means that each call to a set method in the returned
+     * builder will also — before returning itself — build a configuration
+     * object (saved in this class), which is used when {@link #server()} is
+     * called.<p>
      * 
-     * @param config of server
-     */
-    protected final void usingConfig(Config config) {
-        requireServerIsNotRunning();
-        this.config = config;
-    }
-    
-    /**
-     * Proxied short-cut equivalent to
-     * <pre>{@code
-     *  Config modified = currentConf.toBuilder().
-     *     <all set calls goes here>
-     *     .build();
-     *  usingConfig(modified.build());
-     * }</pre>
+     * To be clear; many calls can be made in a fluent style to many setters.
+     * All values will apply when the server is started.<p>
      * 
-     * Now, this is all what the call-site has to do:
-     * <pre>
-     *  usingConfiguration()
-     *      .thisConfig(newVal)
-     *      .thatConfig(newVal);
-     * </pre>
-     * ...and the new values are automagically applied.
+     * The client code must never call {@code build()} on the returned object,
+     * which will return exceptionally (undefined type).
      * 
      * @return a proxy intercepting the setter calls
+     * 
+     * @throws IllegalStateException if the server is running
      */
     protected final Config.Builder usingConfiguration() {
-        InvocationHandler handler = (proxy, method, args) -> {
+        requireServerIsNotRunning();
+        InvocationHandler proxyImpl = (self, method, args) -> {
             Config.Builder b = config == null ?
                     DEFAULT.toBuilder() : config.toBuilder();
             if (method.getName().equals("build")) {
@@ -259,13 +246,14 @@ public abstract class AbstractRealTest
                         "Don't call build() explicitly. " +
                         "Config will be built and used for each new value set.");
             }
+            requireServerIsNotRunning();
             b = (Config.Builder) method.invoke(b, args);
-            usingConfig(b.build());
-            return proxy;
+            config = b.build();
+            return self;
         };
         return (Config.Builder) Proxy.newProxyInstance(Config.Builder.class.getClassLoader(),
-                new Class<?>[] { Config.Builder.class },
-                handler);
+                new Class<?>[]{ Config.Builder.class },
+                proxyImpl);
     }
     
     /**
