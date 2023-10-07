@@ -77,7 +77,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void AmbiguousHandlerException() throws IOException, InterruptedException {
+    void AmbiguousHandlerExc() throws IOException, InterruptedException {
         server().add("/",
             GET().produces("text/plain").apply(NOP),
             GET().produces("text/html").apply(NOP));
@@ -99,7 +99,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void BadHeaderException() throws IOException, InterruptedException {
+    void BadHeaderExc() throws IOException, InterruptedException {
         server().add("/",
             GET().apply(NOP));
         String rsp = client().writeReadTextUntilEOS("""
@@ -124,7 +124,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void BadRequestException() throws IOException, InterruptedException {
+    void BadRequestExc() throws IOException, InterruptedException {
         server();
         String rsp = client().writeReadTextUntilEOS("""
             GET / HTTP/1.1\r
@@ -201,7 +201,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void HeaderParseException() throws IOException, InterruptedException {
+    void HeaderParseExc() throws IOException, InterruptedException {
         server();
         String rsp = client().writeReadTextUntilEOS("""
              GET / HTTP/1.1\r
@@ -222,7 +222,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void HttpVersionParseException() throws IOException, InterruptedException {
+    void HttpVersionParseExc() throws IOException, InterruptedException {
         server();
         String rsp = client().writeReadTextUntilNewlines(
             "GET / Oops"               + CRLF + CRLF);
@@ -240,7 +240,7 @@ final class ErrorTest extends AbstractRealTest
     // Some newer versions are currently not supported
     @ParameterizedTest
     @CsvSource({"2,true", "3,true", "999,false"})
-    void HttpVersionTooNewException(String version, boolean hasLiteral)
+    void HttpVersionTooNewExc(String version, boolean hasLiteral)
             throws IOException, InterruptedException
     {
         server();
@@ -325,7 +325,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void IllegalRequestBodyException()
+    void IllegalRequestBodyExc()
             throws IOException, InterruptedException
     {
         server().add("/",
@@ -386,7 +386,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void MaxRequestHeadSizeException()
+    void MaxRequestHeadSizeExc()
             throws IOException, InterruptedException
     {
         usingConfiguration()
@@ -406,7 +406,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void MediaTypeNotAcceptedException() throws IOException, InterruptedException {
+    void MediaTypeNotAcceptedExc() throws IOException, InterruptedException {
         server().add("/",
             GET().produces("text/blabla").apply(NOP));
         String rsp = client().writeReadTextUntilNewlines("""
@@ -425,7 +425,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void MediaTypeParseException() throws IOException, InterruptedException {
+    void MediaTypeParseExc() throws IOException, InterruptedException {
         server().add("/", GET().apply(req -> {
             MediaType.parse("BOOM!");
             throw new AssertionError();
@@ -445,7 +445,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void MediaTypeUnsupportedException() throws IOException, InterruptedException {
+    void MediaTypeUnsupportedExc() throws IOException, InterruptedException {
         server().add("/",
             GET().consumes("text/blabla").apply(NOP));
         String rsp = client().writeReadTextUntilNewlines("""
@@ -537,7 +537,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void RequestLineParseException() throws IOException, InterruptedException {
+    void RequestLineParseExc() throws IOException, InterruptedException {
         server();
         String rsp = client().writeReadTextUntilEOS(
             "GET / H T T P ....");
@@ -553,7 +553,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void UnsupportedTransferCodingException() throws IOException, InterruptedException {
+    void UnsupportedTransferCodingExc() throws IOException, InterruptedException {
         server();
         String rsp = client().writeReadTextUntilNewlines("""
             GET / HTTP/1.1\r
