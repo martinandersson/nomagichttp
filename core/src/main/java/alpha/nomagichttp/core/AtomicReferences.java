@@ -100,8 +100,8 @@ final class AtomicReferences
     /**
      * Sets a new value only if the current value is {@code null}.<p>
      * 
-     * If the operation is successfully, the new value is returned, otherwise
-     * the alternative value is returned.<p>
+     * If the operation is successful, the new value is returned, otherwise the
+     * alternative value is returned.<p>
      * 
      * This method behaves the same as {@link
      * #lazyInit(AtomicReference, Supplier, Consumer)}, except only the

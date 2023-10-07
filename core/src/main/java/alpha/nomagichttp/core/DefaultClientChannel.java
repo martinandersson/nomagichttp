@@ -91,7 +91,7 @@ final class DefaultClientChannel implements ClientChannel
     
     @Override
     public void close() {
-        if (inputClosed && outputClosed) {
+        if (isClosed()) {
             return;
         }
         inputClosed = outputClosed = true;
@@ -143,6 +143,7 @@ final class DefaultClientChannel implements ClientChannel
             throws InterruptedException, TimeoutException, IOException {
         return writer.write(response);
     }
+    
     @Override
     public boolean wroteFinal() {
         return writer.wroteFinal();

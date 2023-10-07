@@ -100,7 +100,7 @@ public interface Config
      * and {@link Request.Body#toText()}.<p>
      * 
      * The request body size itself has no limit (nor is there such a
-     * configuration option). The application can consume an unlimited amount
+     * configuration option). The application can consume an unlimited number
      * of bytes however it desires, by iterating the body, or use other methods
      * that do not buffer the body, such as
      * {@link Request.Body#toFile(Path, long, TimeUnit, Set, FileAttribute[]) Request.Body.toFile(Path, ...)}
@@ -176,7 +176,8 @@ public interface Config
      * using an HTTP version older than HTTP/1.1.<p>
      * 
      * The default value is {@code true} and the application can safely write
-     * 1XX responses to the channel without concern for incompatible clients.<p>
+     * 1XX responses to the channel without a concern for incompatible
+     * clients.<p>
      * 
      * Turning this option off causes {@link ClientChannel#write(Response)} to
      * throw a {@link ResponseRejectedException} for 1XX responses when the

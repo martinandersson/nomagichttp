@@ -2,7 +2,6 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
@@ -11,6 +10,7 @@ import alpha.nomagichttp.message.ContentHeaders;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.util.ScopedValues;
 
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
@@ -18,7 +18,9 @@ import java.util.concurrent.TimeoutException;
 /**
  * A transmitter of data from a response to a byte channel.<p>
  * 
- * The life-cycle has been documented in {@link ClientChannel}.<p>
+ * The life-cycle of the implementation is bound to an active HTTP exchange.
+ * Therefore, the implementation reference should not be cached, but rather
+ * retrieved anew using {@link ScopedValues#channel()}.<p>
  * 
  * The implementation is not thread-safe.<p>
  * 

@@ -3,7 +3,6 @@ package alpha.nomagichttp.action;
 import alpha.nomagichttp.Chain;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.RequestHeadReceived;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;

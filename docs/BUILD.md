@@ -17,8 +17,8 @@ application developers using the NoMagicHTTP library.
 Then there's the `javadocAll` task, which builds JavaDoc HTML from symbols with
 private and higher visibility, from all source sets; `main` and test source
 sets. The result is available in `{subproject}/build/docs/javadoc-all`. This
-JavaDoc is meant for internal library developers, if anyone. The purpose is
-primarily linting 👍
+JavaDoc is meant for internal library developers, if anyone. The primary purpose
+is linting 👍
 
 ## API
 
@@ -55,7 +55,7 @@ Contains the `DefaultServer` together with related classes.
 ## Test Util
 
 Is a collection of utils for test source sets. This project also pulls in
-transitively dependencies common for all test source sets, but limits the
+transitive dependencies common for all test source sets, but limits the
 visibility of `alpha.nomagichttp.testutil.functional` to core's medium and large
 tests.
 
