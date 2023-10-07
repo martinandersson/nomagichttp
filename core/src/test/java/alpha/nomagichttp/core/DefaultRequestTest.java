@@ -24,6 +24,7 @@ import static java.nio.file.Files.notExists;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 /**
  * Small tests of {@link DefaultRequest}.
@@ -103,10 +104,12 @@ final class DefaultRequestTest
                        -1, -1);
         var head = new RawRequest.Head(
                        line,
-                       new RequestHeaders(linkedHashMap(headersNameValuePairs)));
+                       new RequestHeaders(
+                             linkedHashMap(headersNameValuePairs)));
         var body = RequestBody.of(
                        head.headers(),
-                       new ChannelReader(ofString(reqBody)));
+                       new ChannelReader(
+                             ofString(reqBody), mock(IdleConnTimeout.class)));
         var skel = new SkeletonRequest(
                        head,
                        HTTP_1_1,

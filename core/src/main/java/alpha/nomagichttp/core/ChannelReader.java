@@ -17,13 +17,15 @@ import static alpha.nomagichttp.util.Blah.toIntOrMaxValue;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.Math.min;
 import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.getLogger;
 import static java.nio.ByteBuffer.allocate;
 import static java.nio.ByteBuffer.allocateDirect;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Is an iterable reader of bytes from a channel.<p>
  * 
- * The characteristics of this class is covered well by the JavaDoc of
+ * The characteristics of this class are covered well by the JavaDoc of
  * {@link Request.Body}, who is just one of many that will over time iterate
  * bytes from this reader (i.e., the underlying child channel). Prior to the
  * request body, there will be two parsers respectively for the request line and
@@ -44,7 +46,7 @@ import static java.nio.ByteBuffer.allocateDirect;
 public final class ChannelReader implements ByteBufferIterable
 {
     private static final System.Logger
-            LOG = System.getLogger(ChannelReader.class.getPackageName());
+            LOG = getLogger(ChannelReader.class.getPackageName());
     
     private static final int
             /** Same as BufferedOutputStream/JEP-435 */
@@ -67,6 +69,7 @@ public final class ChannelReader implements ByteBufferIterable
     private final ByteBufferIterator it;
     // Number of bytes remaining to be read from the upstream
     private long desire;
+    private final IdleConnTimeout timeout;
     
     /**
      * Constructs this object.<p>
@@ -75,9 +78,10 @@ public final class ChannelReader implements ByteBufferIterable
      * created using this constructor. Successors must be derived from the
      * predecessor using {@link #newReader()}.
      * 
-     * @param upstream to read from
+     * @param upstream to read bytes from
+     * @param timeout for querying the timeout duration of an idle connection
      */
-    ChannelReader(ReadableByteChannel upstream) {
+    ChannelReader(ReadableByteChannel upstream, IdleConnTimeout timeout) {
         // The buffers are created with no remaining to force a channel read
         
         // A direct buffer "typically" has higher allocation and de-allocation
@@ -90,18 +94,21 @@ public final class ChannelReader implements ByteBufferIterable
         //       only when there's a large body - or, something? Content type
         //       could also be an indicator (most requests are likely to be
         //       text, and so, heap?).
-        this(upstream, allocateDirect(BUFFER_SIZE).position(BUFFER_SIZE), null);
+        this(requireNonNull(upstream), allocateDirect(BUFFER_SIZE).position(BUFFER_SIZE),
+             null, requireNonNull(timeout));
     }
     
     private ChannelReader(
             ReadableByteChannel src,
-            ByteBuffer dst, ByteBuffer view)
+            ByteBuffer dst, ByteBuffer view,
+            IdleConnTimeout timeout)
     {
         this.src    = src;
         this.dst    = dst;
         this.view   = view != null ? view : dst.asReadOnlyBuffer();
         this.it     = new IteratorImpl();
         this.desire = UNLIMITED;
+        this.timeout = timeout;
     }
     
     /**
@@ -134,7 +141,9 @@ public final class ChannelReader implements ByteBufferIterable
      * 
      * @implNote
      * Consequently, a connection may be closed while request bytes are being
-     * received. There's just no way around that.
+     * received. There's just no way around that (see
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9112#name-failures-and-timeouts">
+     * RFC 9112 "9.5. Failures and Timeouts"</a>).
      * 
      * @return see JavaDoc
      */
@@ -250,7 +259,7 @@ public final class ChannelReader implements ByteBufferIterable
     ChannelReader newReader() {
         requireDismissed();
         requireNotEOS();
-        return new ChannelReader(src, dst, view);
+        return new ChannelReader(src, dst, view, timeout);
     }
     
     @Override
@@ -314,23 +323,31 @@ public final class ChannelReader implements ByteBufferIterable
         }
         
         private int read() throws IOException {
+            boolean calledAbort = false;
+            timeout.scheduleRead();
             try {
                 return src.read(dst);
             } catch (Throwable t) {
                 forceDismiss();
                 assert t instanceof IOException;
                 thr = (IOException) t;
-                shutdownInput("Read operation failed");
+                calledAbort = true;
+                timeout.abort(thr);
+                tryShutdownInput("Read operation failed");
                 throw t;
             } finally {
                 if (!started) {
                     startedVol = started = true;
                 }
+                if (!calledAbort) {
+                    assert thr == null;
+                    timeout.abort(ChannelReader.this::forceDismiss);
+                }
             }
         }
         
         private ByteBuffer handleEOS() {
-            shutdownInput("EOS");
+            tryShutdownInput("EOS");
             view = EOS;
             if (isLimitSet()) {
                 forceDismiss();
@@ -417,7 +434,7 @@ public final class ChannelReader implements ByteBufferIterable
         }
     }
     
-    private static void shutdownInput(String why) {
+    private static void tryShutdownInput(String why) {
         // Likely already shut down, this is more for updating our state
         var ch = channel();
         if (ch.isInputOpen()) {

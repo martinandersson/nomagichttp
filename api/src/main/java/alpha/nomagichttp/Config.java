@@ -8,11 +8,8 @@ import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeException;
 import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
-import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.ResponseTimeoutException;
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.ByteBufferIterables;
@@ -61,13 +58,14 @@ public interface Config
      * This configuration instance contains the following values:<p>
      * 
      * Max request head size = 8 000 <br>
-     * Max request body conversion size = 20 971 520 (20 MB) <br>
+     * Max request body buffer size = 20 971 520 (20 MB) <br>
      * Max request trailers' size = 8 000 <br>
      * Max error responses = 3 <br>
      * Min HTTP version = 1.0 <br>
      * Discard rejected informational = true <br>
      * Immediately continue Expect 100 = false <br>
-     * Timeout ... to be defined <br>
+     * Timeout file lock = 3 seconds <br>
+     * Timeout idle connection = 3 minutes <br>
      * Implement missing options = true
      */
     Config DEFAULT = DefaultConfig.DefaultBuilder.ROOT.build();
@@ -225,105 +223,6 @@ public interface Config
     boolean immediatelyContinueExpect100();
     
     /**
-     * Max duration allowed for a channel read operation to complete.<p>
-     * 
-     * On timeout, the underlying read-stream will shut down and then a {@link
-     * ReadTimeoutException} is thrown.<p>
-     * 
-     * If the timeout occurs while a request head is expected or in-flight, then
-     * it'll be delivered to the error handler(s), the {@linkplain
-     * ErrorHandler#BASE default} of which translates the exception to a
-     * {@linkplain Responses#requestTimeout() 408 (Request Timeout)}.<p>
-     * 
-     * If the timeout occurs while there is an active request body subscriber,
-     * it'll be delivered to the subscriber's {@code onError} method. If the
-     * subscriber is the server's own discarding body subscriber, then the error
-     * will be delivered to the error handler(s). An application-installed body
-     * subscriber must deal with the timeout exception just as it needs to be
-     * prepared to deal with any other error passed to the subscriber. Failure
-     * to handle the exception will eventually result in a {@code
-     * ResponseTimeoutException} instead.<p>
-     * 
-     * The timer is only reset once a read-buffer has filled up and a new read
-     * operation is initiated. Therefore, an extremely slow client may cause a
-     * read timeout even though the connection is technically still making
-     * progress. Similarly, the timeout may also happen because the
-     * application's body subscriber takes too long processing a bytebuffer. It
-     * can be argued that the purpose of the timeout is not so much to protect
-     * against a stale connection but rather to protect against HTTP exchanges
-     * not making progress, whoever is at fault.<p>
-     * 
-     * The minimum acceptable transfer rate can be calculated. The default
-     * timeout duration is one and a half minute and the default server's buffer
-     * size is 16 384 bytes. This works out to a possible (dependent on request
-     * size, and so on) timeout for clients sending data on average equal to or
-     * slower than 1.456 kb/s (0.001456 Mbit/s) for one and a half minute. This
-     * calculated minimum rate is well within the transfer rate of cellular
-     * networks even older than 2G (10-15% of Cellular Digital Packet Data
-     * rate). But if the application's clients are expected to be on Mars, then
-     * perhaps the timeout ought to be increased.<p>
-     * 
-     * If the application does not expect more requests and wishes to maintain
-     * an outbound connection with the client used for interim responses
-     * stretched over a long time or any other type of uni-directional
-     * streaming, simply call {@link ClientChannel#shutdownInput()} which
-     * effectively stops the timer.
-     * 
-     * @return read timeout duration (default is one and a half minute)
-     * @see #timeoutResponse()
-     */
-    Duration timeoutRead();
-    
-    /**
-     * Max duration allowed to await a response and response trailers.<p>
-     * 
-     * Assuming that the write stream is still open when the timeout occurs, a
-     * {@link ResponseTimeoutException} will be delivered to the error
-     * handler(s), the {@linkplain ErrorHandler#BASE default} of which
-     * translates it to a {@linkplain Responses#serviceUnavailable() 503
-     * (Service Unavailable)}.<p>
-     * 
-     * The timer is active while the client channel is expecting to receive a
-     * response and also while the server's response body subscriber has
-     * unfulfilled outstanding demand. The first time the timer is activated is
-     * when the request invocation chain completes and the last request body
-     * bytebuffer has been released, and so the response will never time out
-     * while a request is still actively being received or processed.<p>
-     * 
-     * A response producer that needs more time can reset the timer by sending a
-     * 1XX (Informational) interim response or any other type of heartbeat.<p>
-     * 
-     * The timer is also active after the response body publisher has completed
-     * until {@link Response#trailers()}, if provided, completes.<p>
-     * 
-     * The timer is not active while a response is being transmitted on the
-     * wire, this is covered by {@link #timeoutWrite()}.
-     * 
-     * @return response timeout duration (default is one and a half minute)
-     */
-    Duration timeoutResponse();
-    
-    /**
-     * Max duration allowed for a channel write operation to complete.<p>
-     * 
-     * Analogous to the built-in protection against slow clients when receiving
-     * data, this timer will cause the underlying channel write operation to
-     * abort for response body bytebuffers not fully sent before the duration
-     * elapses. The exception will not be delivered to the error handler(s) and
-     * instead cause the channel to close immediately.<p>
-     * 
-     * The application can choose to publish very large response body
-     * bytebuffers without worrying about a possible timeout due to the
-     * increased time it may take to send a large buffer. The server will
-     * internally slice the buffer [if need be] to match the read-operation's
-     * buffer size.
-     * 
-     * @return write timeout duration (default is one and a half minute)
-     * @see #timeoutRead()
-     */
-    Duration timeoutWrite();
-    
-    /**
      * Max duration the library awaits a file lock.<p>
      * 
      * This configuration value is used by
@@ -336,6 +235,56 @@ public interface Config
      * @return file-lock timeout duration (default is 3 seconds)
      */
     Duration timeoutFileLock();
+    
+    /**
+     * Max duration a connection is allowed to be idle.<p>
+     * 
+     * The timer leading up to the timeout is <i>started</i> each time a client
+     * channel operation begins (reading or writing), and <i>stops</i> when the
+     * operation completes. On timeout, the operation returns exceptionally
+     * with an {@link IdleConnectionException}.<p>
+     * 
+     * Outside of request processing logic and response writing, the server will
+     * have an outstanding read operation awaiting the client's request, which
+     * correctly triggers the timeout if the client idles.<p>
+     * 
+     * Request processing logic can take however long it wants to; there is no
+     * active channel operation, and so forever-stalling application code will
+     * never cause a timeout. There's simply no way — disregarding interrupts —
+     * that the server can intercept arbitrary work of the application code.
+     * Besides, when the read and write operations commence (application code
+     * has yielded control), well then the request thread was no longer
+     * stalling, so from the server's point of view, not a problem.<p>
+     * 
+     * The timer is never reset <i>during</i> the channel operation. The
+     * application should therefore not allocate and use unimaginably large
+     * bytebuffers for response bodies, as this could theoretically cause a
+     * timeout to happen if writing such a bytebuffer takes longer than the
+     * configured timeout value, despite that the transfer may actually still be
+     * making progress.<p>
+     * 
+     * The minimum acceptable outbound transfer rate can be calculated: Suppose
+     * the server is writing a response body which yields bytebuffers with a
+     * size of 16 384 bytes (16 * 1024 bytes, the max size of an HTTP/2 frame),
+     * then writing has to be, on average, slower than 0.09102 kB/s (kilobytes
+     * per second), or 0.00009102 MB/s (megabytes per second) during three
+     * minutes (the default timeout) for the timeout to happen.<p>
+     * 
+     * This calculated minimum rate is well within the transfer rate of cellular
+     * networks even older than 2G (10-15% of Cellular Digital Packet Data
+     * rate).<p>
+     * 
+     * The server's read-buffer is 512 bytes large, so will accept an even
+     * slower inbound transfer rate.<p>
+     * 
+     * There is currently no configuration to explicitly set minimum transfer
+     * rates.
+     * 
+     * @return idle connection timeout duration (default is 3 minutes)
+     */
+    // TODO: After HTTP/2 support, we'll have to cap the buffer anyways, so pro-tip in Javadoc can be removed
+    //       (but instead the pro-tip will go somewhere else; please use a buffer no larger than max frame)
+    Duration timeoutIdleConnection();
     
     /**
      * If {@code true} (which is the default), any {@link Route} not
@@ -473,45 +422,6 @@ public interface Config
         /**
          * Sets a new value.<p>
          * 
-         * The value can be any duration, although a too short (or negative)
-         * duration will effectively make the server useless.
-         * 
-         * @param newVal new value
-         * @return a new builder representing the new state
-         * @throws NullPointerException if {@code newVal} is {@code null}
-         * @see Config#timeoutRead()
-         */
-        Builder timeoutRead(Duration newVal);
-        
-        /**
-         * Sets a new value.<p>
-         * 
-         * The value can be any duration, although a too short (or negative)
-         * duration will effectively make the server useless.
-         * 
-         * @param newVal new value
-         * @return a new builder representing the new state
-         * @throws NullPointerException if {@code newVal} is {@code null}
-         * @see Config#timeoutResponse()
-         */
-        Builder timeoutResponse(Duration newVal);
-        
-        /**
-         * Sets a new value.<p>
-         * 
-         * The value can be any duration, although a too short (or negative)
-         * duration will effectively make the server useless.
-         * 
-         * @param newVal new value
-         * @return a new builder representing the new state
-         * @throws NullPointerException if {@code newVal} is {@code null}
-         * @see Config#timeoutWrite()
-         */
-        Builder timeoutWrite(Duration newVal);
-        
-        /**
-         * Sets a new value.<p>
-         * 
          * The value can be any duration, and even empty, which would
          * effectively make the library API not spend any time waiting on a
          * lock. What happens if the duration is negative is not specified.
@@ -522,6 +432,20 @@ public interface Config
          * @see Config#timeoutFileLock()
          */
         Builder timeoutFileLock(Duration newVal);
+        
+        /**
+         * Sets a new value.<p>
+         * 
+         * The value can be any duration and should realistically represent a
+         * significant chunk of time. What happens if the duration is negative
+         * is not specified.
+         * 
+         * @param newVal new value
+         * @return a new builder representing the new state
+         * @throws NullPointerException if {@code newVal} is {@code null}
+         * @see Config#timeoutIdleConnection()
+         */
+        Builder timeoutIdleConnection(Duration newVal);
         
         /**
          * Sets a new value.

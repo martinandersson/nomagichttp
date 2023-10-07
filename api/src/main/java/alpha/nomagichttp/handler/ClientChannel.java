@@ -1,10 +1,8 @@
 package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.ChannelWriter;
-import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants.HeaderName;
 import alpha.nomagichttp.message.AttributeHolder;
-import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
@@ -17,32 +15,30 @@ import static java.util.Objects.requireNonNull;
  * An API for operating the client channel.<p>
  * 
  * The life-cycle of the channel is managed by the server. The application
- * should have no need to shut down any of its streams or close the channel
- * explicitly, which would translate to an abrupt end of the request and/or
- * response in-flight.<p>
+ * should have no need to shut down any of the channel's streams or close the
+ * channel explicitly, which could translate to an abrupt end of the request
+ * and/or response in-flight.<p>
  * 
  * For a graceful close of the client connection — which allows an in-flight
  * exchange to complete — set the "Connection: close" header in the final
- * response. For convenience, this interface declares a util method
+ * response. For convenience, this interface declares the method
  * {@link #tryAddConnectionClose(Response)}.<p>
+ * \
+ * None of the shutdown/close methods in this class throws {@link IOException}.
+ * It is assumed that there is nothing the application can or would like to do
+ * about the exception, nor does such an exception mean that the operation
+ * wasn't successful (if the resource can't even close then it's pretty much as
+ * dead as dead can be, right? *scratching head*).<p>
  * 
- * TODO: This paragraph is legacy. We need to implement v-thread timeouts.<br>
- * The application may desire to {@link #shutdownInput()}, for example to
- * explicitly abort an exchange, or to stop the {@linkplain Config#timeoutRead()
- * read timeout} when sending long-lasting streams.<p>
+ * If the underlying channel does throw an {@code IOException} (when shutting
+ * down a stream or closing) that is <i>not</i> a
+ * {@link ClosedChannelException}, then it will be logged on the {@code WARNING}
+ * level.<p>
  * 
- * None of the {@code is} methods probe the channel's actual status. These
- * methods read non-volatile state which is set when a stream is shutdown and/or
- * the channel closes.<p>
- * 
- * None of the shutdown/close methods in this class throws {@link IOException},
- * although the underlying channel do. It is assumed that there is nothing the
- * application can or would like to do about the exception, nor does such an
- * exception mean that the operation wasn't successful (if the resource can't
- * even close then it's pretty much as dead as dead can be, right? *scratching
- * head*), hence no {@code IOException} propagates. An {@code IOException} that
- * is not a {@link ClosedChannelException} will be logged on the {@code WARNING}
- * level.
+ * Methods that shut down a stream or close the channel are thread-safe. Methods
+ * that query the channel state read non-volatile state. Javadoc implementation
+ * notes on the state querying methods are valid as long as no happens-before
+ * relationship was established by an external primitive.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -95,7 +91,7 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
      * Ensures that the returned response's {@value HeaderName#CONNECTION}
      * header contains the token "close".<p>
      * 
-     * If this method have an effect, the reason {@code why} the header will be
+     * If this method has an effect, the reason {@code why} the header will be
      * set is first logged using the given {@code logger} and {@code level}. The
      * {@code why} argument is not the final log message, however. It'll be used
      * as a replacement value in this message pattern:
@@ -151,15 +147,15 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
     /**
      * Shutdown the input stream.<p>
      * 
-     * A purist developer may be tempted to use this method after having read a
-     * request, and there is no intent to run more exchanges over the same
-     * connection. Be warned, however, that there are some dumb HTTP clients out
-     * there (Jetty and the Darwin-award winner Reactor, at least), which if
-     * their corresponding output stream is closed, will immediately close the
-     * entire connection without waiting on the final response, even if the
-     * response is actively being transmitted (big lol?). To be the good
-     * samaritan and save their asses, it is therefore recommended to never use
-     * this method.<p>
+     * A purist developer may be tempted to use this method after having
+     * finished reading a request, and there is no intent to run more exchanges
+     * over the same connection. Be warned, however, that there are some dumb
+     * HTTP clients out there (Jetty and the Darwin-award winner Reactor, at
+     * least), which if their corresponding output stream is closed, will
+     * immediately close the entire connection without waiting on the final
+     * response, even if the response is actively being transmitted (big lol?).
+     * To be the good samaritan and save their asses, it is therefore
+     * recommended to never use this method.<p>
      * 
      * Is NOP if input already shutdown or channel is closed.
      */
@@ -186,45 +182,59 @@ public interface ClientChannel extends ChannelWriter, AttributeHolder
     /**
      * Returns {@code true} if the input stream is open.
      * 
-     * @return see JavaDoc
+     * @implNote
+     * Because of non-volatile state, a thread other than the request thread may
+     * observe a false positive (assuming that no happens-before relationship is
+     * established).
      * 
-     * @see ClientChannel
+     * @return see JavaDoc
      */
     boolean isInputOpen();
     
     /**
      * Returns {@code true} if the output stream is open.
      * 
-     * @return see JavaDoc
+     * @implNote
+     * Because of non-volatile state, a thread other than the request thread may
+     * observe a false positive (assuming that no happens-before relationship is
+     * established).
      * 
-     * @see ClientChannel
+     * @return see JavaDoc
      */
     boolean isOutputOpen();
     
     /**
      * Returns {@code true} if the input- and/or output stream is open.
      * 
-     * @return see JavaDoc.
+     * @implNote
+     * Because of non-volatile state, a thread other than the request thread may
+     * observe a false positive (assuming that no happens-before relationship is
+     * established).
      * 
-     * @see ClientChannel
+     * @return see JavaDoc
      */
     boolean isAnyStreamOpen();
     
     /**
      * Returns {@code true} if the input- and output streams are both open.
      * 
-     * @return see JavaDoc.
+     * @implNote
+     * Because of non-volatile state, a thread other than the request thread may
+     * observe a false positive (assuming that no happens-before relationship is
+     * established).
      * 
-     * @see ClientChannel
+     * @return see JavaDoc
      */
     boolean areBothStreamsOpen();
     
     /**
      * Returns {@code true} if the input- and output streams are both shut down.
      * 
-     * @return see JavaDoc.
+     * @implNote
+     * Because of non-volatile state, a thread other than the request thread may
+     * observe a false negative (but {@code true} means true).
      * 
-     * @see ClientChannel
+     * @return see JavaDoc
      */
     boolean isClosed();
 }

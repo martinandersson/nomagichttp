@@ -31,7 +31,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.function.IntConsumer;
 
-import static alpha.nomagichttp.core.Timeout.schedule;
+import static alpha.nomagichttp.core.DelayedTask.schedule;
 import static alpha.nomagichttp.core.VThreads.CHANNEL_BLOCKING;
 import static alpha.nomagichttp.util.Blah.getOrClose;
 import static alpha.nomagichttp.util.Blah.runOrClose;
@@ -247,13 +247,14 @@ public final class DefaultServer implements HttpServer
     
     private void runHttpExchanges(SocketChannel ch) {
         final var api = new DefaultClientChannel(ch);
-        var r = new ChannelReader(ch);
+        var x = new IdleConnTimeout(config, api);
+        var r = new ChannelReader(ch, x);
         children.put(api, r);
         try {
             LOG.log(DEBUG, () -> "Accepted child: " + ch);
             // Exchange loop; breaks when a new exchange should not begin
             for (;;) {
-                var w = new DefaultChannelWriter(ch, actions);
+                var w = new DefaultChannelWriter(ch, actions, x);
                 api.use(w);
                 var exch = new HttpExchange(
                         this, actions, routes, eh, api, r, w);

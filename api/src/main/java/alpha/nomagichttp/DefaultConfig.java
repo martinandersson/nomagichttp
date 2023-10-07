@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_0;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
+import static java.time.Duration.ofMinutes;
 import static java.time.Duration.ofSeconds;
 import static java.util.Objects.requireNonNull;
 
@@ -25,10 +26,8 @@ final class DefaultConfig implements Config {
     private final Version  minHttpVersion;
     private final boolean  discardRejectedInformational,
                            immediatelyContinueExpect100;
-    private final Duration timeoutRead,
-                           timeoutResponse,
-                           timeoutWrite,
-                           timeoutFileLock;
+    private final Duration timeoutFileLock,
+                           timeoutIdleConnection;
     private final boolean  implementMissingOptions;
     
     DefaultConfig(Builder b, DefaultBuilder.MutableState s) {
@@ -40,10 +39,8 @@ final class DefaultConfig implements Config {
         minHttpVersion               = s.minHttpVersion;
         discardRejectedInformational = s.discardRejectedInformational;
         immediatelyContinueExpect100 = s.immediatelyContinueExpect100;
-        timeoutRead                  = s.timeoutRead;
-        timeoutResponse              = s.timeoutResponse;
-        timeoutWrite                 = s.timeoutWrite;
         timeoutFileLock              = s.timeoutFileLock;
+        timeoutIdleConnection        = s.timeoutIdleConnection;
         implementMissingOptions      = s.implementMissingOptions;
     }
     
@@ -83,23 +80,13 @@ final class DefaultConfig implements Config {
     }
     
     @Override
-    public Duration timeoutRead() {
-        return timeoutRead;
-    }
-    
-    @Override
-    public Duration timeoutResponse() {
-        return timeoutResponse;
-    }
-    
-    @Override
-    public Duration timeoutWrite() {
-        return timeoutWrite;
-    }
-    
-    @Override
     public Duration timeoutFileLock() {
         return timeoutFileLock;
+    }
+    
+    @Override
+    public Duration timeoutIdleConnection() {
+        return timeoutIdleConnection;
     }
     
     @Override
@@ -126,10 +113,8 @@ final class DefaultConfig implements Config {
             Version  minHttpVersion               = HTTP_1_0;
             boolean  discardRejectedInformational = true,
                      immediatelyContinueExpect100 = false;
-            Duration timeoutRead                  = ofSeconds(90),
-                     timeoutResponse              = timeoutRead,
-                     timeoutWrite                 = timeoutRead,
-                     timeoutFileLock              = ofSeconds(3);
+            Duration timeoutFileLock              = ofSeconds(3),
+                     timeoutIdleConnection        = ofMinutes(3);
             boolean  implementMissingOptions      = true;
         }
         
@@ -175,27 +160,15 @@ final class DefaultConfig implements Config {
         }
         
         @Override
-        public Builder timeoutRead(Duration newVal) {
-            requireNonNull(newVal);
-            return new DefaultBuilder(this, s -> s.timeoutRead = newVal);
-        }
-        
-        @Override
-        public Builder timeoutResponse(Duration newVal) {
-            requireNonNull(newVal);
-            return new DefaultBuilder(this, s -> s.timeoutResponse = newVal);
-        }
-        
-        @Override
-        public Builder timeoutWrite(Duration newVal) {
-            requireNonNull(newVal);
-            return new DefaultBuilder(this, s -> s.timeoutWrite = newVal);
-        }
-        
-        @Override
         public Builder timeoutFileLock(Duration newVal) {
             requireNonNull(newVal);
             return new DefaultBuilder(this, s -> s.timeoutFileLock = newVal);
+        }
+        
+        @Override
+        public Builder timeoutIdleConnection(Duration newVal) {
+            requireNonNull(newVal);
+            return new DefaultBuilder(this, s -> s.timeoutIdleConnection = newVal);
         }
         
         @Override

@@ -34,7 +34,7 @@ final class ChannelReaderTest
     
     @BeforeEach
     void beforeEach() throws Exception {
-        testee = new ChannelReader(ofString("abc"));
+        testee = new ChannelReader(ofString("abc"), mock(IdleConnTimeout.class));
         // Does not throw Exc
         assertTesteeLengthIs(-1);
     }

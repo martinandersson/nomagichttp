@@ -384,6 +384,9 @@ final class ExampleTest extends AbstractRealTest
     class NonPublicExamples {
         // TODO: Will wait until after we have done improved file serving.
         //       The compatibility test ought to use a client-native API for uploading a file.
+        
+        // TODO: Add examples for streaming, both 102 (Processing) and infinite bodies
+        
         @Test
         @DisplayName("UploadFile/TestClient")
         void UploadFile() throws IOException, InterruptedException {

@@ -515,8 +515,11 @@ public final class Responses
     /**
      * Retrieves a cached 408 (Request Timeout) response without a body.<p>
      * 
-     * The returned response contains the header "Connection: close" which will
-     * cause the connection to gracefully close (see {@link ClientChannel}).
+     * There's not much hope that following this response, the client software
+     * would algorithmically make up a new request just for the fun of it.
+     * Therefore, the returned response contains the header "Connection: close",
+     * which will cause the connection to gracefully close (see
+     * {@link ClientChannel}).
      * 
      * @return  a cached 408 (Request Timeout) response
      * @see     StatusCode#FOUR_HUNDRED_EIGHT

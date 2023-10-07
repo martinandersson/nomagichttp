@@ -1,5 +1,6 @@
 package alpha.nomagichttp.core.mediumtest;
 
+import alpha.nomagichttp.IdleConnectionException;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.DecoderException;
@@ -12,11 +13,9 @@ import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
-import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
@@ -26,14 +25,12 @@ import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import alpha.nomagichttp.util.Throwing;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.IOException;
-import java.nio.channels.InterruptedByTimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
@@ -576,143 +573,33 @@ final class ErrorTest extends AbstractRealTest
     // TODO: fileResponse_blockedByWriteLock
     // Link in JavaDoc MessageTest fileResponse_okay
     
-    @Disabled("We need to implement timeouts for v-threads")
     @Nested
-    class ReadTimeoutExc {
+    class IdleConnectionExc {
         @Test
         void duringHead() throws IOException, InterruptedException {
             usingConfiguration()
-                .timeoutRead(ofMillis(1));
-            String rsp = client().writeReadTextUntilNewlines(
-                // Server waits for CRLF + CRLF, but times out instead
-                "GET / HTTP...");
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 408 Request Timeout" + CRLF +
-                "Content-Length: 0"            + CRLF +
-                "Connection: close"            + CRLF + CRLF);
-            assertThat(pollServerError())
-                .isExactlyInstanceOf(ReadTimeoutException.class)
-                .hasNoSuppressedExceptions()
-                // The message is set by the Java runtime lol
-                .hasMessage("java.nio.channels.InterruptedByTimeoutException")
-                .hasCauseExactlyInstanceOf(InterruptedByTimeoutException.class);
+                .timeoutIdleConnection(ofMillis(1));
+            server();
+            try (var closeConn = client().openConnection()) {
+                String rsp = client().readTextUntilNewlines();
+                assertThat(rsp).isEqualTo(
+                    "HTTP/1.1 408 Request Timeout" + CRLF +
+                    "Connection: close"            + CRLF +
+                    "Content-Length: 0"            + CRLF + CRLF);
+                assertThat(pollServerError())
+                    .isExactlyInstanceOf(IdleConnectionException.class)
+                    .hasMessage(null)
+                    .hasNoCause()
+                    .hasNoSuppressedExceptions();
+                // Timeout triggered by scheduler
+                logRecorder().assertContainsOnlyOnce(
+                    DEBUG, "Idle connection; shutting down read stream");
+            }
         }
         
-        // duringBody?
-        // No deterministic way of doing it, as one can not change the timeout
-        // half-way. There's no difference, however, between a ReadTimeoutException
-        // occurring during a body subscription versus any other type. So ignoring.
-        
-        @Test
-        void fromPipeline() throws IOException, InterruptedException {
-            usingConfiguration()
-                .timeoutResponse(ofMillis(1));
-            server().add("/",
-                 GET().apply(NOP));
-            String rsp = client().writeReadTextUntilNewlines(
-                "GET / HTTP/1.1"                   + CRLF + CRLF);
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 503 Service Unavailable" + CRLF +
-                "Content-Length: 0"                + CRLF +
-                "Connection: close"                + CRLF + CRLF);
-            assertAwaitHandledAndLoggedExc()
-                .isExactlyInstanceOf(ResponseTimeoutException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage("Gave up waiting on a response.");
-        }
-        
-        @ParameterizedTest
-        @CsvSource({"false,false", "true,false", "false,true", "true,true"})
-        void fromResponse(
-                boolean blockImmediately, boolean addContentLength)
-                throws IOException, InterruptedException
-        {
-    //        Semaphore unblock = new Semaphore(0);
-    //        Response rsp1 = blockImmediately ?
-    //                ok(blockSubscriberUntil(unblock)) :
-    //                // If not immediately, send 1 char first, then block
-    //                ok(concat(ofString("x"), blockSubscriberUntil(unblock)));
-    //
-    //        // With content-length, pipeline's timer op will subscribe to the
-    //        // response body. Without, timer will subscribe to chunked encoder op.
-    //        if (addContentLength) {
-    //            rsp1 = rsp1.toBuilder().addHeader("Content-Length", "123").build();
-    //        }
-    //
-    //        usingConfiguration()
-    //            .timeoutResponse(ofMillis(1));
-    //        server().add("/",
-    //            GET().respond(rsp1));
-    //
-    //        // The objective of this test is to ensure the connection closes.
-    //        // Otherwise, our client would time out on this side.
-    //        String rsp2 = client().writeReadTextUntilEOS(
-    //                "GET / HTTP/1.1" + CRLF + CRLF);
-    //
-    //        assertThat(rsp2).satisfiesAnyOf(
-    //                v -> assertThat(v).isEmpty(),
-    //                // any portion of 200 (OK)
-    //                v -> assertThat(v).startsWith("H"),
-    //                v -> assertThat(v).startsWith("HTTP/1.1 503 (Service Unavailable)"));
-    //
-    //        // Must unblock request thread to guarantee log
-    //        unblock.release();
-    //
-    //        var thr1 = pollServerError();
-    //        if (thr1 == null) {
-    //            // Response body timeout caused ResponseBodySubscriber to close channel
-    //            // (nothing delivered to error handler, but was logged)
-    //            var r = logRecorder().take(
-    //                    WARNING, """
-    //                      Child channel is closed for writing. \
-    //                      Can not resolve this error. \
-    //                      HTTP exchange is over.""",
-    //                    ResponseTimeoutException.class);
-    //            assertThat(r).isNotNull();
-    //            assertThat(r.getThrown()).hasMessage(
-    //                "Gave up waiting on a response body bytebuffer.");
-    //            // No other error
-    //            logRecorder().assertThatNoErrorWasLogged();
-    //        } else {
-    //            // Error handler can get one or even two timeout exceptions
-    //            Consumer<Throwable> assertThr = t -> {
-    //                assertThat(t)
-    //                    .isExactlyInstanceOf(ResponseTimeoutException.class)
-    //                    .hasNoCause()
-    //                    .hasNoSuppressedExceptions();
-    //                assertThat(t.getMessage()).satisfiesAnyOf(
-    //                    v -> assertThat(v).isEqualTo("Gave up waiting on a response."),
-    //                    v -> assertThat(v).isEqualTo("Gave up waiting on a response body bytebuffer."));
-    //            };
-    //            assertThr.accept(thr1);
-    //            var thr2 = pollServerError(1, SECONDS);
-    //            if (thr2 != null) {
-    //                assertThr.accept(thr2);
-    //                assertThat(thr2.getMessage()).isNotEqualTo(thr1.getMessage());
-    //            }
-    //            logRecorder().assertThatLogContainsOnlyOnce(
-    //                    rec(ERROR, "Base error handler received:", thr1));
-    //            if (thr2 != null) {
-    //            logRecorder().assertThatLogContainsOnlyOnce(
-    //                    rec(ERROR, "Base error handler received:", thr2));
-    //            }
-    //        }
-    //
-    //        // Read away a trailing (failed) attempt to write 503 (Service Unavailable)
-    //        // (as to not fail a subsequent test assertion on the log)
-    //        logRecorder().timeoutAfter(1, SECONDS);
-    //        try {
-    //            logRecorder().assertAwait(
-    //                WARNING,
-    //                    "Child channel is closed for writing. " +
-    //                    "Can not resolve this error. " +
-    //                    "HTTP exchange is over.",
-    //                ClosedChannelException.class);
-    //        } catch (AssertionError ignored) {
-    //            // Empty
-    //        }
-        }
+        // duringResponse() ?
+        // Can't configure a short timeout only for the write operation,
+        // so skipping this for now.
     }
     
     @Nested

@@ -57,14 +57,13 @@ import static java.util.Objects.requireNonNullElse;
  * until the final response has been written, or after an explicit call to
  * {@link #dismiss()}, whichever happens first.<p>
  * 
- * If this class shuts down the output stream or closes the channel, then it
- * will also self-dismiss. The server must dismiss the writer after each HTTP
- * exchange.
+ * If this class shuts down the output stream, closes the channel, or the write
+ * operation times out; then this class will also self-dismiss.<p>
+ * 
+ * The server must dismiss the writer after each HTTP exchange.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-// TODO: Implement ResponseTimeoutException,
-//       depending on design, possibly described in JavaDoc
 final class DefaultChannelWriter implements ChannelWriter
 {
     private static final System.Logger LOG
@@ -74,6 +73,7 @@ final class DefaultChannelWriter implements ChannelWriter
     
     private final WritableByteChannel out;
     private final DefaultActionRegistry appActions;
+    private final IdleConnTimeout timeout;
     private List<Match<AfterAction>> matches;
     private boolean dismissed;
     private long byteCount;
@@ -85,9 +85,10 @@ final class DefaultChannelWriter implements ChannelWriter
     private int n100continue;
     
     DefaultChannelWriter(
-            WritableByteChannel out, DefaultActionRegistry actions) {
+            WritableByteChannel out, DefaultActionRegistry actions, IdleConnTimeout timeout) {
         this.out = out;
         this.appActions = actions;
+        this.timeout = timeout;
     }
     
     /**
@@ -311,12 +312,15 @@ final class DefaultChannelWriter implements ChannelWriter
         // TODO: Reactor may also have had the same prob!?
         int tot = 0;
         while (buf.hasRemaining()) {
+          timeout.scheduleWrite();
           try {
               int n = out.write(buf);
               assert n > 0 : CHANNEL_BLOCKING;
               tot += n;
           } catch (Throwable t) {
               dismiss();
+              assert t instanceof IOException;
+              timeout.abort((IOException) t);
               // Likely already shut down, this is more for updating our state
               var ch = channel();
               if (ch.isOutputOpen()) {
@@ -326,6 +330,7 @@ final class DefaultChannelWriter implements ChannelWriter
               }
               throw t;
           }
+          timeout.abort(this::dismiss);
         }
         byteCount = addExactOrCap(byteCount, tot);
         return tot;

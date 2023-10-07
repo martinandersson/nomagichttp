@@ -2,6 +2,7 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants;
+import alpha.nomagichttp.IdleConnectionException;
 import alpha.nomagichttp.NonThrowingChain;
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
@@ -18,11 +19,9 @@ import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeException;
 import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
 import alpha.nomagichttp.message.MediaTypeParseException;
-import alpha.nomagichttp.message.ReadTimeoutException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.ResponseTimeoutException;
 import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.route.AmbiguousHandlerException;
@@ -46,12 +45,9 @@ import static alpha.nomagichttp.message.Responses.notAcceptable;
 import static alpha.nomagichttp.message.Responses.notFound;
 import static alpha.nomagichttp.message.Responses.notImplemented;
 import static alpha.nomagichttp.message.Responses.requestTimeout;
-import static alpha.nomagichttp.message.Responses.serviceUnavailable;
 import static alpha.nomagichttp.message.Responses.unsupportedMediaType;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
-import static alpha.nomagichttp.util.ScopedValues.channel;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
-import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Stream.concat;
@@ -65,8 +61,13 @@ import static java.util.stream.Stream.of;
  * in favor of creating a customized response.<p>
  * 
  * The error handlers will be called to handle exceptions that occur during the
- * HTTP exchange. For example maybe request parsing failed or the request
+ * HTTP exchange. For example, maybe request parsing failed or the request
  * processing chain failed.<p>
+ * 
+ * The server does not call handlers indiscriminately for all exceptions. For
+ * example, {@link InterruptedException} is never passed to the handlers (in
+ * this particular case, the client channel is closed, and that is effectively
+ * the end of both the exchange and the request thread).<p>
  * 
  * The purpose of error handlers is to cater the client with a response even in
  * the event of a failure. Therefore, an error handler should return a response,
@@ -315,17 +316,10 @@ public interface ErrorHandler
      *     <td> {@link Responses#upgradeRequired(String)} </td>
      *   </tr>
      *   <tr>
-     *     <th scope="row"> {@link ReadTimeoutException} </th>
+     *     <th scope="row"> {@link IdleConnectionException} </th>
      *     <td> None </td>
      *     <td> No </td>
      *     <td> {@link Responses#requestTimeout()}</td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link ResponseTimeoutException} </th>
-     *     <td> None </td>
-     *     <td> Yes </td>
-     *     <td> First shutdown input stream, then
-     *          {@link Responses#serviceUnavailable()}.</td>
      *   </tr>
      *   <tr>
      *     <th scope="row"> <i>{@code Everything else}</i> </th>
@@ -390,16 +384,10 @@ public interface ErrorHandler
                 case CLIENT_PROTOCOL_DOES_NOT_SUPPORT -> upgradeRequired("HTTP/1.1");
                 default -> throw new AssertionError();
             };
-        } catch (ReadTimeoutException e) {
+        } catch (IdleConnectionException e) {
+            // Not logging because this is supposed to raise an event
+            // TODO: Link event when implemented
             res = requestTimeout();
-        } catch (ResponseTimeoutException e) {
-            log(exc);
-            if (channel().isInputOpen()) {
-                logger().log(DEBUG,
-                    "Service unavailable, shutting down channel's input stream.");
-                channel().shutdownInput();
-            }
-            res = serviceUnavailable();
         } catch (Exception everythingElse) {
             // Expected
             //   MediaTypeParseException
