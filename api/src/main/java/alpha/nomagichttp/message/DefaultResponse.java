@@ -285,7 +285,6 @@ final class DefaultResponse implements Response
                         r.statusCode() == THREE_HUNDRED_FOUR) && !isEmpty(r)) {
                 throw IllegalResponseBodyException(r);
             }
-            
             return r;
         }
         

@@ -65,8 +65,8 @@ import static java.util.Locale.ROOT;
 /**
  * Factories of {@code Response}s.<p>
  * 
- * Although {@link Response} has no mutating methods, modifications
- * of any response is possible by using {@code toBuilder()}.
+ * Although {@link Response} has no mutating methods, modifications of any
+ * response are possible by using {@code toBuilder()}.
  * 
  * <pre>
  *   Response update = Responses.processing() // 102 (Processing)
@@ -75,17 +75,16 @@ import static java.util.Locale.ROOT;
  *                              .build();
  * </pre>
  * 
- * Responses created be this class is either new, or retrieved from an uber-fast
- * cache. This is documented on a per-method level. Creating a new response
- * object is very fast and generally nothing that should raise concern for a
- * mature object-oriented language like Java.<p>
+ * Many responses returned from this class are retrieved from an uber-fast
+ * cache. Whether new or cached; this is documented per method.<p>
  * 
- * In essence, responses (and therefore their builders as well) of all
- * well-known status codes and reason phrases are prebuilt and cached during
- * classloading. For instance, in the previous example, all steps before the
- * statement which sets the header traverses through cached entities. This is
- * true even if one replaces {@code processing()} with the more explicit {@code
- * status(102, "Processing")}.
+ * In the previous example, only {@code setHeader} and {@code build} returns
+ * new objects. This is true even if one replaces {@code processing()} with the
+ * more explicit {@code status(102, "Processing")}.<p>
+ * 
+ * However that may be, creating a new response object is very fast and nothing
+ * that should raise concerns for a mature object-oriented language like
+ * Java.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
