@@ -269,26 +269,9 @@ final class DefaultResponse implements Response
         
         @Override
         public Response build() {
-            MutableState s = constructState(MutableState::new);
+            MutableState s = super.constructState(MutableState::new);
             setDefaults(s);
-            
-            final ContentHeaders headers;
-            try {
-                headers = s.headers == null ?
-                        DefaultContentHeaders.empty() :
-                        new DefaultContentHeaders(s.headers, false);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalStateException(e);
-            }
-            
-            Response r = new DefaultResponse(
-                    s.statusCode,
-                    s.reasonPhrase,
-                    headers,
-                    s.body,
-                    s.trailers,
-                    this);
-            
+            final Response r = build0(s, this);
             if (r.isInformational()) {
                 if (r.headers().hasConnectionClose()) {
                     // RFC 7230 "6.1. Connection"
@@ -306,19 +289,36 @@ final class DefaultResponse implements Response
             return r;
         }
         
+        private static void setDefaults(MutableState s) {
+            if (s.reasonPhrase == null) {
+                s.reasonPhrase = HttpConstants.ReasonPhrase.UNKNOWN; }
+            if (s.body == null) {
+                s.body = ByteBufferIterables.empty(); }
+        }
+        
+        private static Response build0(MutableState s, DefaultBuilder self) {
+            final ContentHeaders headers;
+            try {
+                headers = s.headers == null ?
+                        DefaultContentHeaders.empty() :
+                        new DefaultContentHeaders(s.headers, false);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException(e);
+            }
+            return new DefaultResponse(
+                    s.statusCode,
+                    s.reasonPhrase,
+                    headers,
+                    s.body,
+                    s.trailers,
+                    self);
+        }
+        
         private static String requireNotEmpty(String name) {
             if (name.isEmpty()) {
                 throw new IllegalArgumentException("Empty header name");
             }
             return name;
-        }
-        
-        private static void setDefaults(MutableState s) {
-            if (s.reasonPhrase == null) {
-                s.reasonPhrase = HttpConstants.ReasonPhrase.UNKNOWN; }
-            
-            if (s.body == null) {
-                s.body = ByteBufferIterables.empty(); }
         }
         
         private static boolean isEmpty(Response r) {
