@@ -3,8 +3,10 @@ package alpha.nomagichttp.message;
 import org.junit.jupiter.api.Test;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
 import static alpha.nomagichttp.testutil.Assertions.assertHeaders;
 import static alpha.nomagichttp.util.ByteBufferIterables.empty;
+import static alpha.nomagichttp.util.ByteBufferIterables.ofStringUnsafe;
 import static java.util.List.of;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -183,15 +185,33 @@ final class ResponseBuilderTest
             .hasNoSuppressedExceptions();
     }
     
+    @Test
+    void canBuildWithBodyButNoContentType() {
+        var rsp = builder(-1).body(ofStringUnsafe("Blah")).build();
+        assertThat(rsp.headers().contentType()).isEmpty();
+    }
+    
+    @Test
+    void removeNonEmptyBody() {
+        var rsp = builder(-1)
+            .setHeader(CONTENT_TYPE, "application/blah")
+            .body(ofStringUnsafe("Blah"))
+            // Instant regrets
+            .body(empty())
+            .build();
+        // Header removed!
+        assertThat(rsp.headers().contentType()).isEmpty();
+    }
+    
     // Response.builder() uses a cache, as this is a test we prefer to bypass it
     private static Response.Builder builder(int code) {
         return DefaultResponse.DefaultBuilder.ROOT
-                .statusCode(code);
+                 .statusCode(code);
     }
     
     private static Response.Builder builder(int code, String phrase) {
-        return DefaultResponse.DefaultBuilder.ROOT.
-                statusCode(code)
-                .reasonPhrase(phrase);
+        return DefaultResponse.DefaultBuilder.ROOT
+                 .statusCode(code)
+                 .reasonPhrase(phrase);
     }
 }

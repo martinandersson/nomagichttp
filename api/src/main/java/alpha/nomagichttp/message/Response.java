@@ -455,10 +455,19 @@ public interface Response extends HeaderHolder
         /**
          * Sets a message body.<p>
          * 
-         * The application should always set the Content-Type header as the
-         * server can not know this information. The header is usually
-         * implicitly specified and set when using factories in
-         * {@link Responses}.<p>
+         * The application should probably also want to set the content-type
+         * header.<p>
+         * 
+         * The server does not ever set the content-type header on behalf of the
+         * application. The header is usually set, however, implicitly or
+         * explicitly, when using factories in the class {@link Responses}.<p>
+         * 
+         * It is perfectly legit to build a response with a body, but without a
+         * content-type. This would indicate to the recipient that there is no
+         * need to process the payload bytes into a different representation.
+         * The recipient should assume "application/octet-stream" (
+         * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.3">RFC 9110 "8.1 Content-Type"</a>
+         * ).<p>
          * 
          * Generally, the server will copy and paste the body's
          * {@link ResourceByteBufferIterable#length() length} to the response
@@ -474,7 +483,9 @@ public interface Response extends HeaderHolder
          * 
          * To remove an already set body, it's as easy as specifying an empty
          * body to this method, for example, using
-         * {@link ByteBufferIterables#empty()}.
+         * {@link ByteBufferIterables#empty()} (an empty argument causes the
+         * builder implementation to also remove all occurrences of the
+         * content-type header).
          * 
          * @param body content
          * 

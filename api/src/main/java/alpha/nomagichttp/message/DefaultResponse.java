@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.THREE_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED_FOUR;
 import static alpha.nomagichttp.util.Strings.requireNoSurroundingWS;
@@ -253,7 +254,12 @@ final class DefaultResponse implements Response
         @Override
         public Response.Builder body(ResourceByteBufferIterable body) {
             requireNonNull(body, "body");
-            return new DefaultBuilder(this, s -> s.body = body);
+            return new DefaultBuilder(this, s -> {
+                if (isEmpty(body)) {
+                    s.removeHeader(CONTENT_TYPE);
+                }
+                s.body = body;
+            });
         }
         
         @Override
@@ -278,11 +284,11 @@ final class DefaultResponse implements Response
                     throw new IllegalStateException(
                             "\"Connection: close\" set on 1XX (Informational) response.");
                 }
-                if (!isEmpty(r)) {
+                if (!isEmpty(r.body())) {
                     throw IllegalResponseBodyException(r);
                 }
             } else if ((r.statusCode() == TWO_HUNDRED_FOUR    ||
-                        r.statusCode() == THREE_HUNDRED_FOUR) && !isEmpty(r)) {
+                        r.statusCode() == THREE_HUNDRED_FOUR) && !isEmpty(r.body())) {
                 throw IllegalResponseBodyException(r);
             }
             return r;
@@ -320,9 +326,9 @@ final class DefaultResponse implements Response
             return name;
         }
         
-        private static boolean isEmpty(Response r) {
+        private static boolean isEmpty(ResourceByteBufferIterable body) {
             try {
-                return r.body().isEmpty();
+                return body.isEmpty();
             } catch (IOException ignored) {
                 // Something caused that to happen, after all
                 return true;
