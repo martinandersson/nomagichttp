@@ -92,9 +92,9 @@ abstract class AbstractResultParser<R>
     /**
      * Produces a parse exception.
      * 
-     * @param msg of throwable
+     * @param message pass to super/Throwable (never {@code null} nor empty)
      * 
      * @return see JavaDoc
      */
-    protected abstract RuntimeException parseException(String msg);
+    protected abstract RuntimeException parseException(String message);
 }

@@ -645,21 +645,21 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * {@snippet :
      *   // Convert all bytes to a String
-     *   var string = request.body().toText();
+     *   String str = request.body().toText();
      *   
      *   // Gather all bytes
      *   byte[] onHeap = request.body().bytes();
      *   
      *   // Classic iteration
-     *   var it = request.body().iterator();
+     *   ByteBufferIterator it = request.body().iterator();
      *   while (it.hasNext()) {
-     *       var byteBuffer = it.next();
+     *       ByteBuffer buf = it.next();
      *       ...
      *   }
      *   
      *   // Functional iteration
      *   request.body().iterator()
-     *                 .forEachRemaining(byteBuffer -> ...);
+     *                 .forEachRemaining(buf -> ...);
      * }
      * 
      * <h2>Handling errors</h2>

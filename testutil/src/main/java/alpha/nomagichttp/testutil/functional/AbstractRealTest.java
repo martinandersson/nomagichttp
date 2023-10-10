@@ -316,18 +316,18 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Schedules an action that executes assertions on observed exceptions.<p>
+     * Register an action that run assertions, triggered by exceptions delivered
+     * to this class's error handler.<p>
      * 
-     * The purpose is to run assertions on state depending on a particular
-     * exception, even if an error handler is expected to handle the error. For
-     * example, to verify that an {@code EndOfStreamException} also shut down
-     * the read stream. A throwable thrown by the action will instead of
-     * propagating to the server, be collected and consequently fail the
-     * test.<p>
+     * The purpose is to run low-level assertions on server or channel state
+     * valid at the point of time the error handler is called.<p>
      * 
-     * The purpose of the action is <i>not</i> to handle errors, nor can it stop
-     * the server's error handler chain from executing. For the purpose of
-     * handling errors, use {@link #usingErrorHandler(ErrorHandler)}.
+     * A throwable thrown by the action will instead of propagating to the
+     * server, be collected and consequently fail the test.<p>
+     * 
+     * The action <i>does not</i> to handle errors, nor can it stop the server's
+     * error handler chain from executing. For the purpose of handling errors,
+     * use {@link #usingErrorHandler(ErrorHandler)}.
      * 
      * @param trigger an instance of this type triggers the action
      * @param action to run

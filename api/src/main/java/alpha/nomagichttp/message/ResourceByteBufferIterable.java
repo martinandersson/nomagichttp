@@ -13,7 +13,7 @@ import java.nio.file.Path;
  * resource.<p>
  * 
  * Unlike what may generally be the case for iterables, the backing data
- * structure of a bytebuffer iterable, does not need to be a collection. It can
+ * structure of a bytebuffer iterable does not need to be a collection. It can
  * be a file, a socket, or a pizza oven. Notably, the iterable may not
  * even be finite; the iteration could go on forever.<p>
  * 
