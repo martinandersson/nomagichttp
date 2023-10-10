@@ -15,7 +15,6 @@ import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import jdk.incubator.concurrent.ScopedValue;
 
@@ -390,8 +389,7 @@ final class HttpExchange
             // Most likely broken pipe
             throw e;
         }
-        if (e instanceof RequestLineParseException pe && pe.byteCount() == 0) {
-            // Most likely, the client closed his output (reader EOS)
+        if (e instanceof ClientAbortedException) {
             closeChannel("client aborted the exchange");
             throw e;
             // TODO: For the event, we have one of two possible reasons

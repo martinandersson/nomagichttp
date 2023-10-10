@@ -83,8 +83,12 @@ final class ParserOfRequestLine extends AbstractResultParser<RawRequest.Line>
     
     @Override
     protected RuntimeException parseException(String msg) {
+        int cnt = byteCount();
+        if (cnt == 0) {
+            return new ClientAbortedException(msg);
+        }
         return new RequestLineParseException(
-                msg, parser.previous(), parser.current(), position(), byteCount());
+                msg, parser.previous(), parser.current(), position(), cnt);
     }
     
     private static final int

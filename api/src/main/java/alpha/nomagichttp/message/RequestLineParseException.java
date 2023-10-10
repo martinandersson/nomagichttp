@@ -10,7 +10,7 @@ import alpha.nomagichttp.handler.ErrorHandler;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class RequestLineParseException extends AbstractParseException
+public final class RequestLineParseException extends AbstractParseException
 {
     private static final long serialVersionUID = 1L;
     
