@@ -18,10 +18,15 @@ import java.util.stream.Stream;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.ALLOW;
 import static alpha.nomagichttp.HttpConstants.Method.OPTIONS;
+import static alpha.nomagichttp.HttpConstants.StatusCode.isClientError;
+import static alpha.nomagichttp.HttpConstants.StatusCode.isRedirection;
+import static alpha.nomagichttp.HttpConstants.StatusCode.isServerError;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.message.Responses.teapot;
 import static alpha.nomagichttp.util.ScopedValues.httpServer;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.lang.System.Logger.Level.WARNING;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Stream.concat;
 import static java.util.stream.Stream.of;
@@ -136,6 +141,7 @@ public interface ErrorHandler
     ErrorHandler BASE = (exc, chainIsNull, req) -> {
         if (exc instanceof MethodNotAllowedException e) {
             Response status = e.getResponse();
+            assert isErrorStatusCode(status.statusCode());
             Stream<String> allow = e.getRoute().supportedMethods();
             if (req.method().equals(OPTIONS) && httpServer().getConfig().implementMissingOptions()) {
                 status = noContent();
@@ -150,10 +156,17 @@ public interface ErrorHandler
         }
         tryLog(exc);
         if (exc instanceof WithResponse trait) {
-            // TODO: Deal with null and malicious status code
+            var rsp = trait.getResponse();
+            int code = rsp.statusCode();
+            if (!isErrorStatusCode(code)) {
+                logger().log(WARNING, () -> """
+                    For being an advisory fallback response, \
+                    the status code %s makes no sense.""".formatted(code));
+                rsp = teapot();
+            }
             // log internal server error?
             // (ResponseRejectedException)
-            return trait.getResponse();
+            return rsp;
         }
         // Expected
         //   MediaTypeParseException
@@ -162,6 +175,10 @@ public interface ErrorHandler
         log(exc);
         return internalServerError();
     };
+    
+    private static boolean isErrorStatusCode(int code) {
+        return isRedirection(code) || isClientError(code) || isServerError(code);
+    }
     
     private static void tryLog(Exception exc) {
         try {

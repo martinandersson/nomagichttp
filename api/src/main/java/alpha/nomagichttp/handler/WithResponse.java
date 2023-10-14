@@ -1,6 +1,7 @@
 package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 
 /**
  * Adds {@link #getResponse()}.<p>
@@ -128,7 +129,15 @@ import alpha.nomagichttp.message.Response;
  */
 public interface WithResponse {
     /**
-     * Returns an advisory, fallback response for the error handler.
+     * Returns an advisory, fallback response for the error handler.<p>
+     * 
+     * The exception class should never return a response indicating success.<p>
+     * 
+     * <i>Handling</i> of an exception is the job of {@link ErrorHandler}. The
+     * server's {@linkplain ErrorHandler#BASE base handler} will respond
+     * {@link Responses#teapot()}, if the response returned from this method has
+     * a status code which is not in the 3XX (Redirection), 4XX (Client Error),
+     * nor 5XX (Server Error) series.
      * 
      * @apiNote
      * The "get" prefix is to be consistent with {@code Throwable}'s API design.

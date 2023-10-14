@@ -80,7 +80,7 @@ public final class ResponseRejectedException
     }
     
     /**
-     * {@inheritDoc}<p>
+     * {@inheritDoc}
      * 
      * <table>
      *   <caption style="display:none">Reason to response mappings</caption>

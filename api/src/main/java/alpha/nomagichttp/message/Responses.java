@@ -23,6 +23,7 @@ import static alpha.nomagichttp.HttpConstants.ReasonPhrase.CONTINUE;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.ENTITY_TOO_LARGE;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.FORBIDDEN;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.HTTP_VERSION_NOT_SUPPORTED;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.IM_A_TEAPOT;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.INTERNAL_SERVER_ERROR;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.METHOD_NOT_ALLOWED;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.NOT_ACCEPTABLE;
@@ -42,6 +43,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_ONE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FIVE_HUNDRED_THREE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_EIGHT;
+import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_EIGHTEEN;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FIFTEEN;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FIVE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
@@ -550,6 +552,16 @@ public final class Responses
      */
     public static Response entityTooLarge() {
         return CACHE.get(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE);
+    }
+    
+    /**
+     * Retrieves a cached 418 (I'm a Teapot) response without a body.
+     * 
+     * @return  a cached 418 (I'm a Teapot)
+     * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
+     */
+    public static Response teapot() {
+        return CACHE.get(FOUR_HUNDRED_EIGHTEEN, IM_A_TEAPOT);
     }
     
     /**
