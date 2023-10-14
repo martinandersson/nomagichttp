@@ -18,6 +18,7 @@ final class ExceptionHandlerTest {
     @Test
     void weirdResponseFromExceptionClass() {
         class DumbException extends Exception implements HasResponse {
+            private static final long serialVersionUID = 1L;
             public Response getResponse() {
                 return Responses.status(123, "Interim!");
             }
