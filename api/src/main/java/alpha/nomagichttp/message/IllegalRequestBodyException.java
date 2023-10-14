@@ -3,7 +3,9 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.WithResponse;
 
+import static alpha.nomagichttp.message.Responses.badRequest;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -20,7 +22,8 @@ import static java.util.Objects.requireNonNull;
  * @see HttpServer
  * @see ErrorHandler
  */
-public class IllegalRequestBodyException extends RuntimeException
+public final class IllegalRequestBodyException
+             extends RuntimeException implements WithResponse
 {
     private static final long serialVersionUID = 1L;
     private final transient RawRequest.Head head;
@@ -58,5 +61,15 @@ public class IllegalRequestBodyException extends RuntimeException
      */
     public Request.Body body() {
         return body;
+    }
+    
+    /**
+     * Returns {@link Responses#badRequest()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return badRequest();
     }
 }

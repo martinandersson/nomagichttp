@@ -1,12 +1,7 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.ErrorHandler;
-
 /**
- * Parsing a request-line from a request head failed.<p>
- * 
- * The {@linkplain ErrorHandler#BASE base error handler} translates this
- * exception to a {@link Responses#badRequest() 400 (Bad Request)}.
+ * Parsing a request-line from a request head failed.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */

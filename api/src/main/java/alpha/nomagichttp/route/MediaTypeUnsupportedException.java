@@ -3,10 +3,13 @@ package alpha.nomagichttp.route;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.MediaType;
+import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 
 import java.util.Collection;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
+import static alpha.nomagichttp.message.Responses.unsupportedMediaType;
 import static java.text.MessageFormat.format;
 import static java.util.Objects.requireNonNull;
 
@@ -17,7 +20,9 @@ import static java.util.Objects.requireNonNull;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see ErrorHandler#BASE
  */
-public class MediaTypeUnsupportedException extends NoHandlerResolvedException {
+public final class MediaTypeUnsupportedException
+             extends NoHandlerResolvedException
+{
     private static final long serialVersionUID = 1L;
     
     static MediaTypeUnsupportedException unmatchedContentType(
@@ -55,5 +60,15 @@ public class MediaTypeUnsupportedException extends NoHandlerResolvedException {
     @Override
     public MediaType getContentType() {
         return super.getContentType();
+    }
+    
+    /**
+     * Returns {@link Responses#unsupportedMediaType()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return unsupportedMediaType();
     }
 }

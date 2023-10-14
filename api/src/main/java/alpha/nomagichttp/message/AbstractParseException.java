@@ -1,6 +1,11 @@
 package alpha.nomagichttp.message;
 
-abstract class AbstractParseException extends RuntimeException
+import alpha.nomagichttp.handler.WithResponse;
+
+import static alpha.nomagichttp.message.Responses.badRequest;
+
+abstract class AbstractParseException
+         extends RuntimeException implements WithResponse
 {
     private static final long serialVersionUID = 1L;
     
@@ -35,6 +40,16 @@ abstract class AbstractParseException extends RuntimeException
      */
     public final int byteCount() {
         return byteCount;
+    }
+    
+    /**
+     * Returns {@link Responses#badRequest()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public final Response getResponse() {
+        return badRequest();
     }
     
     @Override

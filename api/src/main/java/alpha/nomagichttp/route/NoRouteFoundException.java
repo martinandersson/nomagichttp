@@ -1,18 +1,21 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.WithResponse;
+import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 
+import static alpha.nomagichttp.message.Responses.notFound;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.StreamSupport.stream;
 
 /**
  * Thrown by a route registry that failed to lookup a route because the route
- * was not found. {@link ErrorHandler#BASE} maps this exception to a "404 Not
- * Found" response.
+ * was not found.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class NoRouteFoundException extends RuntimeException
+public final class NoRouteFoundException
+             extends RuntimeException implements WithResponse
 {
     private static final long serialVersionUID = 1L;
     
@@ -53,5 +56,15 @@ public class NoRouteFoundException extends RuntimeException
     
     private static String path(Iterable<String> pathSegments) {
         return "/" + stream(pathSegments.spliterator(), false).collect(joining("/"));
-    } 
+    }
+    
+    /**
+     * Returns {@link Responses#notFound()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return notFound();
+    }
 }

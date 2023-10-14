@@ -1,5 +1,10 @@
 package alpha.nomagichttp.handler;
 
+import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
+
+import static alpha.nomagichttp.message.Responses.badRequest;
+
 /**
  * A channel read operation has <i>unexpectedly</i> reached end-of-stream.<p>
  * 
@@ -12,7 +17,9 @@ package alpha.nomagichttp.handler;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public final class EndOfStreamException extends RuntimeException {
+public final class EndOfStreamException
+             extends RuntimeException implements WithResponse
+{
     private static final long serialVersionUID = 1L;
     
     /**
@@ -20,5 +27,15 @@ public final class EndOfStreamException extends RuntimeException {
      */
     public EndOfStreamException() {
         // Empty
+    }
+    
+    /**
+     * Returns {@link Responses#badRequest()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return badRequest();
     }
 }

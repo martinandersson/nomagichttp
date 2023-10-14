@@ -1,21 +1,19 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.WithResponse;
 
+import static alpha.nomagichttp.message.Responses.notImplemented;
 import static java.util.Objects.requireNonNull;
 
 /**
  * A coding listed in the request's {@value
- * HttpConstants.HeaderName#TRANSFER_ENCODING} header is not supported.<p>
- * 
- * The {@linkplain ErrorHandler#BASE base error handler} translates this
- * exception to a {@link Responses#notImplemented() 501 (Not Implemented)}
- * response.
+ * HttpConstants.HeaderName#TRANSFER_ENCODING} header is not supported.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class UnsupportedTransferCodingException extends RuntimeException
+public final class UnsupportedTransferCodingException
+             extends RuntimeException implements WithResponse
 {
     private static final long serialVersionUID = 1L;
     
@@ -40,7 +38,17 @@ public class UnsupportedTransferCodingException extends RuntimeException
      * 
      * @return see JavaDoc
      */
-    public final String coding() {
+    public String coding() {
         return coding;
+    }
+    
+    /**
+     * Returns {@link Responses#notImplemented()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return notImplemented();
     }
 }

@@ -2,8 +2,12 @@ package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.MediaType;
+import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 
 import java.util.Collection;
+
+import static alpha.nomagichttp.message.Responses.methodNotAllowed;
 
 /**
  * Thrown by {@link Route#lookup(String, MediaType, Collection)} if the
@@ -13,7 +17,8 @@ import java.util.Collection;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see ErrorHandler#BASE
  */
-public class MethodNotAllowedException extends NoHandlerResolvedException {
+public final class MethodNotAllowedException extends NoHandlerResolvedException
+{
     private static final long serialVersionUID = 1L;
     
     /**
@@ -29,5 +34,15 @@ public class MethodNotAllowedException extends NoHandlerResolvedException {
     {
         super("No handler found for method token \"" + method + "\".",
                 route, method, contentType, accepts);
+    }
+    
+    /**
+     * Returns {@link Responses#methodNotAllowed()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return methodNotAllowed();
     }
 }

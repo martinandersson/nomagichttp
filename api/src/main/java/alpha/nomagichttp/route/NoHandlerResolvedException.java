@@ -2,6 +2,7 @@ package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.handler.RequestHandler;
+import alpha.nomagichttp.handler.WithResponse;
 import alpha.nomagichttp.message.MediaType;
 
 import java.util.Collection;
@@ -19,7 +20,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public abstract class NoHandlerResolvedException extends RuntimeException
+public abstract class NoHandlerResolvedException
+                extends RuntimeException implements WithResponse
 {
     private static final long serialVersionUID = 1L;
     

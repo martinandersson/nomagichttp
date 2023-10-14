@@ -3,10 +3,13 @@ package alpha.nomagichttp.route;
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
+import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 
 import java.util.Collection;
 import java.util.Set;
 
+import static alpha.nomagichttp.message.Responses.internalServerError;
 import static java.util.Collections.unmodifiableSet;
 
 /**
@@ -60,5 +63,15 @@ public final class AmbiguousHandlerException extends NoHandlerResolvedException
      */
     public Set<RequestHandler> getCandidates() {
         return ambiguous;
+    }
+    
+    /**
+     * Returns {@link Responses#internalServerError()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return internalServerError();
     }
 }

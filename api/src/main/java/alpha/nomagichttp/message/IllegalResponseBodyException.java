@@ -4,7 +4,9 @@ import alpha.nomagichttp.ChannelWriter;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.WithResponse;
 
+import static alpha.nomagichttp.message.Responses.internalServerError;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -31,7 +33,8 @@ import static java.util.Objects.requireNonNull;
  * @see HttpServer
  * @see ErrorHandler
  */
-public class IllegalResponseBodyException extends RuntimeException
+public final class IllegalResponseBodyException
+             extends RuntimeException implements WithResponse
 {
     private static final long serialVersionUID = 1L;
     
@@ -50,11 +53,12 @@ public class IllegalResponseBodyException extends RuntimeException
     }
     
     /**
-     * Returns the response object.
+     * Returns {@link Responses#internalServerError()}.
      * 
-     * @return the response object (never {@code null})
+     * @return see Javadoc
      */
-    public Response response() {
-        return response;
+    @Override
+    public Response getResponse() {
+        return internalServerError();
     }
 }

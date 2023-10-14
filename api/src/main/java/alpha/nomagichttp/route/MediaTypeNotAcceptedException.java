@@ -2,10 +2,13 @@ package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.MediaType;
+import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 
 import java.util.Collection;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.ACCEPT;
+import static alpha.nomagichttp.message.Responses.notAcceptable;
 import static java.text.MessageFormat.format;
 import static java.util.stream.Collectors.joining;
 
@@ -17,7 +20,9 @@ import static java.util.stream.Collectors.joining;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * @see ErrorHandler#BASE
  */
-public class MediaTypeNotAcceptedException extends NoHandlerResolvedException {
+public final class MediaTypeNotAcceptedException
+             extends NoHandlerResolvedException
+{
     private static final long serialVersionUID = 1L;
     
     static MediaTypeNotAcceptedException unmatchedAccept(
@@ -52,5 +57,15 @@ public class MediaTypeNotAcceptedException extends NoHandlerResolvedException {
             throw new IllegalArgumentException("Empty \"" + ACCEPT+ "\" header values.");
         }
         return accepts;
+    }
+    
+    /**
+     * Returns {@link Responses#notAcceptable()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return notAcceptable();
     }
 }

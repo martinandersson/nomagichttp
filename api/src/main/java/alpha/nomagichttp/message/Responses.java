@@ -30,6 +30,7 @@ import static alpha.nomagichttp.HttpConstants.ReasonPhrase.NOT_FOUND;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.NOT_IMPLEMENTED;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.NO_CONTENT;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.OK;
+import static alpha.nomagichttp.HttpConstants.ReasonPhrase.PRECONDITION_FAILED;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.PROCESSING;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.REQUEST_TIMEOUT;
 import static alpha.nomagichttp.HttpConstants.ReasonPhrase.SERVICE_UNAVAILABLE;
@@ -47,6 +48,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_FOUR;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_SIX;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THIRTEEN;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_THREE;
+import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWELVE;
 import static alpha.nomagichttp.HttpConstants.StatusCode.FOUR_HUNDRED_TWENTY_SIX;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED;
 import static alpha.nomagichttp.HttpConstants.StatusCode.ONE_HUNDRED_TWO;
@@ -509,6 +511,16 @@ public final class Responses
      */
     public static Response notAcceptable() {
         return CACHE.get(FOUR_HUNDRED_SIX, NOT_ACCEPTABLE);
+    }
+
+    /**
+     * Retrieves a cached 412 (Precondition Failed) response without a body.
+     * 
+     * @return  a cached 412 (Precondition Failed) response
+     * @see     StatusCode#FOUR_HUNDRED_TWELVE
+     */
+    public static Response preconditionFailed() {
+        return CACHE.get(FOUR_HUNDRED_TWELVE, PRECONDITION_FAILED);
     }
     
     /**

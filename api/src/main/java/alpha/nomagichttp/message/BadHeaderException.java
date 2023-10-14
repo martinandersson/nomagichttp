@@ -1,12 +1,17 @@
 package alpha.nomagichttp.message;
 
+import alpha.nomagichttp.handler.WithResponse;
+
+import static alpha.nomagichttp.message.Responses.badRequest;
+
 /**
  * Thrown by a subtype of {@link BetterHeaders} if parsing a header value from
  * string to another Java type fails.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class BadHeaderException extends RuntimeException
+public final class BadHeaderException
+             extends RuntimeException implements WithResponse
 {
     private static final long serialVersionUID = 1L;
     
@@ -27,5 +32,15 @@ public class BadHeaderException extends RuntimeException
      */
     public BadHeaderException(String message, Throwable cause) {
         super(message, cause);
+    }
+    
+    /**
+     * Returns {@link Responses#badRequest()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return badRequest();
     }
 }
