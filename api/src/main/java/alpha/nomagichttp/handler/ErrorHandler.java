@@ -131,8 +131,8 @@ public interface ErrorHandler
      * configuration. For the moment, that is only
      * {@link Config#implementMissingOptions()}.<p>
      * 
-     * Secondly, if the exception implements {@link WithResponse}, the handler
-     * calls {@link WithResponse#getResponse()} and returns the provided
+     * Secondly, if the exception implements {@link HasResponse}, the handler
+     * calls {@link HasResponse#getResponse()} and returns the provided
      * response.<p>
      * 
      * Lastly, {@link Responses#internalServerError()} is returned.
@@ -155,7 +155,7 @@ public interface ErrorHandler
                          .build();
         }
         tryLog(exc);
-        if (exc instanceof WithResponse trait) {
+        if (exc instanceof HasResponse trait) {
             var rsp = trait.getResponse();
             int code = rsp.statusCode();
             if (!isProblem(code)) {

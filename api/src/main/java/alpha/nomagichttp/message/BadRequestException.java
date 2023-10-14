@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.WithResponse;
+import alpha.nomagichttp.handler.HasResponse;
 
 import static alpha.nomagichttp.message.Responses.badRequest;
 
@@ -16,7 +16,7 @@ import static alpha.nomagichttp.message.Responses.badRequest;
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3">RFC 7230 §3.3.3 paragraph 3</a>
  */
 public final class BadRequestException
-             extends RuntimeException implements WithResponse
+             extends RuntimeException implements HasResponse
 {
     private static final long serialVersionUID = 1L;
     

@@ -75,7 +75,7 @@ import alpha.nomagichttp.message.Responses;
  * 
  * {@snippet :
  *   final class PreconditionFailedException
- *         extends RuntimeException implements WithResponse
+ *         extends RuntimeException implements HasResponse
  *   {
  *       // ifMatch from header, eTag from entity
  *       // (... in the future, more factories are added)
@@ -121,13 +121,13 @@ import alpha.nomagichttp.message.Responses;
  * based on what the client accepts.<p>
  * 
  * The NoMagicHTTP's {@linkplain ErrorHandler#BASE base error handler} — if
- * given an exception that implements {@code WithResponse} — returns the
+ * given an exception that implements {@code HasResponse} — returns the
  * response provided, unmodified. No HTTP-aware exception classes in the library
  * produce a response with a body.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public interface WithResponse {
+public interface HasResponse {
     /**
      * Returns an advisory, fallback response for the error handler.<p>
      * 

@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.WithResponse;
+import alpha.nomagichttp.handler.HasResponse;
 
 import static alpha.nomagichttp.message.Responses.badRequest;
 
@@ -13,7 +13,7 @@ import static alpha.nomagichttp.message.Responses.badRequest;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class DecoderException
-             extends RuntimeException implements WithResponse
+             extends RuntimeException implements HasResponse
 {
     private static final long serialVersionUID = 1L;
     

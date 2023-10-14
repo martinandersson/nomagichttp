@@ -17,7 +17,7 @@ import static java.util.Objects.requireNonNull;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class ResponseRejectedException
-             extends RuntimeException implements WithResponse
+             extends RuntimeException implements HasResponse
 {
     // TODO: Encapsulate reason in static factories, just like ExchangeDeath
     

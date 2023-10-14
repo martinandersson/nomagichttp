@@ -1,6 +1,6 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.WithResponse;
+import alpha.nomagichttp.handler.HasResponse;
 
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
 
@@ -12,7 +12,7 @@ import static alpha.nomagichttp.message.Responses.entityTooLarge;
  */
 public sealed abstract class AbstractSizeException
        extends    RuntimeException
-       implements WithResponse
+       implements HasResponse
        permits    MaxRequestHeadSizeException,
                   MaxRequestBodyBufferSizeException,
                   MaxRequestTrailersSizeException

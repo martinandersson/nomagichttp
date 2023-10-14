@@ -2,7 +2,7 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.WithResponse;
+import alpha.nomagichttp.handler.HasResponse;
 
 import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static java.util.Objects.requireNonNull;
@@ -23,7 +23,7 @@ import static java.util.Objects.requireNonNull;
  * @see Config#minHttpVersion()
  */
 public final class HttpVersionTooNewException
-             extends RuntimeException implements WithResponse
+             extends RuntimeException implements HasResponse
 {
     private static final long serialVersionUID = 1L;
     

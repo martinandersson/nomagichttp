@@ -1,7 +1,7 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.handler.WithResponse;
+import alpha.nomagichttp.handler.HasResponse;
 
 import static alpha.nomagichttp.message.Responses.notImplemented;
 import static java.util.Objects.requireNonNull;
@@ -13,7 +13,7 @@ import static java.util.Objects.requireNonNull;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class UnsupportedTransferCodingException
-             extends RuntimeException implements WithResponse
+             extends RuntimeException implements HasResponse
 {
     private static final long serialVersionUID = 1L;
     

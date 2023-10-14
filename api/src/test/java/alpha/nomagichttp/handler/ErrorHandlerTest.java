@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 public final class ErrorHandlerTest {
     @Test
     void weirdResponseFromExceptionClass() {
-        class DumbException extends Exception implements WithResponse {
+        class DumbException extends Exception implements HasResponse {
             public Response getResponse() {
                 return Responses.status(123, "Interim!");
             }

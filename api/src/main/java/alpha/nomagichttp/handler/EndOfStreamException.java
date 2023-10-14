@@ -18,7 +18,7 @@ import static alpha.nomagichttp.message.Responses.badRequest;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class EndOfStreamException
-             extends RuntimeException implements WithResponse
+             extends RuntimeException implements HasResponse
 {
     private static final long serialVersionUID = 1L;
     

@@ -1,6 +1,6 @@
 package alpha.nomagichttp;
 
-import alpha.nomagichttp.handler.WithResponse;
+import alpha.nomagichttp.handler.HasResponse;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
@@ -18,7 +18,7 @@ import static alpha.nomagichttp.message.Responses.requestTimeout;
  * @see Config#timeoutIdleConnection()
  */
 public final class IdleConnectionException
-             extends RuntimeException implements WithResponse {
+             extends RuntimeException implements HasResponse {
     private static final long serialVersionUID = 1L;
     
     /**

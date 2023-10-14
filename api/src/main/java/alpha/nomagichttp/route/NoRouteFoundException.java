@@ -1,6 +1,6 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.WithResponse;
+import alpha.nomagichttp.handler.HasResponse;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
@@ -15,7 +15,7 @@ import static java.util.stream.StreamSupport.stream;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class NoRouteFoundException
-             extends RuntimeException implements WithResponse
+             extends RuntimeException implements HasResponse
 {
     private static final long serialVersionUID = 1L;
     
