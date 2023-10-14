@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  * This class is thin on test cases, as the base handler does not contain much
  * logic, and most error cases are tested in medium-sized tests.
  */
-public final class ExceptionHandlerTest {
+final class ExceptionHandlerTest {
     @Test
     void weirdResponseFromExceptionClass() {
         class DumbException extends Exception implements HasResponse {
