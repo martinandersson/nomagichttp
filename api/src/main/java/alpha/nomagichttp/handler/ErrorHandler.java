@@ -141,7 +141,7 @@ public interface ErrorHandler
     ErrorHandler BASE = (exc, chainIsNull, req) -> {
         if (exc instanceof MethodNotAllowedException e) {
             Response status = e.getResponse();
-            assert isErrorStatusCode(status.statusCode());
+            assert isProblem(status.statusCode());
             Stream<String> allow = e.getRoute().supportedMethods();
             if (req.method().equals(OPTIONS) && httpServer().getConfig().implementMissingOptions()) {
                 status = noContent();
@@ -158,7 +158,7 @@ public interface ErrorHandler
         if (exc instanceof WithResponse trait) {
             var rsp = trait.getResponse();
             int code = rsp.statusCode();
-            if (!isErrorStatusCode(code)) {
+            if (!isProblem(code)) {
                 logger().log(WARNING, () -> """
                     For being an advisory fallback response, \
                     the status code %s makes no sense.""".formatted(code));
@@ -176,7 +176,7 @@ public interface ErrorHandler
         return internalServerError();
     };
     
-    private static boolean isErrorStatusCode(int code) {
+    private static boolean isProblem(int code) {
         return isRedirection(code) || isClientError(code) || isServerError(code);
     }
     
