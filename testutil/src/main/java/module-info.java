@@ -2,9 +2,6 @@
  * Now this has a comment.
  */
 module alpha.nomagichttp.testutil {
-    // TEMP
-    requires jdk.incubator.concurrent;
-    
     requires transitive alpha.nomagichttp;
     requires transitive org.assertj.core;
     requires transitive java.logging;

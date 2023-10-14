@@ -19,7 +19,7 @@ import static alpha.nomagichttp.core.SkeletonRequestTarget.parse;
 import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
 import static alpha.nomagichttp.testutil.ScopedValues.whereServerIsBound;
-import static alpha.nomagichttp.testutil.VThreads.getUsingVThread;
+import static alpha.nomagichttp.testutil.VThreads.callUsingVThread;
 import static java.nio.file.Files.notExists;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,7 +39,7 @@ final class DefaultRequestTest
         // Implementation needs access to Config.maxRequestBodyBufferSize()
         final String str = whereServerIsBound(() ->
             // ...and a virtual thread, otherwise WrongThreadException
-            getUsingVThread(() -> req.body().toText()));
+            callUsingVThread(() -> req.body().toText()));
         assertThat(str).isEqualTo("abc");
     }
     
@@ -87,7 +87,7 @@ final class DefaultRequestTest
                 .isTrue();
         // Execute
         var body = createEmptyRequest().body();
-        assertThat(getUsingVThread(() ->
+        assertThat(callUsingVThread(() ->
             body.toFile(letsHopeItDoesNotExist, 0, SECONDS, Set.of())))
                 .isZero();
         // Post condition (test failed legitimately, or machine is a pedophile?)

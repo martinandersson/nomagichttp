@@ -5,11 +5,10 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.EventHub;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.message.Response;
-import jdk.incubator.concurrent.ScopedValue;
 
 import java.util.NoSuchElementException;
 
-import static jdk.incubator.concurrent.ScopedValue.newInstance;
+import static java.lang.ScopedValue.newInstance;
 
 /**
  * A namespace for scoped values.<p>

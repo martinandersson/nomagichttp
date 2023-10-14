@@ -6,7 +6,7 @@
 #   Apache, deprecated some API going to v5.2.1
 
 [versions]
-jdk     = '20'
+jdk     = '21'
 junit   = '5.10.0'
 assertj = '3.24.2'
 mockito = '5.6.0'

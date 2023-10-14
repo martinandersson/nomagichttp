@@ -16,7 +16,6 @@ import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
-import jdk.incubator.concurrent.ScopedValue;
 
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
@@ -34,6 +33,8 @@ import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.addExact;
+import static java.lang.ScopedValue.callWhere;
+import static java.lang.ScopedValue.newInstance;
 import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
@@ -42,8 +43,6 @@ import static java.lang.System.nanoTime;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
-import static jdk.incubator.concurrent.ScopedValue.newInstance;
-import static jdk.incubator.concurrent.ScopedValue.where;
 
 /**
  * Orchestrator of an HTTP exchange from request to response.<p>
@@ -252,7 +251,7 @@ final class HttpExchange
     }
     
     private void handleRequest(SkeletonRequest req) throws Exception {
-        where(SKELETON_REQUEST, of(req), () -> {
+        callWhere(SKELETON_REQUEST, of(req), () -> {
           try {
               LOG.log(DEBUG, "Executing the request processing chain");
               var rsp = processRequest(req);

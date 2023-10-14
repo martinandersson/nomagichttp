@@ -152,19 +152,16 @@ tasks.named('assemble') {
 // ---- TEMPORARY while using preview features and incubator ----
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.addAll(
-        '--enable-preview',
-        '--add-modules', 'jdk.incubator.concurrent')
+        '--enable-preview')
 }
 tasks.withType(Test).configureEach {
     jvmArgs(
-        '--enable-preview',
-        '--add-modules', 'jdk.incubator.concurrent')
+        '--enable-preview')
 }
 tasks.withType(Javadoc).configureEach {
     options {
         addBooleanOption('-enable-preview', true)
         addStringOption('-release', libs.versions.jdk.get())
-        addStringOption('-add-modules', 'jdk.incubator.concurrent')
     }
 }
 // --------------------------------------------------------------

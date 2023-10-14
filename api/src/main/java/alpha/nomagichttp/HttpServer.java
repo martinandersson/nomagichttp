@@ -19,7 +19,6 @@ import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
 import alpha.nomagichttp.util.ScopedValues;
-import jdk.incubator.concurrent.StructuredTaskScope;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -32,6 +31,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ServiceLoader;
 import java.util.concurrent.Future;
+import java.util.concurrent.StructuredTaskScope;
 import java.util.function.IntConsumer;
 
 /**

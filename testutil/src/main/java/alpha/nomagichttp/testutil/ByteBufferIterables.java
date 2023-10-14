@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
+import static alpha.nomagichttp.testutil.VThreads.callUsingVThread;
 import static alpha.nomagichttp.testutil.VThreads.getUsingVThread;
 import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static java.nio.charset.StandardCharsets.US_ASCII;
@@ -71,13 +72,11 @@ public final class ByteBufferIterables {
      *             if {@code bytes} is {@code null}
      * @throws InterruptedException
      *             if the calling thread is interrupted while waiting
-     * @throws ExecutionException
-     *             if {@link #getString(ByteBufferIterable)} throws an exception
      * @throws TimeoutException
      *             if {@code getString} takes longer than 1 second
      */
     public static String getStringVThread(ByteBufferIterable bytes)
-            throws InterruptedException, ExecutionException, TimeoutException {
+            throws InterruptedException, TimeoutException {
         return getUsingVThread(() -> getString(bytes));
     }
     
@@ -99,7 +98,7 @@ public final class ByteBufferIterables {
      */
     public static byte getByteVThread(ByteBufferIterable source)
             throws InterruptedException, ExecutionException, TimeoutException {
-        return getUsingVThread(() -> source.iterator().next().get());
+        return callUsingVThread(() -> source.iterator().next().get());
     }
     
     /**
@@ -146,13 +145,11 @@ public final class ByteBufferIterables {
      *             if {@code source} is {@code null}
      * @throws InterruptedException
      *             if the calling thread is interrupted while waiting
-     * @throws ExecutionException
-     *             if {@link #getItems(ByteBufferIterable)} throws an exception
      * @throws TimeoutException
      *             if {@code getItems} takes longer than 1 second
      */
     public static List<byte[]> getItemsVThread(ByteBufferIterable source)
-            throws ExecutionException, InterruptedException, TimeoutException {
+            throws InterruptedException, TimeoutException {
         return getUsingVThread(() -> getItems(source));
     }
 }

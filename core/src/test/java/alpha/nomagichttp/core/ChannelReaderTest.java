@@ -15,7 +15,7 @@ import static alpha.nomagichttp.testutil.ByteBufferIterables.getByteVThread;
 import static alpha.nomagichttp.testutil.ByteBufferIterables.getItemsVThread;
 import static alpha.nomagichttp.testutil.ByteBufferIterables.getStringVThread;
 import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
-import static jdk.incubator.concurrent.ScopedValue.where;
+import static java.lang.ScopedValue.callWhere;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -110,14 +110,10 @@ final class ChannelReaderTest
         testee.limit(4);
         var ch = withChannelMock(() ->
             assertThatThrownBy(this::assertTesteeYieldsExactly)
-                .isExactlyInstanceOf(ExecutionException.class)
-                .hasMessage("alpha.nomagichttp.handler.EndOfStreamException")
+                .isExactlyInstanceOf(EndOfStreamException.class)
+                .hasMessage(null)
                 .hasNoSuppressedExceptions()
-                .cause()
-                    .isExactlyInstanceOf(EndOfStreamException.class)
-                    .hasMessage(null)
-                    .hasNoSuppressedExceptions()
-                    .hasNoCause());
+                .hasNoCause());
         verify(ch).shutdownInput();
     }
     
@@ -150,7 +146,7 @@ final class ChannelReaderTest
     }
     
     private void assertTesteeLengthIs(long expected)
-            throws ExecutionException, InterruptedException, TimeoutException {
+            throws InterruptedException, TimeoutException {
         assertThat(testee.length()).isEqualTo(expected);
         if (expected == -1 || expected >= 1) {
             assertThat(testee.isEmpty()).isFalse();
@@ -163,12 +159,12 @@ final class ChannelReaderTest
     }
     
     private void assertTesteeYieldsJoined(String expected)
-            throws ExecutionException, InterruptedException, TimeoutException {
+            throws InterruptedException, TimeoutException {
         assertThat(getStringVThread(testee)).isEqualTo(expected);
     }
     
     private void assertTesteeYieldsExactly(byte[]... items)
-            throws ExecutionException, InterruptedException, TimeoutException {
+            throws InterruptedException, TimeoutException {
         var expected = List.of(items);
         var actual = getItemsVThread(testee);
         // AssertJ's asserThat and JUnit's asserIterableEquals fails lol
@@ -184,7 +180,7 @@ final class ChannelReaderTest
           Throwing.Runnable<? extends Exception> assertions) throws Exception {
         var ch = mock(ClientChannel.class);
         when(ch.isInputOpen()).thenReturn(true);
-        where(ScopedValues.CHANNEL, ch, () -> {
+        callWhere(ScopedValues.CHANNEL, ch, () -> {
             assertions.run();
             return null;
         });
