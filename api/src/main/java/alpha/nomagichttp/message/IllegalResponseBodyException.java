@@ -38,7 +38,7 @@ public final class IllegalResponseBodyException
 {
     private static final long serialVersionUID = 1L;
     
-    private final transient Response response;
+    private final transient Response illegal;
     
     /**
      * Constructs this object.
@@ -49,7 +49,16 @@ public final class IllegalResponseBodyException
      */
     public IllegalResponseBodyException(String message, Response response) {
         super(message);
-        this.response = requireNonNull(response);
+        illegal = requireNonNull(response);
+    }
+    
+    /**
+     * Returns the response which was illegal.
+     * 
+     * @return see Javadoc
+     */
+    Response getIllegal() {
+        return illegal;
     }
     
     /**
