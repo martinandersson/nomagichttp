@@ -1,3 +1,5 @@
+# Websites for the latest versions at the bottom!
+
 [versions]
 jdk     = '20'
 junit   = '5.10.0'
@@ -18,3 +20,12 @@ client-reactor = { module = 'io.projectreactor.netty:reactor-netty-http', versio
 
 [bundles]
 clients = ['client-okhttp', 'client-apache', 'client-jetty', 'client-reactor']
+
+# https://github.com/gradle/FOOJAY-toolchains/issues/50
+# https://github.com/JUNIT-team/junit5/tags
+# https://github.com/ASSERTJ/assertj/tags
+# https://github.com/MOCKITO/mockito/tags
+# https://github.com/square/OKHTTP/tags
+# https://github.com/APACHE/httpcomponents-client/tags
+# https://github.com/JETTY/jetty.project/tags
+# https://github.com/REACTOR/reactor-netty/tags
