@@ -9,12 +9,12 @@ import static java.lang.System.Logger.Level.WARNING;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
- * Unit tests of {@link ErrorHandler#BASE}.<p>
+ * Unit tests of {@link ExceptionHandler#BASE}.<p>
  * 
  * This class is thin on test cases, as the base handler does not contain much
- * logic, and most "error cases" are tested in medium-sized tests.
+ * logic, and most error cases are tested in medium-sized tests.
  */
-public final class ErrorHandlerTest {
+public final class ExceptionHandlerTest {
     @Test
     void weirdResponseFromExceptionClass() {
         class DumbException extends Exception implements HasResponse {
@@ -24,7 +24,7 @@ public final class ErrorHandlerTest {
         }
         var logs = LogRecorder.startRecording();
         try {
-            var actual = ErrorHandler.BASE.apply(new DumbException(), null, null);
+            var actual = ExceptionHandler.BASE.apply(new DumbException(), null, null);
             assertSame(actual, Responses.teapot());
             logs.assertContainsOnlyOnce(WARNING, """
                     For being an advisory fallback response, \

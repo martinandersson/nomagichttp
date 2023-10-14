@@ -58,7 +58,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Tests concerning server errors.<p>
  * 
  * Tests in this class usually provoke exceptions, run asserts on exceptions
- * delivered to the error handler, and of course, assert the response.
+ * delivered to the exception handler, and of course, assert the response.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -110,7 +110,7 @@ final class ErrorTest extends AbstractRealTest
             HTTP/1.1 400 Bad Request\r
             Connection: close\r
             Content-Length: 0\r\n\r\n""");
-        assertThat(pollServerError())
+        assertThat(pollServerException())
             .isExactlyInstanceOf(BadHeaderException.class)
             .hasMessage("Failed to parse Content-Type header.")
             .hasNoSuppressedExceptions()
@@ -135,7 +135,7 @@ final class ErrorTest extends AbstractRealTest
             HTTP/1.1 400 Bad Request\r
             Connection: close\r
             Content-Length: 0\r\n\r\n""");
-        assertThat(pollServerError())
+        assertThat(pollServerException())
             .isExactlyInstanceOf(BadRequestException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -146,7 +146,7 @@ final class ErrorTest extends AbstractRealTest
     class DecoderExc {
         @Test
         void handledByApp() throws IOException {
-            // Must kick off the subscription to provoke the error
+            // Must kick off the subscription to provoke the exception
             server().add("/",
                 GET().apply(req -> {
                     try {
@@ -174,7 +174,7 @@ final class ErrorTest extends AbstractRealTest
         }
         
         @Test
-        void handledByErrorHandler()
+        void handledByExceptionHandler()
                 throws IOException
         {
             server().add("/",
@@ -191,7 +191,7 @@ final class ErrorTest extends AbstractRealTest
                 HTTP/1.1 400 Bad Request\r
                 Connection: close\r
                 Content-Length: 0\r\n\r\n""");
-            assertThat(pollServerErrorNow())
+            assertThat(pollServerExceptionNow())
                 .isExactlyInstanceOf(DecoderException.class)
                 .hasNoSuppressedExceptions()
                 .hasMessage("""
@@ -210,7 +210,7 @@ final class ErrorTest extends AbstractRealTest
              HTTP/1.1 400 Bad Request\r
              Connection: close\r
              Content-Length: 0\r\n\r\n""");
-        assertThat(pollServerError())
+        assertThat(pollServerException())
             .isExactlyInstanceOf(HeaderParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -230,7 +230,7 @@ final class ErrorTest extends AbstractRealTest
             "HTTP/1.1 400 Bad Request" + CRLF +
             "Connection: close"        + CRLF +
             "Content-Length: 0"        + CRLF + CRLF);
-        assertThat(pollServerError())
+        assertThat(pollServerException())
             .isExactlyInstanceOf(HttpVersionParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -250,7 +250,7 @@ final class ErrorTest extends AbstractRealTest
             "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
             "Connection: close"                       + CRLF +
             "Content-Length: 0"                       + CRLF + CRLF);
-        var throwable = assertThat(pollServerError())
+        var throwable = assertThat(pollServerException())
             .isExactlyInstanceOf(HttpVersionTooNewException.class)
             .hasNoSuppressedExceptions();
         if (hasLiteral) {
@@ -283,7 +283,7 @@ final class ErrorTest extends AbstractRealTest
                 "Upgrade: HTTP/1.1"             + CRLF +
                 "Connection: upgrade, close"    + CRLF +
                 "Content-Length: 0"             + CRLF + CRLF);
-            var throwable = assertThat(pollServerError())
+            var throwable = assertThat(pollServerException())
                 .isExactlyInstanceOf(HttpVersionTooOldException.class)
                 .hasNoSuppressedExceptions();
             if (hasLiteral) {
@@ -316,7 +316,7 @@ final class ErrorTest extends AbstractRealTest
                 "Upgrade: HTTP/1.1"             + CRLF +
                 "Connection: upgrade, close"    + CRLF +
                 "Content-Length: 0"             + CRLF+ CRLF);
-            assertThat(pollServerError())
+            assertThat(pollServerException())
                 .isExactlyInstanceOf(HttpVersionTooOldException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
@@ -341,7 +341,7 @@ final class ErrorTest extends AbstractRealTest
             "HTTP/1.1 400 Bad Request" + CRLF +
             "Connection: close"        + CRLF +
             "Content-Length: 0"        + CRLF + CRLF);
-        assertThat(pollServerError())
+        assertThat(pollServerException())
             .isExactlyInstanceOf(IllegalRequestBodyException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -496,7 +496,7 @@ final class ErrorTest extends AbstractRealTest
             assertThat(rsp).isEqualTo(
                     "HTTP/1.1 204 No Content"         + CRLF +
                     "Allow: OPTIONS, POST, GET"       + CRLF + CRLF);
-            assertThat(pollServerError())
+            assertThat(pollServerException())
                     .isExactlyInstanceOf(MethodNotAllowedException.class)
                     .hasMessage("No handler found for method token \"OPTIONS\".");
         }
@@ -523,7 +523,7 @@ final class ErrorTest extends AbstractRealTest
         
         @Test
         void custom() throws IOException {
-            usingErrorHandler((exc, chain, req) ->
+            usingExceptionHandler((exc, chain, req) ->
                 exc instanceof NoRouteFoundException ?
                         status(499, "Custom Not Found!") :
                         chain.proceed());
@@ -545,7 +545,7 @@ final class ErrorTest extends AbstractRealTest
              HTTP/1.1 400 Bad Request\r
              Connection: close\r
              Content-Length: 0\r\n\r\n""");
-        assertThat(pollServerError())
+        assertThat(pollServerException())
             .isExactlyInstanceOf(RequestLineParseException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -563,7 +563,7 @@ final class ErrorTest extends AbstractRealTest
             HTTP/1.1 501 Not Implemented\r
             Connection: close\r
             Content-Length: 0\r\n\r\n""");
-        assertThat(pollServerError())
+        assertThat(pollServerException())
             .isExactlyInstanceOf(UnsupportedTransferCodingException.class)
             .hasNoCause()
             .hasNoSuppressedExceptions()
@@ -586,7 +586,7 @@ final class ErrorTest extends AbstractRealTest
                     "HTTP/1.1 408 Request Timeout" + CRLF +
                     "Connection: close"            + CRLF +
                     "Content-Length: 0"            + CRLF + CRLF);
-                assertThat(pollServerError())
+                assertThat(pollServerException())
                     .isExactlyInstanceOf(IdleConnectionException.class)
                     .hasMessage(null)
                     .hasNoCause()
@@ -605,8 +605,8 @@ final class ErrorTest extends AbstractRealTest
     @Nested
     class Special {
         @Test
-        void errorHandlerFails() throws IOException, InterruptedException {
-            usingErrorHandler((thr, ch, req) -> {
+        void exceptionHandlerFails() throws IOException, InterruptedException {
+            usingExceptionHandler((thr, ch, req) -> {
                 throw new OopsException("second");
             });
             server().add("/", GET().apply(req -> {
@@ -633,7 +633,7 @@ final class ErrorTest extends AbstractRealTest
          */
         @Test
         void requestBodyConsumerFails() throws IOException, InterruptedException {
-            onErrorAssert(OopsException.class, ch ->
+            onExceptionAssert(OopsException.class, ch ->
                 assertThat(ch.areBothStreamsOpen()).isTrue());
             server().add("/", POST().apply(req -> {
                 // Read one byte before crash
@@ -701,7 +701,7 @@ final class ErrorTest extends AbstractRealTest
             logRecorder().assertAwaitRemove(
                     ERROR, """
                         Response bytes already sent, \
-                        can not handle this error (closing child).""",
+                        can not handle this exception (closing child).""",
                     IllegalArgumentException.class)
                 .hasMessage("""
                     Request processing chain \
@@ -715,7 +715,7 @@ final class ErrorTest extends AbstractRealTest
          * {@link ExampleTest.NonPublicExamples#RequestTrailers()}.
          */
         @Test
-        void requestTrailersDiscarded_errorNotHandled() throws IOException {
+        void requestTrailersDiscarded_exceptionNotHandled() throws IOException {
             server().add("/", POST().apply(req ->
                     text(req.body().toText())));
             var rsp = client().writeReadTextUntilEOS("""

@@ -3,7 +3,7 @@ package alpha.nomagichttp.testutil.functional;
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ClientChannel;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.testutil.LogRecorder;
 import alpha.nomagichttp.testutil.Logging;
 import org.assertj.core.api.AbstractThrowableAssert;
@@ -40,21 +40,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Operates a {@link #server() server} and a {@link #client() client}.<p>
  * 
- * Both the server and the client are created on first access. The client will
+ * Both the server and the client are created upom first access. The client will
  * be configured with the server's port.<p>
  * 
  * Both the server and client APIs are easy to use on their own. The added value
  * of this class is packaging both into one class, together with some extra
  * features such as enabled log recording, and the collection of exceptions
- * delivered to the server's error handler(s).<p>
+ * delivered to the server's exception processing chain.<p>
  * 
- * When the server is stopped, this class asserts that no exceptions were
- * handled, and that no log record was logged on a level greater than
- * {@code INFO}, and that no log record has a throwable.<p>
+ * When the server is stopped, this class asserts that the exception processing
+ * chain was never called, and that no log record was logged on a level greater
+ * than {@code INFO}, and that no log record has a throwable. In other words, a
+ * problem-free exchange (or <i>exchanges</i> depending on the life cycle of
+ * the test).<p>
  * 
  * If any kind of exceptions and/or warnings are expected, then the test must
- * consume exceptions using {@link #pollServerError()} and/or take records from
- * the recorder using
+ * consume exceptions using {@link #pollServerException()} and/or take records
+ * from the recorder using
  * {@link LogRecorder#assertRemove(System.Logger.Level, String)}. If it is
  * expected that an exception is both handled and logged, one can use
  * {@link #assertAwaitHandledAndLoggedExc()}.<p>
@@ -153,7 +155,7 @@ public abstract class AbstractRealTest
                           useLogRecording;
     
     // impl permits null values and keys
-    private final Map<Class<? extends Exception>, List<Consumer<ClientChannel>>> onError;
+    private final Map<Class<? extends Exception>, List<Consumer<ClientChannel>>> onException;
     
     /**
      * Same as {@code AbstractRealTest(true, true, true)}.
@@ -176,15 +178,15 @@ public abstract class AbstractRealTest
     {
         this.afterEachStop = afterEachStop;
         this.useLogRecording = useLogRecording;
-        this.onError = new HashMap<>();
+        this.onException = new HashMap<>();
     }
     
     private LogRecorder recorder;
     private HttpServer server;
     private Future<Void> start;
     private Config config;
-    private ErrorHandler custom;
-    private BlockingDeque<Exception> errors;
+    private ExceptionHandler custom;
+    private BlockingDeque<Exception> exceptions;
     private int port;
     private TestClient client;
     
@@ -257,42 +259,43 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Configure an error handler.<p>
+     * Configure the server with an exception handler.<p>
      * 
-     * The error handler will be called after actions registered
-     * with {@code onErrorRun}/{@code onErrorAssert}, meaning that the actions
-     * will always run whether the given handler would resolve the error or
-     * not.<p>
+     * The handler will be called after actions registered with
+     * {@code onExceptionRun}/{@code onExceptionAssert}, meaning that the
+     * actions will always run.<p>
      * 
-     * The error handler will be called before this class's built-in error
-     * handler which collects unhandled errors, meaning that if the given
-     * handler handles the error, the same error will <i>not</i> be observed
-     * through a {@code pollServerError} method.
+     * The handler will be called before this class's built-in exception
+     * handler which collects unhandled exceptions, meaning that if the given
+     * handler handles the exception (does not proceed the call processing
+     * chain), the same exception will <i>not</i> be observed through a
+     * {@code pollServerException} method.
      * 
-     * @param handler error handler
+     * @param handler exception handler
      * 
      * @throws IllegalStateException
      *             if the server has already been started
      */
-    protected final void usingErrorHandler(ErrorHandler handler) {
+    protected final void usingExceptionHandler(ExceptionHandler handler) {
         requireServerIsNotRunning();
         this.custom = handler;
     }
     
     /**
-     * Schedules an action to run before error handlers.<p>
+     * Schedules an action to run before exception handlers.<p>
      * 
      * An action is useful, for example, to release blocked threads and other
      * low-level hacks installed by the test.<p>
      * 
-     * The purpose of the action is <i>not</i> to handle errors, nor can it stop
-     * the server's error handler chain from executing. For the purpose of
-     * handling errors, use {@link #usingErrorHandler(ErrorHandler)}.<p>
+     * The purpose of the action is <i>not</i> to handle exceptions, nor can it
+     * stop the server's exception processing chain from executing. For the
+     * purpose of handling exception, use
+     * {@link #usingExceptionHandler(ExceptionHandler)}.<p>
      * 
-     * Technically, the action will execute within a server-registered error
-     * handler. And so, the action should not throw an exception. In other
-     * words, do not run <i>assertions</i> in the action. For this, use
-     * {@link #onErrorAssert(Class, Consumer)}.
+     * Technically, the action will execute within a server-registered exception
+     * handler, which should not throw an exception. In other words, do not run
+     * <i>assertions</i> in the action. For such a purpose, use
+     * {@link #onExceptionAssert(Class, Consumer)}.
      * 
      * @param trigger an instance of this type triggers the action
      * @param action to run
@@ -300,13 +303,13 @@ public abstract class AbstractRealTest
      * @throws IllegalStateException
      *             if the server has already been started
      */
-    protected final void onErrorRun(
+    protected final void onExceptionRun(
             Class<? extends Exception> trigger, Runnable action)
     {
         requireNonNull(trigger);
         requireNonNull(action);
         requireServerIsNotRunning();
-        onError.compute(trigger, (k, v) -> {
+        onException.compute(trigger, (k, v) -> {
             if (v == null) {
                 v = new ArrayList<>();
             }
@@ -317,17 +320,17 @@ public abstract class AbstractRealTest
     
     /**
      * Register an action that run assertions, triggered by exceptions delivered
-     * to this class's error handler.<p>
+     * to this class's exception handler.<p>
      * 
      * The purpose is to run low-level assertions on server or channel state
-     * valid at the point of time the error handler is called.<p>
+     * valid at the point of time the exception handler is called.<p>
      * 
      * A throwable thrown by the action will instead of propagating to the
      * server, be collected and consequently fail the test.<p>
      * 
-     * The action <i>does not</i> to handle errors, nor can it stop the server's
-     * error handler chain from executing. For the purpose of handling errors,
-     * use {@link #usingErrorHandler(ErrorHandler)}.
+     * The action <i>does not</i> handle exception, nor can it stop the server's
+     * exception processing chain from executing. For the purpose of handling
+     * exceptions, use {@link #usingExceptionHandler(ExceptionHandler)}.
      * 
      * @param trigger an instance of this type triggers the action
      * @param action to run
@@ -335,13 +338,13 @@ public abstract class AbstractRealTest
      * @throws IllegalStateException
      *             if the server has already been started
      */
-    protected final void onErrorAssert(
+    protected final void onExceptionAssert(
             Class<? extends Exception> trigger, Consumer<ClientChannel> action)
     {
         requireNonNull(trigger);
         requireNonNull(action);
         requireServerIsNotRunning();
-        onError.compute(trigger, (k, v) -> {
+        onException.compute(trigger, (k, v) -> {
             if (v == null) {
                 v = new ArrayList<>();
             }
@@ -349,9 +352,9 @@ public abstract class AbstractRealTest
                 try {
                     action.accept(channel);
                 } catch (Exception e) {
-                    errors.add(e);
+                    exceptions.add(e);
                 } catch (Throwable t) {
-                    errors.add(new Exception(
+                    exceptions.add(new Exception(
                         "Test-action returned exceptionally", t));
                 }
             });
@@ -371,23 +374,23 @@ public abstract class AbstractRealTest
      */
     protected final HttpServer server() throws IOException {
         if (server == null) {
-            errors = new LinkedBlockingDeque<>();
-            ErrorHandler executeActions = (exc, ch, req) -> {
-                onError.forEach((k, v) -> {
+            exceptions = new LinkedBlockingDeque<>();
+            ExceptionHandler executeActions = (exc, ch, req) -> {
+                onException.forEach((k, v) -> {
                     if (k.isInstance(exc)) {
                         v.forEach(act -> act.accept(channel()));
                     }
                 });
                 return ch.proceed();
             };
-            ErrorHandler collectErrors = (exc, ch, req) -> {
-                errors.add(exc);
+            ExceptionHandler collectExc = (exc, ch, req) -> {
+                exceptions.add(exc);
                 return ch.proceed();
             };
             Config arg1 = config != null ? config : DEFAULT;
-            ErrorHandler[] arg2 = custom == null ?
-                    new ErrorHandler[]{executeActions, collectErrors} :
-                    new ErrorHandler[]{executeActions, custom, collectErrors};
+            ExceptionHandler[] arg2 = custom == null ?
+                    new ExceptionHandler[]{executeActions, collectExc} :
+                    new ExceptionHandler[]{executeActions, custom, collectExc};
             var s = HttpServer.create(arg1, arg2);
             var fut = s.startAsync();
             assertThat(s.isRunning()).isTrue();
@@ -439,38 +442,41 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Poll an error caught by the error handler, waiting at most 3 seconds.
+     * Poll an exception caught by this class's exception handler, waiting at
+     * most 3 seconds.
      * 
-     * @return an error, or {@code null} if none is available
+     * @return an exception, or {@code null} if none is available
      * @throws InterruptedException if interrupted while waiting
      */
-    protected final Exception pollServerError() throws InterruptedException {
-        return pollServerError(3, SECONDS);
+    protected final Exception pollServerException() throws InterruptedException {
+        return pollServerException(3, SECONDS);
     }
     
     /**
-     * Poll an error caught by the error handler, waiting at most 3 seconds.
+     * Poll an exception caught by this class's exception handler, waiting at
+     * most 3 seconds.
      * 
      * @param timeout how long to wait before giving up, in units of unit
      * @param unit determining how to interpret the timeout parameter
-     * @return an error, or {@code null} if none is available
+     * @return an exception, or {@code null} if none is available
      * @throws InterruptedException if interrupted while waiting
      */
-    protected final Exception pollServerError(long timeout, TimeUnit unit)
+    protected final Exception pollServerException(long timeout, TimeUnit unit)
             throws InterruptedException
     {
         requireServerIsRunning();
-        return errors.poll(timeout, unit);
+        return exceptions.poll(timeout, unit);
     }
     
     /**
-     * Retrieves and removes the first error caught by the error handler.
+     * Retrieves and removes the first exception caught by this class's
+     * exception handler.
      * 
-     * @return an error, or {@code null} if none is available
+     * @return an exception, or {@code null} if none is available
      */
-    protected final Exception pollServerErrorNow() {
+    protected final Exception pollServerExceptionNow() {
         requireServerIsRunning();
-        return errors.pollFirst();
+        return exceptions.pollFirst();
     }
     
     /**
@@ -527,7 +533,7 @@ public abstract class AbstractRealTest
         try {
             server.stop(Duration.ofSeconds(STOP_GRACEFUL_SECONDS));
             assertThat(server.isRunning()).isFalse();
-            assertThat(errors).isEmpty();
+            assertThat(exceptions).isEmpty();
             assertAwaitNormalStop(start);
             if (recorder != null) {
                 logRecorder().assertContainsOnlyOnce(DEBUG, clean ?
@@ -573,10 +579,11 @@ public abstract class AbstractRealTest
     
     /**
      * Calls {@link LogRecorder#assertAwaitRemoveThrown()} and asserts that
-     * {@link #pollServerError()} returns the same instance.<p>
+     * {@link #pollServerException()} returns the same instance.<p>
      * 
-     * May be used when a test case needs to assert that the base error handler
-     * was delivered a particular error <i>and</i> logged it (or, someone did).
+     * May be used when a test case needs to assert that the base exception
+     * handler was delivered a particular exception <i>and</i> logged it (or,
+     * someone did).
      * 
      * @return an assert API of sorts
      * 
@@ -592,7 +599,7 @@ public abstract class AbstractRealTest
         requireServerIsRunning();
         return logRecorder()
                    .assertAwaitRemoveThrown()
-                   .isSameAs(pollServerError());
+                   .isSameAs(pollServerException());
     }
     
     /**

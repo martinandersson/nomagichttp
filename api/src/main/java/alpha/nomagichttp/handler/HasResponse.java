@@ -18,13 +18,13 @@ import alpha.nomagichttp.message.Responses;
  * for certain routes. Maybe the handler can actually resolve the problem and
  * return a successful response.<p>
  * 
- * Currently, {@link ErrorHandler} does not support content negotiation.
+ * Currently, {@link ExceptionHandler} does not support content negotiation.
  * Therefore, unless the application can make appropriate assumptions about the
  * client, the implementation should return a response without a body, or at
  * least default to "text/plain".<p>
  * 
  * For a more elaborative setup, the implementation can expose an API used by a
- * custom error handler to build a body/representation most suitable for the
+ * custom exception handler to build a body/representation most suitable for the
  * client.<p>
  * 
  * Implementing this interface has some benefits. The exception handler becomes
@@ -38,18 +38,17 @@ import alpha.nomagichttp.message.Responses;
  * open up the type, et voilà, everything [of relevance] is there.<p>
  * 
  * If the application enforces a convention to implement this interface for
- * <i>all</i> exceptions designated for global error handlers, then the type
- * alone informs the apprentice whether the exception should be caught and
- * handled by a call site. With such a convention in place; semantically, any
- * class that does not implement this interface becomes a kind of checked
- * exception, but without signature boilerplate. Again, saving time for the
- * apprentice.<p>
+ * <i>all</i> exceptions designated for global handlers, then the type alone
+ * informs the apprentice whether the exception should be caught and handled by
+ * a call site. With such a convention in place; semantically, any class that
+ * does not implement this interface becomes a kind of checked exception, but
+ * without signature boilerplate. Again, saving time for the apprentice.<p>
  * 
  * For the application developer, it'll be easy to discover which implementing
  * exception types the classpath provides, which encourages reuse and minimizes
  * accidental repetition. If no reusable type is fitting, the developer will
  * only have to create and commit one new type to the code base. There will be
- * no ceremony of also having to add a new error handler, or copy and paste
+ * no ceremony of also having to add a new exception handler, or copy and paste
  * repeated patterns in an obscured, and forever bloating handler somewhere
  * (applications with 100+ exception types suffer tremendously from this).<p>
  * 
@@ -116,12 +115,12 @@ import alpha.nomagichttp.message.Responses;
  * This example assumed that the client accepts "application/problem+json" (
  * <a href="https://datatracker.ietf.org/doc/html/rfc9457">RFC 9457</a>).
  * Arguably, this could be made more elegant if the application provides its own
- * abstraction (e.g., {@code WithProblemDetail}) coupled with an error handler
- * that queries the type, and with the request at hand, produces a response
- * based on what the client accepts.<p>
+ * abstraction (e.g., {@code WithProblemDetail}) coupled with an exception
+ * handler that queries the type, and with the request at hand, produces a
+ * response based on what the client accepts.<p>
  * 
- * The NoMagicHTTP's {@linkplain ErrorHandler#BASE base error handler} — if
- * given an exception that implements {@code HasResponse} — returns the
+ * The NoMagicHTTP's {@linkplain ExceptionHandler#BASE base exception handler} —
+ * if given an exception that implements {@code HasResponse} — returns the
  * response provided, unmodified. No HTTP-aware exception classes in the library
  * produce a response with a body.
  * 
@@ -129,12 +128,12 @@ import alpha.nomagichttp.message.Responses;
  */
 public interface HasResponse {
     /**
-     * Returns an advisory, fallback response for the error handler.<p>
+     * Returns an advisory, fallback response for the exception handler.<p>
      * 
      * The exception class should never return a response indicating success.<p>
      * 
-     * <i>Handling</i> of an exception is the job of {@link ErrorHandler}. The
-     * server's {@linkplain ErrorHandler#BASE base handler} will respond
+     * <i>Handling</i> of an exception is the job of {@link ExceptionHandler}. The
+     * server's {@linkplain ExceptionHandler#BASE base handler} will respond
      * {@link Responses#teapot()}, if the response returned from this method has
      * a status code which is not in the 3XX (Redirection), 4XX (Client Error),
      * nor 5XX (Server Error) series.
@@ -144,7 +143,7 @@ public interface HasResponse {
      * It does not impose subjective/interpretive, and unnecessary
      * implementation requirements.
      * 
-     * @return an advisory response (never {@code null})
+     * @return an advisory fallback response (never {@code null})
      */
     Response getResponse();
 }

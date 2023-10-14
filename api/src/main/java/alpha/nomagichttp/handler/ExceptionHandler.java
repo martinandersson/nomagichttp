@@ -34,27 +34,27 @@ import static java.util.stream.Stream.of;
 /**
  * Optionally translates an {@code Exception} into a response.<p>
  * 
- * The server calls error handlers to handle uncaught exceptions that are thrown
- * from the request thread during the HTTP exchange (which begins as soon as a
- * single byte has been received).<p>
+ * The server calls exception handlers to handle uncaught exceptions that are
+ * thrown from the request thread during the HTTP exchange (which begins as soon
+ * as a single byte has been received).<p>
  * 
  * The handlers are not called indiscriminately for all exceptions at all times.
  * For example, {@link InterruptedException} is never passed to the handlers (in
  * this case, the client channel is closed, and that is effectively the end of
  * both the exchange and the request thread).<p>
  * 
- * The purpose of the error handler is to cater the client with a response even
- * in the event of a failure. Therefore, an error handler should return a
- * response, either by returning one directly, or yielding to the next error
- * handler in the processing chain, which will eventually be the server's own
+ * The purpose of the exception handler is to cater the client with a response
+ * even in the event of a failure. Therefore, the handler should return a
+ * response, either by returning one directly, or yielding to the next handler
+ * in the processing chain, which will eventually be the server's own
  * {@link #BASE} handler.<p>
  * 
  * {@snippet :
- *   ErrorHandler forMyExpected = (exception, chain, request) -> {
+ *   ExceptionHandler forMyExpected = (exception, chain, request) -> {
  *       if (exception instanceof MyExpectedException familiar) {
  *           return someResponse(familiar);
  *       }
- *       // Don't know what this is, so try the next error handler
+ *       // Don't know what this is, so try the next exception handler
  *       return chain.proceed();
  *   };
  * }
@@ -63,48 +63,48 @@ import static java.util.stream.Stream.of;
  * only to handle specific types. One example would be to decorate the base
  * handler and modify or replace its response.<p>
  * 
- * Error handlers will be called in the same order they were registered with the
- * server.<p>
+ * Exception handlers will be called in the same order they were registered with
+ * the server.<p>
  * 
- * The server will call error handlers only if the channel remains open for
- * writing at the time of the error, and only if no response bytes have already
- * been written.<p>
+ * The server will call exception handlers only if the channel remains open for
+ * writing at the time of the exception, and only if no response bytes have
+ * already been written.<p>
  * 
- * The error handler should not need to store exchange-dependent state. A retry
- * mechanism is best implemented as a {@link BeforeAction} or in the
+ * The exception handler should not need to store exchange-dependent state. A
+ * retry mechanism is best implemented as a {@link BeforeAction} or in the
  * {@link RequestHandler} itself.<p>
  * 
- * The error handler must never throw an exception.<p>
+ * The exception handler must never throw an exception.<p>
  * 
- * The error handler must be thread-safe, as it may be called concurrently.<p>
+ * The exception handler must be thread-safe, as it may be
+ * called concurrently.<p>
  * 
- * The error handler implementation does not need to implement {@code hashCode}
- * and {@code equals}.<p>
+ * The exception handler implementation does not need to implement
+ * {@code hashCode} and {@code equals}.<p>
  * 
- * Just to be perfectly clear; error handlers are optional. Any executed entity
- * is free to handle exceptions however the application sees fit.
+ * Just to be perfectly clear; exception handlers are optional. Any executed
+ * entity in the request processing chain is free to handle exceptions however
+ * the application sees fit.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see ErrorHandler#apply(Exception, NonThrowingChain, Request)
+ * @see ExceptionHandler#apply(Exception, NonThrowingChain, Request)
  */
-// TODO: 1) Rename to ExceptionHandler
-//       2) We want to have a fallback response for outbound FileNotFoundExc
-//       3) CharacterCodingException = Bad Request, and document
+// TODO: 1) We want to have a fallback response for outbound FileNotFoundExc
+//       2) CharacterCodingException = Bad Request, and document
 @FunctionalInterface
-public interface ErrorHandler
+public interface ExceptionHandler
 {
     /**
      * Produces a response.<p>
      * 
-     * The given exception is what this error handler ought to process into a
-     * response. Either directly or by yielding control to the rest of the
-     * chain.<p>
+     * The given exception is what this method ought to process into a response.
+     * Either directly or by yielding control to the rest of the chain.<p>
      * 
      * The {@code Request} object may be null depending on how much progress was
-     * made in the HTTP exchange before the error occurred. For example, if the
-     * error is a {@link RequestLineParseException}, then the request object
-     * will obviously not be available.<p>
+     * made in the HTTP exchange before the exception occurred. For example, if
+     * the exception is a {@link RequestLineParseException}, then the request
+     * object will obviously not be available.<p>
      * 
      * The request object's path parameters are only available to
      * {@link BeforeAction}s, the {@link RequestHandler}, and
@@ -113,14 +113,14 @@ public interface ErrorHandler
      * request object given to this method will throw an
      * {@link UnsupportedOperationException}.
      * 
-     * @param exc the error (never null)
+     * @param exc the exception (never null)
      * @param chain yielder of control (never null)
      * @param req request object
      * 
      * @return a fallback response
      *         (must be {@linkplain Response#isFinal() final})
      * 
-     * @see ErrorHandler
+     * @see ExceptionHandler
      */
     Response apply(Exception exc, NonThrowingChain chain, Request req);
     
@@ -138,7 +138,7 @@ public interface ErrorHandler
      * Lastly, {@link Responses#internalServerError()} is returned.
      */
     // TODO: [Any?]TimeoutException; ask client to "retry later"?
-    ErrorHandler BASE = (exc, chainIsNull, req) -> {
+    ExceptionHandler BASE = (exc, chainIsNull, req) -> {
         if (exc instanceof MethodNotAllowedException e) {
             Response status = e.getResponse();
             assert isProblem(status.statusCode());
@@ -198,6 +198,6 @@ public interface ErrorHandler
     }
     
     private static System.Logger logger() {
-        return System.getLogger(ErrorHandler.class.getPackageName());
+        return System.getLogger(ExceptionHandler.class.getPackageName());
     }
 }

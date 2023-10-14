@@ -1,6 +1,6 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Response;
@@ -16,7 +16,7 @@ import static java.util.Collections.unmodifiableSet;
  * The request handler resolution process ended ambiguously.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see ErrorHandler#BASE
+ * @see ExceptionHandler#BASE
  */
 public final class AmbiguousHandlerException extends NoHandlerResolvedException
 {

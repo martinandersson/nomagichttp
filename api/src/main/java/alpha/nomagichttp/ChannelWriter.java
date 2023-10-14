@@ -2,7 +2,7 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.BadHeaderException;
@@ -34,7 +34,7 @@ public interface ChannelWriter
      * Writes a response.<p>
      * 
      * Normally, the call chain of {@link BeforeAction}s and the
-     * {@link RequestHandler}, and the call chain of {@link ErrorHandler}s,
+     * {@link RequestHandler}, and the call chain of {@link ExceptionHandler}s,
      * returns a final response to the server which in turn uses this method to
      * write the response. Application code should generally not have a need to
      * use this method, other than to write interim responses, or for explicit

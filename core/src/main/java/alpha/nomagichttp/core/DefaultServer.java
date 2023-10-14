@@ -9,7 +9,7 @@ import alpha.nomagichttp.event.EventHub;
 import alpha.nomagichttp.event.HttpServerStarted;
 import alpha.nomagichttp.event.HttpServerStopped;
 import alpha.nomagichttp.handler.ClientChannel;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.route.Route;
 import jdk.incubator.concurrent.StructuredTaskScope;
 
@@ -64,7 +64,7 @@ public final class DefaultServer implements HttpServer
     private final Config config;
     private final DefaultActionRegistry actions;
     private final DefaultRouteRegistry routes;
-    private final List<ErrorHandler> eh;
+    private final List<ExceptionHandler> eh;
     private final EventHub events;
     // Would prefer ServerSocket > Socket > Input/OutputStream,
     //     using channel for direct transfer operations and bytebuffers
@@ -80,9 +80,9 @@ public final class DefaultServer implements HttpServer
      * Constructs a {@code DefaultServer}.
      * 
      * @param config of server
-     * @param eh error handlers
+     * @param eh exception handlers
      */
-    public DefaultServer(Config config, ErrorHandler... eh) {
+    public DefaultServer(Config config, ExceptionHandler... eh) {
         this.config  = requireNonNull(config);
         this.actions = new DefaultActionRegistry(this);
         this.routes  = new DefaultRouteRegistry(this);

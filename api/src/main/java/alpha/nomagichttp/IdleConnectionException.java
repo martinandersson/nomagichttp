@@ -31,13 +31,13 @@ public final class IdleConnectionException
     /**
      * {@inheritDoc}<p>
      * 
-     * If this exception is passed to an error handler, it can only be because
-     * the input stream shut down, and the unused output stream remains
+     * If this exception is passed to an exception handler, it can only be
+     * because the input stream shut down, and the unused output stream remains
      * open.<p>
      * 
      * If the write operation times out, then the output stream will shut down
      * and the connection will come to an abrupt end. Meaning that for this
-     * case, error handlers are not called.<p>
+     * case, exception handlers are not called.<p>
      * 
      * Consequently, this method returns {@link Responses#requestTimeout()}.<p>
      * 

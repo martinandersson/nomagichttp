@@ -1,6 +1,5 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
@@ -15,7 +14,6 @@ import static alpha.nomagichttp.message.Responses.methodNotAllowed;
  * has been added that supports the method.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see ErrorHandler#BASE
  */
 public final class MethodNotAllowedException extends NoHandlerResolvedException
 {

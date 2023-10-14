@@ -7,7 +7,7 @@ import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.handler.ClientChannel;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
@@ -27,9 +27,9 @@ import java.util.Optional;
 import static alpha.nomagichttp.HttpConstants.HeaderName.EXPECT;
 import static alpha.nomagichttp.HttpConstants.Method.TRACE;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
-import static alpha.nomagichttp.core.ErrorHandlerException.unchecked;
+import static alpha.nomagichttp.core.ExceptionHandlerException.unchecked;
 import static alpha.nomagichttp.handler.ClientChannel.tryAddConnectionClose;
-import static alpha.nomagichttp.handler.ErrorHandler.BASE;
+import static alpha.nomagichttp.handler.ExceptionHandler.BASE;
 import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static java.lang.Integer.parseInt;
@@ -51,8 +51,8 @@ import static jdk.incubator.concurrent.ScopedValue.where;
  * Core responsibilities:
  * <ul>
  *   <li>Parse a request head</li>
- *   <li>Execute the request chain</li>
- *   <li>Resolve an exception using error handler(s)</li>
+ *   <li>Execute the request processing chain</li>
+ *   <li>Exceptionally execute the exception processing chain</li>
  *   <li>Write the response</li>
  *   <li>Possibly discard remaining data in the request body</li>
  * </ul>
@@ -106,7 +106,7 @@ final class HttpExchange
     
     private final HttpServer server;
     private final Config conf;
-    private final Collection<ErrorHandler> handlers;
+    private final Collection<ExceptionHandler> handlers;
     private final ClientChannel child;
     private final ChannelReader reader;
     private final ChannelWriter writer;
@@ -116,7 +116,7 @@ final class HttpExchange
             HttpServer server,
             DefaultActionRegistry actions,
             DefaultRouteRegistry routes,
-            Collection<ErrorHandler> handlers,
+            Collection<ExceptionHandler> handlers,
             ClientChannel child,
             ChannelReader reader,
             ChannelWriter writer)
@@ -133,7 +133,7 @@ final class HttpExchange
     /**
      * Begin the exchange.<p>
      * 
-     * The exchange will attempt to deal with exceptions through the error
+     * The exchange will attempt to deal with exceptions through the exception
      * handler(s), and the base handler has a fallback response for all
      * exceptions. If an exception can not be processed into a response and
      * transmitted, the exception or a new one (from failed write) will be
@@ -355,7 +355,7 @@ final class HttpExchange
     }
     
     /**
-     * Executes the error handler chain.<p>
+     * Executes the exception processing chain.<p>
      * 
      * As is the case with {@link #processRequest(SkeletonRequest)}, this method
      * also guarantees that the returned response is in conformance with the
@@ -367,7 +367,7 @@ final class HttpExchange
      * 
      * @param e the exception to process
      * 
-     * @return the response produced by the error handler chain
+     * @return the response produced by the exception processing chain
      * 
      * @throws Exception
      *             see JavaDoc
@@ -406,12 +406,12 @@ final class HttpExchange
         }
         if (writer.byteCount() > 0) {
             closeChannel(ERROR,
-                "Response bytes already sent, can not handle this error", e);
+                "Response bytes already sent, can not handle this exception", e);
             throw e;
         }
         if (!child.isOutputOpen()) {
             LOG.log(WARNING,
-                "Output stream is not open, can not handle this error.", e);
+                "Output stream is not open, can not handle this exception.", e);
             throw e;
         }
         LOG.log(DEBUG, () -> "Attempting to resolve " + e);
@@ -424,21 +424,21 @@ final class HttpExchange
                 return of(BASE.apply(e, null, null));
             }
             var rsp = usingHandlers(e);
-            return requireWriterConformance(rsp, "Error");
+            return requireWriterConformance(rsp, "Exception");
         } catch (Exception fromChain) {
             e.addSuppressed(fromChain);
-            LOG.log(ERROR, "Error processing chain failed to handle this", e);
+            LOG.log(ERROR, "Exception processing chain failed to handle this", e);
             child.close();
             throw e;
         }
     }
     
     private Response usingHandlers(Exception e) {
-        class ChainImpl extends AbstractChain<ErrorHandler> {
+        class ChainImpl extends AbstractChain<ExceptionHandler> {
             ChainImpl() { super(handlers); }
             @Override
             Response callIntermittentHandler(
-                    ErrorHandler eh, Chain passMeThrough) {
+                    ExceptionHandler eh, Chain passMeThrough) {
                 return eh.apply(e, unchecked(passMeThrough), req());
             }
             @Override
@@ -454,7 +454,7 @@ final class HttpExchange
         try {
             // Throws Exception but our method signature does not
             return new ChainImpl().ignite();
-        } catch (ErrorHandlerException couldHappen) {
+        } catch (ExceptionHandlerException couldHappen) {
             // Breach of developer contract, i.e. UnsupportedOperationException
             throw (RuntimeException) couldHappen.getCause();
         } catch (Exception trouble) {

@@ -140,7 +140,7 @@ import alpha.nomagichttp.route.RouteRegistry;
  * invocation.<p>
  * 
  * {@snippet :
- *   HttpServer.create(myGlobalErrorHandlers)
+ *   HttpServer.create(myGlobalExceptionHandlers)
  *             .before(myAllRequestsAction)
  *                 .before(mySpecificPathAction)
  *                 .add(mySpecificPathResource)

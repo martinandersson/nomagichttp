@@ -392,8 +392,8 @@ public interface Request extends HasHeaders, HasAttributes
          *             if {@code name} is {@code null}
          * 
          * @throws UnsupportedOperationException
-         *             if called from an error handler
-         *             (has not registered a path pattern)
+         *             if called from an exception handler
+         *             (which has no association with a path pattern)
          */
         String pathParam(String name);
         
@@ -405,8 +405,8 @@ public interface Request extends HasHeaders, HasAttributes
          * @return a map of all path parameters (percent-decoded)
          * 
          * @throws UnsupportedOperationException
-         *             if called from an error handler
-         *             (has not registered a path pattern)
+         *             if called from an exception handler
+         *             (which has no association with a path pattern)
          */
         Map<String, String> pathParamMap();
         
@@ -425,8 +425,8 @@ public interface Request extends HasHeaders, HasAttributes
          *             if {@code name} is {@code null}
          * 
          * @throws UnsupportedOperationException
-         *             if called from an error handler
-         *             (has not registered a path pattern)
+         *             if called from an exception handler
+         *             (which has no association with a path pattern)
          * 
          * @see #pathParam(String) 
          */
@@ -440,8 +440,8 @@ public interface Request extends HasHeaders, HasAttributes
          * @return a map of all path parameters (not percent-decoded)
          * 
          * @throws UnsupportedOperationException
-         *             if called from an error handler
-         *             (has not registered a path pattern)
+         *             if called from an exception handler
+         *             (which has no association with a path pattern)
          */
         Map<String, String> pathParamRawMap();
         
@@ -662,7 +662,7 @@ public interface Request extends HasHeaders, HasAttributes
      *                 .forEachRemaining(buf -> ...);
      * }
      * 
-     * <h2>Handling errors</h2>
+     * <h2>Handling exceptions</h2>
      * 
      * In general, high-level exception types — in particular, when documented —
      * occurs before a channel read operation is made and will leave the
@@ -670,9 +670,9 @@ public interface Request extends HasHeaders, HasAttributes
      * operation to recover the body (for example, {@code toText() >} {@code
      * CharacterCodingException}).<p>
      * 
-     * Errors that originate from the channel's read operation will have shut
-     * down the input stream. Before attempting to read the body again, always
-     * check first if {@link ScopedValues#channel() channel}()
+     * Exceptions that originate from the channel's read operation will have
+     * shut down the input stream. Before attempting to read the body again,
+     * always check first if {@link ScopedValues#channel() channel}()
      * .{@link ClientChannel#isInputOpen() isInputOpen}().
      * 
      * <h2>Saving to file</h2>

@@ -2,27 +2,28 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.action.AfterAction;
 import alpha.nomagichttp.action.BeforeAction;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.ScopedValues;
 
 /**
- * An API for proceeding the currently active processing chain.<p>
+ * An API for proceeding the active processing chain.<p>
  * 
- * The chain is made up of any number of executing entities. These entities will
- * be any number of {@link BeforeAction}s leading up to a
- * {@link RequestHandler}, or any number of application-provided
- * {@link ErrorHandler}s leading up to the server's base error handler.<p>
+ * The chain is made up of executing entities. These entities are
+ * {@link BeforeAction}s leading up to a {@link RequestHandler} (aka. the
+ * "request processing chain"), and exceptionally; any number of
+ * application-provided {@link ExceptionHandler}s, leading up to the server's
+ * base exception handler (aka. "the exception processing chain").<p>
  * 
  * The chain should return a final response. A before-action will normally not
  * produce a response and instead yield control to the rest of the chain. An
- * error handler will normally return a final response directly if it can handle
- * the exception, otherwise yield control if it can not.<p>
+ * exception handler will normally return a final response directly if it can
+ * handle the exception, otherwise yield control if it can not.<p>
  * 
- * An intermittent handler should not manipulate the response returned from the
- * rest of the chain. Response manipulation is the purpose of
- * {@link AfterAction}s.<p>
+ * An intermittent handler in the request processing chain should normally not
+ * manipulate the response returned from the rest of the chain. Response
+ * manipulation is the purpose of {@link AfterAction}s.<p>
  * 
  * The chain may return {@code null} if and only if it has already written a
  * final response to the {@link ScopedValues#channel() channel}.

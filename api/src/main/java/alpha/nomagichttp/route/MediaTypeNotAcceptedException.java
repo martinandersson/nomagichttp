@@ -1,6 +1,5 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
@@ -18,7 +17,6 @@ import static java.util.stream.Collectors.joining;
  * (failed content negotiation).
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see ErrorHandler#BASE
  */
 public final class MediaTypeNotAcceptedException
              extends NoHandlerResolvedException

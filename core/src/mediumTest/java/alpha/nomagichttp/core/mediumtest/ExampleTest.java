@@ -446,7 +446,7 @@ final class ExampleTest extends AbstractRealTest
         
         /**
          * The happy version of
-         * {@link ErrorTest.Special#requestTrailersDiscarded_errorNotHandled()}.
+         * {@link ErrorTest.Special#requestTrailersDiscarded_exceptionNotHandled()}.
          */
         @Test
         @DisplayName("RequestTrailers/TestClient")

@@ -29,7 +29,7 @@ public final class ResponseRejectedException
          * The response status-code is 1XX, but the request failed to parse.<p>
          * 
          * The request processing chain was never invoked, because the request
-         * never parsed. And so, this reason indicates that an error handler
+         * never parsed. And so, this reason indicates that an exception handler
          * attempted to write an informational response, which is kind of weird.
          */
         CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED,

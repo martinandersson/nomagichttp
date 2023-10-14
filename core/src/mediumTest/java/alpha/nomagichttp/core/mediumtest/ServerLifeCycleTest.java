@@ -181,7 +181,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 stopServer(false);
                 assertThat(Duration.between(before, now()))
                     .isGreaterThanOrEqualTo(ofSeconds(1));
-                // TODO: Should assertThatNoWarningOrErrorIsLogged()
+                // TODO: Should assertThatNoWarningOrExceptionIsLogged()
             }
         }
     }

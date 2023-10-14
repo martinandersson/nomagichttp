@@ -2,7 +2,7 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.HasResponse;
 
 import static alpha.nomagichttp.message.Responses.badRequest;
@@ -20,7 +20,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>
  * @see HttpServer
- * @see ErrorHandler
+ * @see ExceptionHandler
  */
 public final class IllegalRequestBodyException
              extends RuntimeException implements HasResponse
