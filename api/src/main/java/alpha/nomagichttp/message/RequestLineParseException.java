@@ -1,5 +1,7 @@
 package alpha.nomagichttp.message;
 
+import java.io.Serial;
+
 /**
  * Parsing a request-line from a request head failed.
  * 
@@ -7,6 +9,7 @@ package alpha.nomagichttp.message;
  */
 public final class RequestLineParseException extends AbstractParseException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

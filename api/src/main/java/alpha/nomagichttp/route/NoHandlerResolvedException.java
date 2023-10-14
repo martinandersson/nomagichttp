@@ -1,10 +1,11 @@
 package alpha.nomagichttp.route;
 
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.handler.HasResponse;
+import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
 
+import java.io.Serial;
 import java.util.Collection;
 
 import static java.util.Objects.requireNonNull;
@@ -23,6 +24,7 @@ import static java.util.Objects.requireNonNull;
 public abstract class NoHandlerResolvedException
                 extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     private final String method;

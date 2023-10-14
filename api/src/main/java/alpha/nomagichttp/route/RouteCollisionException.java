@@ -1,5 +1,7 @@
 package alpha.nomagichttp.route;
 
+import java.io.Serial;
+
 /**
  * Thrown by {@link RouteRegistry} when an attempt is made to register a route
  * which is equivalent to an already registered route.
@@ -10,6 +12,7 @@ package alpha.nomagichttp.route;
  */
 public class RouteCollisionException extends RuntimeException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

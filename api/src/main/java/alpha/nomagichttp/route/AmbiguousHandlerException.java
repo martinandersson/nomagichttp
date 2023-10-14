@@ -6,6 +6,7 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
+import java.io.Serial;
 import java.util.Collection;
 import java.util.Set;
 
@@ -20,6 +21,7 @@ import static java.util.Collections.unmodifiableSet;
  */
 public final class AmbiguousHandlerException extends NoHandlerResolvedException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     private final transient Set<RequestHandler> ambiguous;

@@ -1,5 +1,7 @@
 package alpha.nomagichttp.message;
 
+import java.io.Serial;
+
 /**
  * Parsing headers from a request head or parsing request trailers failed.
  * 
@@ -7,6 +9,7 @@ package alpha.nomagichttp.message;
  */
 public final class HeaderParseException extends AbstractParseException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

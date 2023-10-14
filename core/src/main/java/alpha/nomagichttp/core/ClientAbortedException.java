@@ -2,6 +2,8 @@ package alpha.nomagichttp.core;
 
 import alpha.nomagichttp.handler.EndOfStreamException;
 
+import java.io.Serial;
+
 /**
  * Client shut down his output stream or closed the connection, without sending
  * any request bytes.<p>
@@ -11,6 +13,7 @@ import alpha.nomagichttp.handler.EndOfStreamException;
  */
 public final class ClientAbortedException extends RuntimeException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

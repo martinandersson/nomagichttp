@@ -4,6 +4,7 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
+import java.io.Serial;
 import java.util.Collection;
 
 import static alpha.nomagichttp.message.Responses.methodNotAllowed;
@@ -17,6 +18,7 @@ import static alpha.nomagichttp.message.Responses.methodNotAllowed;
  */
 public final class MethodNotAllowedException extends NoHandlerResolvedException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

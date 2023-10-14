@@ -4,6 +4,8 @@ import alpha.nomagichttp.handler.HasResponse;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
+import java.io.Serial;
+
 import static alpha.nomagichttp.message.Responses.notFound;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.StreamSupport.stream;
@@ -17,6 +19,7 @@ import static java.util.stream.StreamSupport.stream;
 public final class NoRouteFoundException
              extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     private final transient Iterable<String> segments;

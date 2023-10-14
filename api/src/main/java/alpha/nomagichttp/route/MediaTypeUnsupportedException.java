@@ -5,6 +5,7 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
+import java.io.Serial;
 import java.util.Collection;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
@@ -21,6 +22,7 @@ import static java.util.Objects.requireNonNull;
 public final class MediaTypeUnsupportedException
              extends NoHandlerResolvedException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     static MediaTypeUnsupportedException unmatchedContentType(

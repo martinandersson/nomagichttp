@@ -2,6 +2,8 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.handler.HasResponse;
 
+import java.io.Serial;
+
 import static alpha.nomagichttp.message.Responses.entityTooLarge;
 
 /**
@@ -17,6 +19,7 @@ public sealed abstract class AbstractSizeException
                   MaxRequestBodyBufferSizeException,
                   MaxRequestTrailersSizeException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     AbstractSizeException(int configuredMax) {

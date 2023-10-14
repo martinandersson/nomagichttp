@@ -3,6 +3,8 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.handler.HasResponse;
 
+import java.io.Serial;
+
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static java.util.Objects.requireNonNull;
 
@@ -15,6 +17,7 @@ import static java.util.Objects.requireNonNull;
 public final class HttpVersionParseException
              extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     private final String requestFieldValue;

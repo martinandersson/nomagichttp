@@ -4,6 +4,8 @@ import alpha.nomagichttp.ChannelWriter;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
+import java.io.Serial;
+
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.util.Objects.requireNonNull;
@@ -41,6 +43,7 @@ public final class ResponseRejectedException
         CLIENT_PROTOCOL_DOES_NOT_SUPPORT;
     }
     
+    @Serial
     private static final long serialVersionUID = 1L;
     
     private final transient Response rejected;

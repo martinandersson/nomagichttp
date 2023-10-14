@@ -3,6 +3,8 @@ package alpha.nomagichttp.handler;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
+import java.io.Serial;
+
 import static alpha.nomagichttp.message.Responses.badRequest;
 
 /**
@@ -20,6 +22,7 @@ import static alpha.nomagichttp.message.Responses.badRequest;
 public final class EndOfStreamException
              extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

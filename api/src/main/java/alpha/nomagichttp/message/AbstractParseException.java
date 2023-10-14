@@ -2,11 +2,14 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.handler.HasResponse;
 
+import java.io.Serial;
+
 import static alpha.nomagichttp.message.Responses.badRequest;
 
 abstract class AbstractParseException
          extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     private final byte prev, curr;

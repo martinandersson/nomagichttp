@@ -1,5 +1,6 @@
 package alpha.nomagichttp.util;
 
+import java.io.Serial;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
@@ -11,7 +12,9 @@ import java.util.concurrent.TimeUnit;
  * 
  * @see JvmPathLock#writeLock(Path, long, TimeUnit) 
  */
-public final class IllegalLockUpgradeException extends RuntimeException {
+public final class IllegalLockUpgradeException extends RuntimeException
+{
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

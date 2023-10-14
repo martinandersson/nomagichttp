@@ -5,6 +5,8 @@ import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.HasResponse;
 
+import java.io.Serial;
+
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static java.util.Objects.requireNonNull;
 
@@ -25,7 +27,9 @@ import static java.util.Objects.requireNonNull;
 public final class IllegalRequestBodyException
              extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
+    
     private final transient RawRequest.Head head;
     private final transient Request.Body body;
     

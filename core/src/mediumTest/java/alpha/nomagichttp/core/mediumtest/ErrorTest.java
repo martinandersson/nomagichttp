@@ -31,6 +31,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.IOException;
+import java.io.Serial;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
@@ -71,7 +72,7 @@ final class ErrorTest extends AbstractRealTest
         Throwing.Function<Request, Response, Exception> NOP = request -> null;
     
     private static final class OopsException extends RuntimeException {
-        private static final long serialVersionUID = 1L;
+        @Serial private static final long serialVersionUID = 1L;
         OopsException() { }
         OopsException(String msg) { super(msg); }
     }

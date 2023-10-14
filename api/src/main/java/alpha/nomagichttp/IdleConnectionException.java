@@ -4,6 +4,8 @@ import alpha.nomagichttp.handler.HasResponse;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
+import java.io.Serial;
+
 import static alpha.nomagichttp.message.Responses.requestTimeout;
 
 /**
@@ -18,7 +20,9 @@ import static alpha.nomagichttp.message.Responses.requestTimeout;
  * @see Config#timeoutIdleConnection()
  */
 public final class IdleConnectionException
-             extends RuntimeException implements HasResponse {
+             extends RuntimeException implements HasResponse
+{
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

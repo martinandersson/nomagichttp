@@ -5,6 +5,8 @@ import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.testutil.LogRecorder;
 import org.junit.jupiter.api.Test;
 
+import java.io.Serial;
+
 import static java.lang.System.Logger.Level.WARNING;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
@@ -18,8 +20,8 @@ final class ExceptionHandlerTest {
     @Test
     void weirdResponseFromExceptionClass() {
         class DumbException extends Exception implements HasResponse {
-            private static final long serialVersionUID = 1L;
-            public Response getResponse() {
+            @Serial private static final long serialVersionUID = 1L;
+            @Override public Response getResponse() {
                 return Responses.status(123, "Interim!");
             }
         }

@@ -4,6 +4,7 @@ import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
+import java.io.Serial;
 import java.util.Collection;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.ACCEPT;
@@ -21,6 +22,7 @@ import static java.util.stream.Collectors.joining;
 public final class MediaTypeNotAcceptedException
              extends NoHandlerResolvedException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     static MediaTypeNotAcceptedException unmatchedAccept(
