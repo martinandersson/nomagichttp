@@ -131,9 +131,9 @@ public interface Config
     int maxRequestTrailersSize();
     
     /**
-     * Returns the max number of consecutive responses sent to a client of
-     * classification 4XX (Client Error) and 5XX (Server Error) before closing
-     * the client channel.<p>
+     * Returns the max number of consecutive responses sent to a client with a
+     * status code classified as 4XX (Client Error) or 5XX (Server Error), before
+     * closing the client channel.<p>
      * 
      * Closing the channel after repeatedly unsuccessful exchanges increases
      * security.<p>

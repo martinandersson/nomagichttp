@@ -197,7 +197,7 @@ import java.util.function.IntConsumer;
 public interface HttpServer extends RouteRegistry, ActionRegistry
 {
     /**
-     * Create a server using {@linkplain Config#DEFAULT default
+     * Create a server using the {@linkplain Config#DEFAULT default
      * configuration}.<p>
      * 
      * The provided array of exception handlers will be copied as-is. The
@@ -317,7 +317,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @throws IllegalStateException
      *             if the server is already running
      * @throws IOException
-     *             if an I/O error occurs whilst binding the address
+     *             if an I/O error occurs while binding the address
      */
     Future<Void> startAsync() throws IOException;
     

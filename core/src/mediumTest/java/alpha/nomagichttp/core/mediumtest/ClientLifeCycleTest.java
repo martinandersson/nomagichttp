@@ -214,7 +214,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                              DEBUG, "Sent 400 (Bad Request)")
                          .assertContainsOnlyOnce(
                              DEBUG, "EOS, shutting down input stream.");
-            // No warnings or errors!
+            // No warnings nor errors!
             stopServer();
             logRecorder().assertContainsOnlyOnce(
                 DEBUG, "Saw \"Connection: close\", shutting down output.");

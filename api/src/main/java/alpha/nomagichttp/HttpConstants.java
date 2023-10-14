@@ -2751,7 +2751,7 @@ public final class HttpConstants {
          * 
          * May be used in both request and response.<p>
          * 
-         * Example: {@code Upgrade: h2c, HTTPS/1.3, IRC/6.9, RTA/x11, websocket}<p>
+         * Example: {@code Upgrade: h2c, HTTPS/1.3, IRC/6.9, RTA/x11, websocket}
          * 
          * @see StatusCode#ONE_HUNDRED_ONE
          * @see <a href="https://tools.ietf.org/html/rfc7230#section-6.7">RFC 7230 §6.7</a>

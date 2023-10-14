@@ -136,7 +136,7 @@ public interface HasResponse {
      * server's {@linkplain ExceptionHandler#BASE base handler} will respond
      * {@link Responses#teapot()}, if the response returned from this method has
      * a status code which is not in the 3XX (Redirection), 4XX (Client Error),
-     * nor 5XX (Server Error) series.
+     * nor 5XX (Server Error) category.
      * 
      * @apiNote
      * The "get" prefix is to be consistent with {@code Throwable}'s API design.
