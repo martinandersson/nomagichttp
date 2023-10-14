@@ -5,7 +5,7 @@ package alpha.nomagichttp.message;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public interface AttributeHolder {
+public interface HasAttributes {
     /**
      * Returns an attributes API bound to this object.
      * 
