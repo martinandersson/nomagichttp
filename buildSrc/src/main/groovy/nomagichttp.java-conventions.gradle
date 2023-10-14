@@ -91,7 +91,7 @@ def javadocAll = tasks.register('javadocAll', Javadoc) {
     }
     
     options.memberLevel = JavadocMemberLevel.PRIVATE
-    destinationDir = layout.buildDirectory.dir('/docs/javadoc-all').get().asFile
+    destinationDir = layout.buildDirectory.dir('docs/javadoc-all').get().asFile
     
     // Demodularize
     // (fixes "error: package com.blabla is not visible")

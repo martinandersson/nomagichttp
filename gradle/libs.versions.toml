@@ -3,7 +3,7 @@
 # Using latest versions as of 2023-10-14
 # Except
 #   Jetty, some compile issues going to v12.0.2
-#   Apache, deprecated some API going to v5.2.1 (but is only observed on Unix, not Windows!?)
+#   Apache, deprecated some API going to v5.2.1
 
 [versions]
 jdk     = '20'
