@@ -1,7 +1,7 @@
 package alpha.nomagichttp.event;
 
 /**
- * Holder of elapsed time and a count of bytes processed.
+ * Contains a count of bytes processed.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
