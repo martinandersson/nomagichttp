@@ -65,7 +65,7 @@ import static alpha.nomagichttp.HttpConstants.StatusCode;
  * @see RequestHandler
  * @see HttpServer
  */
-public interface Response extends HeaderHolder
+public interface Response extends HasHeaders
 {
     /**
      * Returns a {@code Response} builder.<p>

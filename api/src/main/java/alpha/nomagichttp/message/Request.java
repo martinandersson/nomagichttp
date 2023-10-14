@@ -86,7 +86,7 @@ import java.util.stream.Stream;
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3">RFC 7230 §3.3</a>
  */
-public interface Request extends HeaderHolder, AttributeHolder
+public interface Request extends HasHeaders, AttributeHolder
 {
     /**
      * Returns the request-line's method token.<p>

@@ -4,7 +4,7 @@ import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.ContentHeaders;
 import alpha.nomagichttp.message.DefaultContentHeaders;
-import alpha.nomagichttp.message.HeaderHolder;
+import alpha.nomagichttp.message.HasHeaders;
 import alpha.nomagichttp.testutil.IOFunction;
 import alpha.nomagichttp.testutil.IOSupplier;
 import alpha.nomagichttp.util.Streams;
@@ -974,7 +974,7 @@ public abstract class HttpClientFacade
      * 
      * @param <B> body type
      */
-    public static final class ResponseFacade<B> implements HeaderHolder {
+    public static final class ResponseFacade<B> implements HasHeaders {
         
         static <B> ResponseFacade<B> fromJDK(java.net.http.HttpResponse<? extends B> jdk) {
             return new ResponseFacade<>(

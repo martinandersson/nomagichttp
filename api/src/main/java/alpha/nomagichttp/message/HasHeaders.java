@@ -5,7 +5,7 @@ package alpha.nomagichttp.message;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public interface HeaderHolder {
+public interface HasHeaders {
     /**
      * Returns the HTTP headers.<p>
      * 

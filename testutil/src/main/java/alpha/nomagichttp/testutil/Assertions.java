@@ -1,7 +1,7 @@
 package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.message.BetterHeaders;
-import alpha.nomagichttp.message.HeaderHolder;
+import alpha.nomagichttp.message.HasHeaders;
 import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import alpha.nomagichttp.util.FileLockTimeoutException;
 import org.assertj.core.api.MapAssert;
@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.testutil.Headers.linkedHashMap;
 import static alpha.nomagichttp.util.Streams.stream;
@@ -33,16 +32,16 @@ public final class Assertions {
      * This method is equivalent to:
      * <pre>
      *   {@link #assertHeaders(BetterHeaders) assertHeaders
-     *   }(holder.{@link HeaderHolder#headers() headers}())
+     *   }(thing.{@link HasHeaders#headers() headers}())
      * </pre>
      * 
-     * @param holder to get headers from
+     * @param thing to get headers from
      * 
      * @return see JavaDoc
      */
     public static MapAssert<String, List<String>> assertHeaders(
-            HeaderHolder holder) {
-        return assertHeaders(holder.headers());
+            HasHeaders thing) {
+        return assertHeaders(thing.headers());
     }
     
     /**
