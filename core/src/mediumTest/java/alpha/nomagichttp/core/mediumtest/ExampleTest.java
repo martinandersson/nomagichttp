@@ -342,19 +342,15 @@ final class ExampleTest extends AbstractRealTest
                 "Done!");
         }
         
+        // Verified to work also on Curl
         @ParameterizedTest(name = OTHER)
         @EnumSource
         public void compatibility(HttpClientFacade.Implementation impl)
                 throws IOException, ExecutionException,
                        InterruptedException, TimeoutException
         {
-            // Checking a Set instead of "impl != APACHE" for the type system.
-            // Rather have a static trace of failed clients instead of
-            // successful ones (see the next comment).
-            if (EnumSet.of(OKHTTP, JETTY, REACTOR).contains(impl)) {
-                // Only JDK, Apache and Curl will pass this test lol.
-                // 
-                // OkHttp and Jetty yields an empty body ("").
+            if (EnumSet.of(OKHTTP, REACTOR).contains(impl)) {
+                // OkHttp throws "IllegalStateException: state: 3"
                 // 
                 // Reactor does what Reactor does best; crashes with a
                 // NullPointerException.
