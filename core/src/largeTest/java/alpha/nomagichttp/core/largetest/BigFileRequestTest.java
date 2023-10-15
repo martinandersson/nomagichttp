@@ -165,17 +165,6 @@ final class BigFileRequestTest extends AbstractLargeRealTest
                        InterruptedException, TimeoutException
         {
             assumeTrue(saved);
-            assumeClientCanReceiveBigFile(impl);
-            HttpClientFacade.ResponseFacade<byte[]> rsp
-                    = impl.create(serverPort()).getBytes("/file", HTTP_1_1);
-            assertThat(rsp.version()).isEqualTo("HTTP/1.1");
-            assertThat(rsp.statusCode()).isEqualTo(200);
-            assertThat(rsp.body()).isEqualTo(contents);
-        }
-        
-        private static void assumeClientCanReceiveBigFile(
-                HttpClientFacade.Implementation impl)
-        {
             if (impl == JETTY) {
                 // Jetty has some kind of internal capacity buffer constraint.
                 //   java.lang.IllegalArgumentException: Buffering capacity 2097152 exceeded
@@ -185,6 +174,11 @@ final class BigFileRequestTest extends AbstractLargeRealTest
                 // when all others work.
                 throw new TestAbortedException();
             }
+            HttpClientFacade.ResponseFacade<byte[]> rsp
+                    = impl.create(serverPort()).getBytes("/file", HTTP_1_1);
+            assertThat(rsp.version()).isEqualTo("HTTP/1.1");
+            assertThat(rsp.statusCode()).isEqualTo(200);
+            assertThat(rsp.body()).isEqualTo(contents);
         }
     }
 }
