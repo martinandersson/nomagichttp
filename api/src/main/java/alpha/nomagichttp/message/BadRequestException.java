@@ -1,6 +1,10 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.HasResponse;
+
+import java.io.Serial;
+
+import static alpha.nomagichttp.message.Responses.badRequest;
 
 /**
  * A generic exception to reject a bad request.<p>
@@ -11,13 +15,12 @@ import alpha.nomagichttp.handler.ErrorHandler;
  *   <li>Transfer-Encoding contains multiple "chunked" tokens.</li>
  * </ul>
  * 
- * The {@link ErrorHandler#BASE base error handler} translates this
- * exception to a 400 (Bad Request) response.
- * 
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3">RFC 7230 §3.3.3 paragraph 3</a>
  */
-public class BadRequestException extends RuntimeException
+public final class BadRequestException
+             extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**
@@ -27,5 +30,15 @@ public class BadRequestException extends RuntimeException
      */
     public BadRequestException(String message) {
         super(message);
+    }
+    
+    /**
+     * Returns {@link Responses#badRequest()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return badRequest();
     }
 }

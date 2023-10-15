@@ -47,12 +47,14 @@ dependencies {
     implementation('com.github.martinandersson:nomagichttp:master-SNAPSHOT')
 }
 
+// Some extra sauce needed while virtual threads are a preview feature
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += '--enable-preview'
+}
+
 application {
     mainClass = 'Greeter'
-    // This is for the server implementation to work
-    applicationDefaultJvmArgs = [
-        '--enable-preview',
-        '--add-modules', 'jdk.incubator.concurrent']
+    applicationDefaultJvmArgs += '--enable-preview'
 }
 ```
 
@@ -73,14 +75,13 @@ class Greeter {
     }
 }
 ```
-
-Make sure you are using at least Gradle 8.2 and Java 20, then start the server:
+  
+Make sure you are using at least Java 21, then start the server:
 
 ```console
 foo@bar:projectfolder$ gradle run
 > Task :run
-WARNING: Using incubator modules: jdk.incubator.concurrent
-Jul 15, 2023 5:40:03 PM alpha.nomagichttp.core.DefaultServer lambda$openOrFail$8
+Oct 15, 2023 11:30:13 AM alpha.nomagichttp.core.DefaultServer lambda$openOrFail$8
 INFO: Opened server channel: sun.nio.ch.ServerSocketChannelImpl[/[0:0:0:0:0:0:0:0]:8080]
 <=========----> 75% EXECUTING [1s]
 > :run

@@ -3,26 +3,28 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.HasResponse;
 
+import java.io.Serial;
+
+import static alpha.nomagichttp.message.Responses.upgradeRequired;
 import static java.util.Objects.requireNonNull;
 
 /**
  * Thrown by the server if the request HTTP version is not supported, because it
  * is too old.<p>
  * 
- * Any HTTP version below 1.0 is too old.<p>
- * 
- * The {@link ErrorHandler#BASE base error handler} will translate this
- * exception to a {@link Responses#upgradeRequired(String) 426 Upgrade Required}.
+ * Any HTTP version below 1.0 is too old.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see HttpServer
  * @see Config#minHttpVersion()
  */
-public class HttpVersionTooOldException extends RuntimeException
+public final class HttpVersionTooOldException
+             extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     private final String version, upgrade;
@@ -63,7 +65,7 @@ public class HttpVersionTooOldException extends RuntimeException
      * 
      * @return the rejected version (never {@code null})
      */
-    public final String getVersion() {
+    public String getVersion() {
         return version;
     }
     
@@ -77,5 +79,16 @@ public class HttpVersionTooOldException extends RuntimeException
      */
     public String getUpgrade() {
         return upgrade;
+    }
+    
+    /**
+     * Returns {@link Responses#upgradeRequired(String)} with
+     * {@link #getUpgrade()} as argument.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return upgradeRequired(getUpgrade());
     }
 }

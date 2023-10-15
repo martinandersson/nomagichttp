@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 import static java.util.Objects.requireNonNull;
 
 /**
- * An API for storing and accessing objects associated with a holder.<p>
+ * An API for storing and accessing objects.<p>
  * 
  * {@snippet :
  *   request.attributes().set("my.stuff", new MyClass());
@@ -15,8 +15,8 @@ import static java.util.Objects.requireNonNull;
  *   MyClass obj = request.attributes().getAny("my.stuff");
  * }
  * 
- * The implementation is thread-safe and never replaced throughout the life of
- * the header holder.<p>
+ * The implementation is thread-safe and is never replaced throughout the life
+ * of whichever object carries the attributes.<p>
  * 
  * The NoMagicHTTP library reserves the right to use the namespace
  * "alpha.nomagichttp.*" exclusively. Applications are encouraged to avoid

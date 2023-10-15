@@ -2,6 +2,8 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.Config;
 
+import java.io.Serial;
+
 /**
  * Thrown by the server if the size of request trailers exceeds the configured
  * tolerance.
@@ -12,6 +14,7 @@ import alpha.nomagichttp.Config;
  */
 public final class MaxRequestTrailersSizeException extends AbstractSizeException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

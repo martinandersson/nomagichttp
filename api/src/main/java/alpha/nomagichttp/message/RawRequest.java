@@ -22,7 +22,7 @@ public final class RawRequest
      * @param headers the request headers
      */
     public record Head(RawRequest.Line line, Request.Headers headers)
-           implements HeaderHolder {
+           implements HasHeaders {
         // Empty
     }
     

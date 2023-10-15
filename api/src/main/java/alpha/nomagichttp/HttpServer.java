@@ -9,20 +9,16 @@ import alpha.nomagichttp.event.HttpServerStarted;
 import alpha.nomagichttp.event.HttpServerStopped;
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.event.ResponseSent;
-import alpha.nomagichttp.event.ScatteringEventEmitter;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.route.RouteRegistry;
 import alpha.nomagichttp.util.ScopedValues;
-import alpha.nomagichttp.util.Throwing;
-import jdk.incubator.concurrent.StructuredTaskScope;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -35,6 +31,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ServiceLoader;
 import java.util.concurrent.Future;
+import java.util.concurrent.StructuredTaskScope;
 import java.util.function.IntConsumer;
 
 /**
@@ -58,7 +55,7 @@ import java.util.function.IntConsumer;
  * A trivial example:<p>
  * 
  * {@snippet :
- *   // @link substring="create" target="#create(ErrorHandler...)" region
+ *   // @link substring="create" target="#create(ExceptionHandler...)" region
  *   // @link substring="add" target="#add(String, RequestHandler, RequestHandler...)" region
  *   // @link substring="GET" target="RequestHandler#GET()" region
  *   // @link substring="apply" target="RequestHandler.Builder#apply(Throwing.Function)" region
@@ -81,8 +78,11 @@ import java.util.function.IntConsumer;
  * {@link BeforeAction}s that executes before the request handler (both together
  * often called the "request processing chain"), and {@link AfterAction}s that
  * can manipulate responses before they are sent. Exceptions can be handled
- * server-globally using any number of {@link ErrorHandler}s. And there you have
- * it, that's about all the types one needs to get familiar with. No magic.
+ * server-globally using any number of {@link ExceptionHandler}s (often called
+ * the "exception processing chain").<p>
+ * 
+ * And there you have it, that's about all the types one needs to get familiar
+ * with. No magic.
  * 
  * <h2>Server Life-Cycle</h2>
  * 
@@ -197,42 +197,42 @@ import java.util.function.IntConsumer;
 public interface HttpServer extends RouteRegistry, ActionRegistry
 {
     /**
-     * Create a server using {@linkplain Config#DEFAULT default
+     * Create a server using the {@linkplain Config#DEFAULT default
      * configuration}.<p>
      * 
-     * The provided array of error handlers will be copied as-is. The
+     * The provided array of exception handlers will be copied as-is. The
      * application should make sure that the array does not contain duplicates,
-     * unless for some bizarre reason it is desired to have an error handler
+     * unless for some bizarre reason it is desired to have an exception handler
      * called multiple times.
      * 
-     * @param eh error handler(s)
+     * @param eh exception handler(s)
      * 
      * @return an HTTP server instance
      * 
      * @throws NullPointerException
      *             if {@code eh} or an element therein is {@code null}
      */
-    static HttpServer create(ErrorHandler... eh) {
+    static HttpServer create(ExceptionHandler... eh) {
         return create(Config.DEFAULT, eh);
     }
     
     /**
      * Creates a server.<p>
      * 
-     * The provided array of error handlers will be copied as-is. The
+     * The provided array of exception handlers will be copied as-is. The
      * application should make sure that the array does not contain duplicates,
-     * unless for some bizarre reason it is desired to have an error handler
-     * called multiple times for the same error.
+     * unless for some bizarre reason it is desired to have an exception handler
+     * called multiple times for the same exception.
      * 
      * @param config of server
-     * @param eh     error handler(s)
+     * @param eh     exception handler(s)
      * 
      * @return an HTTP server instance
      * 
      * @throws NullPointerException
      *             if an argument or array element is {@code null}
      */
-    static HttpServer create(Config config, ErrorHandler... eh) {
+    static HttpServer create(Config config, ExceptionHandler... eh) {
         var loader = ServiceLoader.load(HttpServerFactory.class);
         var factories = loader.stream().toList();
         if (factories.size() != 1) {
@@ -317,7 +317,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @throws IllegalStateException
      *             if the server is already running
      * @throws IOException
-     *             if an I/O error occurs whilst binding the address
+     *             if an I/O error occurs while binding the address
      */
     Future<Void> startAsync() throws IOException;
     

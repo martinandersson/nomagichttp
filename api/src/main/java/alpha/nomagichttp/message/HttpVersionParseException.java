@@ -1,21 +1,23 @@
 package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.HasResponse;
 
+import java.io.Serial;
+
+import static alpha.nomagichttp.message.Responses.badRequest;
 import static java.util.Objects.requireNonNull;
 
 /**
  * Thrown by the server if the HTTP-version field in the request head could not
- * be parsed into a {@link HttpConstants.Version} object.<p>
- * 
- * The {@link ErrorHandler#BASE base error handler} will translate this
- * exception to a {@link Responses#badRequest() 400 Bad Request}.
+ * be parsed into a {@link HttpConstants.Version} object.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class HttpVersionParseException extends RuntimeException
+public final class HttpVersionParseException
+             extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     private final String requestFieldValue;
@@ -52,7 +54,17 @@ public class HttpVersionParseException extends RuntimeException
      * 
      * @return the HTTP-version field value from the request (never {@code null})
      */
-    public final String getRequestFieldValue() {
+    public String getRequestFieldValue() {
         return requestFieldValue;
+    }
+
+    /**
+     * Returns {@link Responses#badRequest()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return badRequest();
     }
 }

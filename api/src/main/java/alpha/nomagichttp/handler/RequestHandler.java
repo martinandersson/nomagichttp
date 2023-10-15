@@ -1,24 +1,17 @@
 package alpha.nomagichttp.handler;
 
-import alpha.nomagichttp.ChannelWriter;
 import alpha.nomagichttp.HttpConstants;
-import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.event.EventEmitter;
 import alpha.nomagichttp.event.ResponseSent;
-import alpha.nomagichttp.message.Attributes;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.AmbiguousHandlerException;
 import alpha.nomagichttp.route.HandlerCollisionException;
 import alpha.nomagichttp.route.NoHandlerResolvedException;
 import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.ScopedValues;
 import alpha.nomagichttp.util.Throwing;
-
-import java.util.function.BiConsumer;
 
 import static alpha.nomagichttp.message.MediaType.ALL;
 import static alpha.nomagichttp.message.MediaType.NOTHING;
@@ -333,7 +326,7 @@ import static alpha.nomagichttp.message.MediaType.parse;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see ErrorHandler
+ * @see ExceptionHandler
  */
 public interface RequestHandler extends Throwing.Function<Request, Response, Exception>
 {

@@ -84,7 +84,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                       .isEmpty();
                 logRecorder().assertAwaitRemove(
                       WARNING,
-                      "Output stream is not open, can not handle this error.",
+                      "Output stream is not open, can not handle this exception.",
                       // This I can't really explain. lol?
                       streamOnly ?
                           AsynchronousCloseException.class :
@@ -98,13 +98,13 @@ final class ClientLifeCycleTest extends AbstractRealTest
                     assertAwaitClosingChild();
                 } // Else no reason for DefaultServer.handleChild to call close (again)
             }
-            // Implicit assert that no error was delivered to the error handler
+            // Implicit assert that no exception was delivered to the exception handler
         }
     }
     
     @Nested
     class UnexpectedEndFromClient {
-        // Client immediately closes the channel; no error handler and no warning
+        // Client immediately closes the channel; no exception handler and no warning
         @Test
         void serverReceivedNoBytes() throws IOException, InterruptedException {
             server();
@@ -129,7 +129,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
             server();
             client()
                 .write("XXX /incomplete");
-            assertThat(pollServerError())
+            assertThat(pollServerException())
                 .hasToString("""
                     RequestLineParseException{\
                     prev=(hex:0x65, decimal:101, char:"e"), \
@@ -177,7 +177,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                 assertThat(consumed).containsExactly((byte) '1');
                 assertThat(observed).isEmpty();
                 // EOS was provided to the base handler
-                assertThat(thr).isSameAs(pollServerError());
+                assertThat(thr).isSameAs(pollServerException());
                 assertThat(thr)
                     .isExactlyInstanceOf(EndOfStreamException.class)
                     .hasNoCause()
@@ -186,7 +186,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
             }
         }
         
-        // Broken pipe ends the exchange, no error handling no logging
+        // Broken pipe ends the exchange, no exception handler no logging
         @Test
         void brokenPipe() throws InterruptedException, IOException {
             // It would be weird if one could use an API to cause a broken pipe.
@@ -214,7 +214,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                              DEBUG, "Sent 400 (Bad Request)")
                          .assertContainsOnlyOnce(
                              DEBUG, "EOS, shutting down input stream.");
-            // No warnings or errors!
+            // No warnings nor errors!
             stopServer();
             logRecorder().assertContainsOnlyOnce(
                 DEBUG, "Saw \"Connection: close\", shutting down output.");

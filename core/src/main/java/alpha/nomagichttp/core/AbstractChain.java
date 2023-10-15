@@ -2,16 +2,15 @@ package alpha.nomagichttp.core;
 
 import alpha.nomagichttp.Chain;
 import alpha.nomagichttp.message.Response;
-import jdk.incubator.concurrent.ScopedValue;
 
 import java.util.Collection;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Set;
 
+import static java.lang.ScopedValue.callWhere;
+import static java.lang.ScopedValue.newInstance;
 import static java.util.Collections.newSetFromMap;
-import static jdk.incubator.concurrent.ScopedValue.newInstance;
-import static jdk.incubator.concurrent.ScopedValue.where;
 
 /**
  * Provides {@code Chain.proceed} verification.<p>
@@ -54,7 +53,7 @@ abstract class AbstractChain<E>
             return callFinalHandler();
         } else {
             var e = entities.next();
-            return where(ENTITY_RUNNING, e, () ->
+            return callWhere(ENTITY_RUNNING, e, () ->
                     // Recursive
                     callIntermittentHandler(e, () -> proceed0(true)));
         }

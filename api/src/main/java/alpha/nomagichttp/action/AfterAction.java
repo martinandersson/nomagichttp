@@ -32,15 +32,15 @@ import java.util.function.BiFunction;
  * }
  * 
  * An after-action must never throw an exception. It wouldn't make sense to run
- * such an error though the error handlers as doing so would be subject to a
- * never-ending loop.<p>
+ * such an exception though the exception processing chain as doing so would be
+ * subject to a never-ending loop.<p>
  * 
  * Returning {@code null} is the same as throwing a {@code
  * NullPointerException}.<p>
  * 
  * Similar to {@link BeforeAction}, the after-action is only called for
  * responses responding to a valid request. For example, if a request head fails
- * to parse and the error handler writes an alternative response, for that
+ * to parse and the exception handler writes an alternative response, for that
  * response instance no after action will be called. Both arguments provided to
  * the after-action will never be {@code null}.<p>
  * 

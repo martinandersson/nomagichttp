@@ -1,16 +1,14 @@
 package alpha.nomagichttp.util;
 
-import alpha.nomagichttp.handler.ErrorHandler;
+import java.io.Serial;
 
 /**
  * Thrown by {@link JvmPathLock} if a read or write lock is not acquired within
- * a specified time frame.<p>
- * 
- * Is translated by the server's
- * {@linkplain ErrorHandler#BASE base error handler} to
- * 500 (Internal Server Error).
+ * a specified time frame.
  */
-public final class FileLockTimeoutException extends Exception {
+public final class FileLockTimeoutException extends Exception
+{
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

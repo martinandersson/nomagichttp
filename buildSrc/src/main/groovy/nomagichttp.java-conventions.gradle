@@ -52,7 +52,7 @@ tasks.withType(JavaCompile).configureEach {
         // Talk more
         '-Xdiags:verbose')
         // Fail on warnings
-        // TEMP: Not while using jdk.incubator.concurrent
+        // TEMP: Not while using preview features
         //'-Werror')
 }
 
@@ -91,7 +91,7 @@ def javadocAll = tasks.register('javadocAll', Javadoc) {
     }
     
     options.memberLevel = JavadocMemberLevel.PRIVATE
-    destinationDir = file("$buildDir/docs/javadoc-all")
+    destinationDir = layout.buildDirectory.dir('docs/javadoc-all').get().asFile
     
     // Demodularize
     // (fixes "error: package com.blabla is not visible")
@@ -122,8 +122,7 @@ tasks.withType(Javadoc).configureEach {
         // https://stackoverflow.com/a/49544352/1268003
         // https://github.com/gradle/gradle/issues/2354#issuecomment-364857181
         addBooleanOption('Xdoclint:all,-missing', true)
-        // TEMP: Commented out while using incubator
-        //addBooleanOption('Werror', true)
+        addBooleanOption('Werror', true)
         
         // Text to be injected as overview
         overview = 'src/main/java/overview.html'
@@ -149,22 +148,19 @@ tasks.named('assemble') {
 
 
 
-// ---- TEMPORARY while using preview features and incubator ----
+// ---- TEMPORARY: preview features ----
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.addAll(
-        '--enable-preview',
-        '--add-modules', 'jdk.incubator.concurrent')
+        '--enable-preview')
 }
 tasks.withType(Test).configureEach {
     jvmArgs(
-        '--enable-preview',
-        '--add-modules', 'jdk.incubator.concurrent')
+        '--enable-preview')
 }
 tasks.withType(Javadoc).configureEach {
     options {
         addBooleanOption('-enable-preview', true)
         addStringOption('-release', libs.versions.jdk.get())
-        addStringOption('-add-modules', 'jdk.incubator.concurrent')
     }
 }
-// --------------------------------------------------------------
+// -------------------------------------

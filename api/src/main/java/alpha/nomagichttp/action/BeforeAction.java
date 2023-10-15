@@ -3,7 +3,7 @@ package alpha.nomagichttp.action;
 import alpha.nomagichttp.Chain;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.event.RequestHeadReceived;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.Throwing;
@@ -13,15 +13,15 @@ import alpha.nomagichttp.util.Throwing;
  * 
  * The action is executed in-between a valid request head has been received and
  * the server attempts at resolving the request handler. The action may decide
- * to proceed the request processing chain or return a response directly.<p>
+ * to proceed the request processing chain or return a response itself.<p>
  * 
  * Before-actions are useful to implement cross-cutting concerns such as
  * authentication, rate-limiting, collecting metrics, fault tolerance (retry,
  * circuit breaker ...), and so on.<p>
  * 
  * Although a before-action can be used to handle exceptions — and for well
- * defined route patterns this is certainly an option — the {@link ErrorHandler}
- * is what should be used for global errors.<p>
+ * defined route patterns this is certainly an option — the
+ * {@link ExceptionHandler} is what should be used for global problems.<p>
  * 
  * {@snippet :
  *   BeforeAction giveRole = (request, chain) -> {
@@ -40,11 +40,11 @@ import alpha.nomagichttp.util.Throwing;
  * 
  * TODO: Give example.<p>
  * 
- * Word of caution: Error handlers are executed outside the lexical scope of the
- * request processing chain. And so, for the previous example, this means that
- * the error handlers will not be able to observe the bound value. They will,
- * however, be able to read request attributes (assuming the request exists at
- * that point in time).<p>
+ * Word of caution: An exception handler is executed outside the lexical scope
+ * of the request processing chain. And so, for the previous example, this means
+ * that the handler will not be able to observe the bound value. The handler
+ * will, however, be able to read request attributes (assuming the request
+ * exists at that point in time).<p>
  * 
  * An action is known on other corners of the internet as a "filter", although
  * the NoMagicHTTP library has avoided this naming convention due to the fact
@@ -68,11 +68,11 @@ import alpha.nomagichttp.util.Throwing;
  *   server.before("/admin/*", onlyAdminsAllowed);
  * }
  * 
- * An exception thrown from the before-action will be handed off to the error
- * handlers. This is a variant of the previous example:<p>
+ * An exception thrown from the before-action will be handed off to the
+ * exception processing chain. This is a variant of the previous example:<p>
  * 
  * {@snippet :
- *   ErrorHandler hideResource = (exc, chain, request) -> {
+ *   ExceptionHandler hideResource = (exc, chain, request) -> {
  *       if (exc instanceof MySuspiciousRequestException) {
  *           // Set "Connection: close" header
  *           // @link substring="tryAddConnectionClose" target="ClientChannel#tryAddConnectionClose(Response)" :

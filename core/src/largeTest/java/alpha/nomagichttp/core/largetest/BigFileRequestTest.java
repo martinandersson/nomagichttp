@@ -29,10 +29,6 @@ import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static alpha.nomagichttp.testutil.functional.Constants.OTHER;
 import static alpha.nomagichttp.testutil.functional.Constants.TEST_CLIENT;
-import static alpha.nomagichttp.testutil.functional.Environment.isGitHubActions;
-import static alpha.nomagichttp.testutil.functional.Environment.isJitPack;
-import static alpha.nomagichttp.testutil.functional.Environment.isLinux;
-import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.APACHE;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.JETTY;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.REACTOR;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofFile;
@@ -169,17 +165,6 @@ final class BigFileRequestTest extends AbstractLargeRealTest
                        InterruptedException, TimeoutException
         {
             assumeTrue(saved);
-            assumeClientCanReceiveBigFile(impl);
-            HttpClientFacade.ResponseFacade<byte[]> rsp
-                    = impl.create(serverPort()).getBytes("/file", HTTP_1_1);
-            assertThat(rsp.version()).isEqualTo("HTTP/1.1");
-            assertThat(rsp.statusCode()).isEqualTo(200);
-            assertThat(rsp.body()).isEqualTo(contents);
-        }
-        
-        private static void assumeClientCanReceiveBigFile(
-                HttpClientFacade.Implementation impl)
-        {
             if (impl == JETTY) {
                 // Jetty has some kind of internal capacity buffer constraint.
                 //   java.lang.IllegalArgumentException: Buffering capacity 2097152 exceeded
@@ -189,24 +174,11 @@ final class BigFileRequestTest extends AbstractLargeRealTest
                 // when all others work.
                 throw new TestAbortedException();
             }
-            if (impl == APACHE &&
-                // On local Windows WSLs Ubuntu using Java 11+, Apache completes
-                // just fine in about half a second, as do all other clients, well,
-                // except for Reactor of course which takes about 6 seconds (!).
-                // On GitHub Actions + Ubuntu, Apache sometimes times out (after
-                // 5 seconds), sometimes throw OutOfMemoryError. I suspect a small
-                // heap space combined with a not so diligent Apache implementation
-                // possibly facing a Java bug. Regardless, pretty clear it's an
-                // exceptional situation and so excluded here.
-                (isGitHubActions() && isLinux()) ||
-                // Well, turns out JitPack is having the same issue. Not sure what
-                // OS they are running, but should be Linux lol (JitPack is notoriously
-                // under-documented).
-                isJitPack())
-                // TODO: Over time, try updated Apache versions
-            {
-                throw new TestAbortedException();
-            }
+            HttpClientFacade.ResponseFacade<byte[]> rsp
+                    = impl.create(serverPort()).getBytes("/file", HTTP_1_1);
+            assertThat(rsp.version()).isEqualTo("HTTP/1.1");
+            assertThat(rsp.statusCode()).isEqualTo(200);
+            assertThat(rsp.body()).isEqualTo(contents);
         }
     }
 }

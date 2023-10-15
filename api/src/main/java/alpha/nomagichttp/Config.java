@@ -2,7 +2,7 @@ package alpha.nomagichttp;
 
 import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.handler.ClientChannel;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
@@ -131,9 +131,9 @@ public interface Config
     int maxRequestTrailersSize();
     
     /**
-     * Returns the max number of consecutive responses sent to a client of
-     * classification 4XX (Client Error) and 5XX (Server Error) before closing
-     * the client channel.<p>
+     * Returns the max number of consecutive responses sent to a client with a
+     * status code classified as 4XX (Client Error) or 5XX (Server Error), before
+     * closing the client channel.<p>
      * 
      * Closing the channel after repeatedly unsuccessful exchanges increases
      * security.<p>
@@ -295,18 +295,20 @@ public interface Config
      * This works in the following way: As with any HTTP method, if the route
      * exists but the method implementation is missing, a {@link
      * MethodNotAllowedException} is thrown which may eventually reach the
-     * {@linkplain ErrorHandler#BASE base error handler}. This handler in turn
-     * will - if this configuration is enabled - respond a <i>successful</i> 204
-     * (No Content). Had this configuration not been enabled, the response would
-     * have been a <i>client error</i> 405 (Method Not Allowed). In both cases,
-     * the {@value HttpConstants.HeaderName#ALLOW} header will be set and
-     * populated with all the HTTP methods that are implemented. So there's
-     * really no other difference between the two outcomes, other than the
-     * status code.<p>
+     * {@linkplain ExceptionHandler#BASE base exception handler}. This handler
+     * in turn will - if this configuration is enabled - respond a
+     * <i>successful</i> 204 (No Content). Had this configuration not been
+     * enabled, the response would have been a <i>client error</i> 405
+     * (Method Not Allowed).<p>
+     * 
+     * In both cases, the {@value HttpConstants.HeaderName#ALLOW} header will be
+     * set and populated with all the HTTP methods that are implemented. So
+     * there's really no other difference between the two outcomes, other than
+     * the status code.<p>
      * 
      * With or without this configuration enabled, the application can easily
      * add its own {@code OPTIONS} implementation to the route or override the
-     * base error handler.
+     * base exception handler.
      * 
      * @return see JavaDoc
      */

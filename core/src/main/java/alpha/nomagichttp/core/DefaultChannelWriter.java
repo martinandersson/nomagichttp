@@ -194,7 +194,7 @@ final class DefaultChannelWriter implements ChannelWriter
         if (reqVer == null) {
             throw new ResponseRejectedException(
                     r, CLIENT_PROTOCOL_UNKNOWN_BUT_NEEDED, """
-                    The error handler should not be sending 1XX (Informational).""");
+                    The exception handler should not be sending 1XX (Informational).""");
         }
         return discard1XXInfo(r, reqVer) || ignoreRepeated100Continue(r);
     }

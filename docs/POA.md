@@ -140,7 +140,7 @@ Implemented), which is wrong.~~
   was found given the HTTP method, which is translated to 405 (Method Not
   Allowed). Response should have the "Allow: " header set and populated with the
   route's supported methods.~~
-  - ~~If the original request was `OPTIONS`, then the default error handler
+  - ~~If the original request was `OPTIONS`, then the default exception handler
     returns a `204 (No Content)` response with the "Allow" header set. May be
     disabled in configuration, `config.implementMissingOptions()`. Handler also
     populates the list of values with "OPTIONS" if not already set.~~
@@ -337,7 +337,7 @@ example, a pre action doing authentication can be scoped to "/admin".~~
     because there might never have been a request handler to start with.~~
   - ~~Will not be called for responses not sent, for example a skipped 100
     (Continue).~~
-  - ~~They execute _after_ error handling.~~
+  - ~~They execute _after_ exception handling.~~
 
 ### ~~Signature~~
 
@@ -356,7 +356,7 @@ example, a pre action doing authentication can be scoped to "/admin".~~
     action and then delegate the exchange to the rest of the call chain.~~
   - ~~Still legal for the action to respond an interim response, but action must
     also make sure to finalize that response. Docs must be clear on this.~~
-- ~~May return exceptionally, subject to standard error handling.~~
+- ~~May return exceptionally, subject to standard exception handling.~~
 
   .
 
@@ -369,10 +369,10 @@ example, a pre action doing authentication can be scoped to "/admin".~~
 - ~~Action can template a new response given the provided argument or build a
   completely new one from scratch.~~
 - ~~Action should never return exceptionally.~~
-  - ~~Action's run _after_ error handling; there's semantically speaking no
-    error handling infrastructure in place for post actions. Post actions _are_
-    the last pieces of code which may impose an opinion on the response.~~
-  - ~~Rolling back the exchange progress to error handling would risk putting
+  - ~~Action's run _after_ exception handling; there's semantically speaking no
+    exception handling infrastructure in place for post actions. Post actions
+    _are_ the last pieces of code which may impose an opinion on the response.~~
+  - ~~Rolling back the exchange progress to exception handling would risk putting
     the request thread in an infinite loop if the same post action repeatedly
     keeps throwing the same exception.~~
   - ~~If the post action does throw an exception (or return `null`), the server
@@ -724,7 +724,7 @@ automate these responses, which is the purpose of the work outlined here.
   The handler
   - crashes the request if file path is not a readable file.
   - may likely wrap `IOException` in `UncheckedIOException` - subject to
-    unwrapping in error handling?
+    unwrapping in exception handling?
   - must be able to serve byte ranges.
 - `FileServeConfig` contains configuration for serving pre-compressed files,
   generating ETag validator, evaluating conditional requests and produce
@@ -858,7 +858,7 @@ the timeout configuration can be quite lenient and forgiving.~~
   `DecodedPayload self = req.body().cache(int maxSize);`  
   Useful if a pre action wants to inspect the body and still leave it consumable
   by a request handler, or a request handler would like to leave the body
-  consumable for an error handler, and so on.
+  consumable for an exception handler, and so on.
 - Provide localization examples
   - Endpoint for setting language in session (`PUT /settings?lang=en`)
   - Dynamic segment (`https://en.example.com/page`,

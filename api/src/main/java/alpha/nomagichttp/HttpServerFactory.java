@@ -1,6 +1,6 @@
 package alpha.nomagichttp;
 
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 
 /**
  * Factory of {@code HttpServer}.<p>
@@ -15,16 +15,16 @@ public interface HttpServerFactory {
      * Creates the server.<p>
      * 
      * This method is used by the static method
-     * {@link HttpServer#create(Config, ErrorHandler...) HttpServer.create()} to
-     * create the server instance.
+     * {@link HttpServer#create(Config, ExceptionHandler...) HttpServer.create()}
+     * to create the server instance.
      * 
      * @param config of server
-     * @param eh     error handler(s)
+     * @param eh     exception handler(s)
      * 
      * @return an HTTP server instance
      * 
      * @throws NullPointerException
      *             if an argument or array element is {@code null}
      */
-    HttpServer create(Config config, ErrorHandler... eh);
+    HttpServer create(Config config, ExceptionHandler... eh);
 }

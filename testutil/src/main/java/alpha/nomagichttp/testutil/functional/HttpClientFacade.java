@@ -4,7 +4,7 @@ import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.message.BetterHeaders;
 import alpha.nomagichttp.message.ContentHeaders;
 import alpha.nomagichttp.message.DefaultContentHeaders;
-import alpha.nomagichttp.message.HeaderHolder;
+import alpha.nomagichttp.message.HasHeaders;
 import alpha.nomagichttp.testutil.IOFunction;
 import alpha.nomagichttp.testutil.IOSupplier;
 import alpha.nomagichttp.util.Streams;
@@ -29,10 +29,11 @@ import org.apache.hc.core5.http.ProtocolVersion;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.InputStreamEntity;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.eclipse.jetty.client.api.ContentResponse;
-import org.eclipse.jetty.client.util.BytesRequestContent;
-import org.eclipse.jetty.client.util.InputStreamRequestContent;
-import org.eclipse.jetty.client.util.StringRequestContent;
+import org.eclipse.jetty.client.BytesRequestContent;
+import org.eclipse.jetty.client.ContentResponse;
+import org.eclipse.jetty.client.InputStreamRequestContent;
+import org.eclipse.jetty.client.StringRequestContent;
+import org.eclipse.jetty.http.HttpField;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufFlux;
@@ -135,6 +136,29 @@ import static org.assertj.core.api.Assertions.assertThat;
  * specifically a client implementation supports is not always clear lol. The
  * argument will be passed forward to the client who may then blow up with
  * another exception.<p>
+ * 
+ * When necessary (because many clients are real dumb and does not pass the most
+ * basic compatibility tests), follow the convention to <i>abort</i> a test
+ * using a {@code Implementation} reference. This makes it much easier to trace
+ * what tests need to be revised when the client dependency is upgraded.<p>
+ * 
+ * Do something like this:<p>
+ * 
+ * {@snippet :
+ *   if (impl == DUMB_CLIENT || impl == ANOTHER_DUMB_CLIENT ... ) {
+ *       // Document why each client was particularly dumb in this case
+ *       throw new TestAbortedException();
+ *   }
+ *   // ... test logic comes afterward ...
+ * }
+ * 
+ * And NOT this:<p>
+ * 
+ * {@snippet :
+ *   if (impl == SMART_CLIENT ) {
+ *       // ... test logic comes here ...
+ *   }
+ * }
  * 
  * This class is not thread-safe and does not implement {@code hashCode} or
  * {@code equals}.
@@ -711,16 +735,15 @@ public abstract class HttpClientFacade
         private <B> ResponseFacade<B> execute(
                 ClassicHttpRequest req, IOFunction<HttpEntity, B> rspBodyConverter)
                 throws IOException {
-            B body = null;
             try (var cli = HttpClients.createDefault()) {
-                var rsp = cli.execute(req);
-                try (rsp) {
+                return cli.execute(req, rsp -> {
+                    B body = null;
                     var entity = rsp.getEntity();
                     if (entity != null) {
                         body = rspBodyConverter.apply(entity);
                     }
-                }
-                return ResponseFacade.fromApache(rsp, body);
+                    return ResponseFacade.fromApache(rsp, body);
+                });
             }
         }
         
@@ -797,7 +820,7 @@ public abstract class HttpClientFacade
         private <B> ResponseFacade<B> executeReq(
                 String method, String path,
                 HttpConstants.Version ver,
-                org.eclipse.jetty.client.api.Request.Content reqBody,
+                org.eclipse.jetty.client.Request.Content reqBody,
                 Function<? super ContentResponse, ? extends B> rspBodyConverter
                 ) throws ExecutionException, InterruptedException, TimeoutException
         {
@@ -974,7 +997,7 @@ public abstract class HttpClientFacade
      * 
      * @param <B> body type
      */
-    public static final class ResponseFacade<B> implements HeaderHolder {
+    public static final class ResponseFacade<B> implements HasHeaders {
         
         static <B> ResponseFacade<B> fromJDK(java.net.http.HttpResponse<? extends B> jdk) {
             return new ResponseFacade<>(
@@ -1017,18 +1040,18 @@ public abstract class HttpClientFacade
         }
         
         static <B> ResponseFacade<B> fromJetty(
-                org.eclipse.jetty.client.api.ContentResponse jetty,
+                ContentResponse jetty,
                 Function<? super ContentResponse, ? extends B> bodyConverter)
         {
+            Function<HttpField, String>
+                    k = HttpField::getName, v = HttpField::getValue;
             return new ResponseFacade<>(
                     () -> jetty.getVersion().toString(),
                     jetty::getStatus,
                     jetty::getReason,
-                    supplyOurHeadersType(() -> jetty.getHeaders().stream(),
-                            org.eclipse.jetty.http.HttpField::getName,
-                            org.eclipse.jetty.http.HttpField::getValue),
+                    supplyOurHeadersType(() -> jetty.getHeaders().stream(), k, v),
                     () -> bodyConverter.apply(jetty),
-                    unsupportedIO());
+                    supplyOurHeadersTypeIO(() -> jetty.getTrailers().stream(), k, v));
         }
         
         static <B> ResponseFacade<B> fromReactor(HttpClientResponse reactor, B body) {

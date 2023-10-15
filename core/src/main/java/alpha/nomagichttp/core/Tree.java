@@ -1,5 +1,6 @@
 package alpha.nomagichttp.core;
 
+import java.io.Serial;
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -728,7 +729,7 @@ final class Tree<V>
      * or re-create the node upon which it attempted to operate.
      */
     private static class StaleBranchException extends Exception {
-        private static final long serialVersionUID = 1L;
+        @Serial private static final long serialVersionUID = 1L;
         // Empty
     }
     

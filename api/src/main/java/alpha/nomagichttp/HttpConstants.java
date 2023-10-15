@@ -1,12 +1,13 @@
 package alpha.nomagichttp;
 
-import alpha.nomagichttp.handler.ErrorHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.HttpVersionParseException;
+import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
+import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
 
 import java.util.OptionalInt;
 
@@ -909,23 +910,23 @@ public final class HttpConstants {
         /**
          * {@value} {@value ReasonPhrase#METHOD_NOT_ALLOWED}.<p>
          * 
-         * This is the {@link ErrorHandler#BASE default response} when a
-         * route/resource exists, but no request handler is mapped to the
-         * request-provided HTTP method.
+         * This is the default fallback response when a route/resource exists,
+         * but no request handler is mapped to the request-provided HTTP method.
          * 
          * @see HeaderName#ALLOW
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.5">RFC 7231 §6.5.5</a>
+         * @see Config#implementMissingOptions()
          */
         public static final int FOUR_HUNDRED_FIVE = 405;
         
         /**
          * {@value} {@value ReasonPhrase#NOT_ACCEPTABLE}.<p>
          * 
-         * This is the {@link ErrorHandler#BASE default response} when a
-         * route/resource exists, but no request handler produces the requested
-         * media type.
+         * This is the default fallback response when a route/resource exists,
+         * but no request handler produces the requested media type.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.6">RFC 7231 §6.5.6</a>
+         * @see MediaTypeNotAcceptedException
          */
         public static final int FOUR_HUNDRED_SIX = 406;
         
@@ -1846,11 +1847,12 @@ public final class HttpConstants {
          * 
          * Example: {@code Allow: GET, HEAD}<p>
          * 
-         * This header is populated in the {@link ErrorHandler#BASE default
-         * response} when a route/resource exists, but no request handler is
-         * mapped to the request-provided HTTP method.
+         * This header is populated in the default fallback response when a
+         * route/resource exists, but no request handler is mapped to the
+         * request-provided HTTP method.
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.4.1">RFC 7231 §7.4.1</a>
+         * @see Config#implementMissingOptions()
          */
         public static final String ALLOW = "Allow";
         
@@ -2749,14 +2751,11 @@ public final class HttpConstants {
          * 
          * May be used in both request and response.<p>
          * 
-         * Example: {@code Upgrade: h2c, HTTPS/1.3, IRC/6.9, RTA/x11, websocket}<p>
-         * 
-         * The NoMagicHTTP server's {@link ErrorHandler#BASE base error
-         * handler} uses this header to suggest a new protocol version if an old
-         * version was rejected.
+         * Example: {@code Upgrade: h2c, HTTPS/1.3, IRC/6.9, RTA/x11, websocket}
          * 
          * @see StatusCode#ONE_HUNDRED_ONE
          * @see <a href="https://tools.ietf.org/html/rfc7230#section-6.7">RFC 7230 §6.7</a>
+         * @see HttpVersionTooOldException
          */
         public static final String UPGRADE = "Upgrade";
         

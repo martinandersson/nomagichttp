@@ -1,22 +1,27 @@
 package alpha.nomagichttp.route;
 
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.RequestHandler;
 import alpha.nomagichttp.message.MediaType;
+import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 
+import java.io.Serial;
 import java.util.Collection;
 import java.util.Set;
 
+import static alpha.nomagichttp.message.Responses.internalServerError;
 import static java.util.Collections.unmodifiableSet;
 
 /**
  * The request handler resolution process ended ambiguously.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * @see ErrorHandler#BASE
+ * @see ExceptionHandler#BASE
  */
 public final class AmbiguousHandlerException extends NoHandlerResolvedException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     private final transient Set<RequestHandler> ambiguous;
@@ -60,5 +65,15 @@ public final class AmbiguousHandlerException extends NoHandlerResolvedException
      */
     public Set<RequestHandler> getCandidates() {
         return ambiguous;
+    }
+    
+    /**
+     * Returns {@link Responses#internalServerError()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return internalServerError();
     }
 }

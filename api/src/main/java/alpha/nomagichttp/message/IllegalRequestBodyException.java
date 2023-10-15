@@ -2,8 +2,12 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
+import alpha.nomagichttp.handler.HasResponse;
 
+import java.io.Serial;
+
+import static alpha.nomagichttp.message.Responses.badRequest;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -18,11 +22,14 @@ import static java.util.Objects.requireNonNull;
  * 
  * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>
  * @see HttpServer
- * @see ErrorHandler
+ * @see ExceptionHandler
  */
-public class IllegalRequestBodyException extends RuntimeException
+public final class IllegalRequestBodyException
+             extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
+    
     private final transient RawRequest.Head head;
     private final transient Request.Body body;
     
@@ -58,5 +65,15 @@ public class IllegalRequestBodyException extends RuntimeException
      */
     public Request.Body body() {
         return body;
+    }
+    
+    /**
+     * Returns {@link Responses#badRequest()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return badRequest();
     }
 }

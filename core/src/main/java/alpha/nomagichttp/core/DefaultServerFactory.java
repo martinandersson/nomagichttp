@@ -3,7 +3,7 @@ package alpha.nomagichttp.core;
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
 import alpha.nomagichttp.HttpServerFactory;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
 
 /**
  * Default {@code HttpServerFactory}.<p>
@@ -30,7 +30,7 @@ public class DefaultServerFactory implements HttpServerFactory
     }
     
     @Override
-    public HttpServer create(Config config, ErrorHandler... eh) {
+    public HttpServer create(Config config, ExceptionHandler... eh) {
         return new DefaultServer(config, eh);
     }
 }

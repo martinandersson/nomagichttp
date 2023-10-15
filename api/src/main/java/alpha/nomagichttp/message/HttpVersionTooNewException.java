@@ -2,8 +2,11 @@ package alpha.nomagichttp.message;
 
 import alpha.nomagichttp.Config;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.HasResponse;
 
+import java.io.Serial;
+
+import static alpha.nomagichttp.message.Responses.httpVersionNotSupported;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -14,19 +17,17 @@ import static java.util.Objects.requireNonNull;
  * 
  * HTTP/2 requires the exchange to begin as HTTP/1.1, then upgrades to HTTP/2
  * (RFC 7540 §3 "Starting HTTP/2"), which the NoMagicHTTP server currently
- * doesn't do. And so, this exception should actually never be observed.<p>
- * 
- * The {@link ErrorHandler#BASE base error handler} will translate this
- * exception to a {@link Responses#httpVersionNotSupported() 505 HTTP Version
- * Not Supported}.
+ * doesn't do. And so, this exception should actually never be observed.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see HttpServer
  * @see Config#minHttpVersion()
  */
-public class HttpVersionTooNewException extends RuntimeException
+public final class HttpVersionTooNewException
+             extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     private final String version;
@@ -52,7 +53,17 @@ public class HttpVersionTooNewException extends RuntimeException
      * 
      * @return the rejected version (never {@code null})
      */
-    public final String getVersion() {
+    public String getVersion() {
         return version;
+    }
+    
+    /**
+     * Returns {@link Responses#httpVersionNotSupported()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return httpVersionNotSupported();
     }
 }

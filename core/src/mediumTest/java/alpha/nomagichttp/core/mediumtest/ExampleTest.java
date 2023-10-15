@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.EnumSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -342,28 +341,18 @@ final class ExampleTest extends AbstractRealTest
                 "Done!");
         }
         
+        // Verified to work also on Curl
         @ParameterizedTest(name = OTHER)
         @EnumSource
         public void compatibility(HttpClientFacade.Implementation impl)
                 throws IOException, ExecutionException,
                        InterruptedException, TimeoutException
         {
-            // Checking a Set instead of "impl != APACHE" for the type system.
-            // Rather have a static trace of failed clients instead of
-            // successful ones (see the next comment).
-            if (EnumSet.of(JDK, OKHTTP, JETTY, REACTOR).contains(impl)) {
-                // Only Apache and Curl will pass this test lol.
-                // 
-                // JDK takes everything after the first 102 (Processing) as
-                // the response body.
-                // 
-                // OkHttp and Jetty yields an empty body ("").
-                // 
-                // Reactor does what Reactor does best; crashes with a
-                // NullPointerException.
+            if (impl == OKHTTP || impl == REACTOR) {
+                // OkHttp throws "IllegalStateException: state: 3"
+                // Reactor does what Reactor does best; crashes with NPE.
                 throw new TestAbortedException();
             }
-            
             addRoute();
             var rsp = impl.create(serverPort()).getText("/", HTTP_1_1);
             assertThat(rsp.body()).isEqualTo("Done!");
@@ -446,7 +435,7 @@ final class ExampleTest extends AbstractRealTest
         
         /**
          * The happy version of
-         * {@link ErrorTest.Special#requestTrailersDiscarded_errorNotHandled()}.
+         * {@link ErrorTest.Special#requestTrailersDiscarded_exceptionNotHandled()}.
          */
         @Test
         @DisplayName("RequestTrailers/TestClient")

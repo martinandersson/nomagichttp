@@ -16,7 +16,7 @@ import static alpha.nomagichttp.core.RequestTarget.requestTargetWithoutParams;
  * A new instance of this class is created for each invoked entity as the path
  * parameters for said entity are unique; constructed and represented as a
  * {@link RequestTarget} available in this class, or may not even be available
- * as is the case for error handlers.<p>
+ * as is the case for exception handlers.<p>
  * 
  * All other components of the request are shared throughout the HTTP exchange
  * as all created request objects will have a reference to the same underlying

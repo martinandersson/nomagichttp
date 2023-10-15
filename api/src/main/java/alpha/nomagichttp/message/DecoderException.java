@@ -1,20 +1,23 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.HasResponse;
+
+import java.io.Serial;
+
+import static alpha.nomagichttp.message.Responses.badRequest;
 
 /**
  * A byte decoder failed.<p>
  * 
  * A byte decoder decodes a stream of bytes into another stream of bytes, e.g.
- * HTTP/1.1 dechunking.<p>
- * 
- * The {@link ErrorHandler#BASE base error handler} will translate this
- * exception to a {@link Responses#badRequest() 400 Bad Request}.
+ * HTTP/1.1 dechunking.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class DecoderException extends RuntimeException
+public final class DecoderException
+             extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**
@@ -43,5 +46,15 @@ public class DecoderException extends RuntimeException
      */
     public DecoderException(String message, Throwable cause) {
         super(message, cause);
+    }
+    
+    /**
+     * Returns {@link Responses#badRequest()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return badRequest();
     }
 }

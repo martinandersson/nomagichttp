@@ -27,7 +27,6 @@ import static alpha.nomagichttp.testutil.TestFiles.writeTempFile;
 import static alpha.nomagichttp.testutil.functional.Constants.OTHER;
 import static alpha.nomagichttp.testutil.functional.Constants.TEST_CLIENT;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.JDK;
-import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.JETTY;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofFile;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofSupplier;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
@@ -142,12 +141,8 @@ final class MessageTest extends AbstractRealTest
             assertThat(rsp.statusCode()).isEqualTo(200);
             assertThat(rsp.reasonPhrase()).isEqualTo("OK");
             assertThat(rsp.body()).isEqualTo("Hello");
-            // Jetty has no public support for trailers
-            // TODO: Verify Jetty if and when they add support
-            if (impl != JETTY) {
                 assertHeaders(rsp.trailers()).containsExactly(
                     entry("One", of("Foo")), entry("Two", of("Bar")));
-            }
         }
         
         private void addRouteThatRespondChunked() throws IOException {

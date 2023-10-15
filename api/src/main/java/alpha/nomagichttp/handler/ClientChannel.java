@@ -2,7 +2,7 @@ package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.ChannelWriter;
 import alpha.nomagichttp.HttpConstants.HeaderName;
-import alpha.nomagichttp.message.AttributeHolder;
+import alpha.nomagichttp.message.HasAttributes;
 import alpha.nomagichttp.message.Response;
 
 import java.io.IOException;
@@ -42,7 +42,7 @@ import static java.util.Objects.requireNonNull;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public interface ClientChannel extends ChannelWriter, AttributeHolder
+public interface ClientChannel extends ChannelWriter, HasAttributes
 {
     /**
      * Ensures that the returned response's {@value HeaderName#CONNECTION}

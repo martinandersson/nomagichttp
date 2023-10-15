@@ -3,7 +3,11 @@ package alpha.nomagichttp.core;
 import alpha.nomagichttp.Chain;
 import alpha.nomagichttp.NonThrowingChain;
 
-final class ErrorHandlerException extends RuntimeException {
+import java.io.Serial;
+
+final class ExceptionHandlerException extends RuntimeException
+{
+    @Serial
     private static final long serialVersionUID = 1L;
     
     static NonThrowingChain unchecked(Chain delegate) {
@@ -11,12 +15,12 @@ final class ErrorHandlerException extends RuntimeException {
             try {
                 return delegate.proceed();
             } catch (Exception e) {
-                throw new ErrorHandlerException(e);
+                throw new ExceptionHandlerException(e);
             }
         };
     }
     
-    private ErrorHandlerException(Exception cause) {
+    private ExceptionHandlerException(Exception cause) {
         super(cause);
     }
 }

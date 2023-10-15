@@ -1,14 +1,14 @@
 package alpha.nomagichttp.testutil;
 
-import jdk.incubator.concurrent.StructuredTaskScope;
-
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.StructuredTaskScope;
+import java.util.concurrent.StructuredTaskScope.Subtask;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 import static java.time.Instant.now;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.concurrent.StructuredTaskScope.Subtask.State.FAILED;
 
 /**
  * Getting a result by using a virtual thread.
@@ -19,6 +19,8 @@ public final class VThreads {
     private VThreads() {
         // Empty
     }
+    
+    // TODO: DRY (callUsingVThread and getUsingVThread)
     
     /**
      * Get a result from the given callable, using a forked virtual thread.<p>
@@ -34,19 +36,53 @@ public final class VThreads {
      *             if {@code task} is {@code null}
      * @throws InterruptedException
      *             if the calling thread is interrupted while waiting
+     * @throws TimeoutException
+     *             if the {@code task} takes longer than 1 second
      * @throws ExecutionException
-     *             if the {@code task} throws an exception
+     *             with a cause from the given {@code task}
+     */
+    public static <R> R callUsingVThread(Callable<? extends R> task)
+            throws InterruptedException, TimeoutException, ExecutionException {
+        try (var scope = new StructuredTaskScope<>()) {
+            Subtask<R> st = scope.fork(task);
+            scope.joinUntil(now().plusSeconds(1));
+            if (st.state() == FAILED) {
+                var thr = st.exception();
+                assert thr instanceof Exception;
+                throw new ExecutionException(thr);
+            }
+            return st.get();
+        }
+    }
+    
+    /**
+     * Get a result from the given supplier, using a forked virtual thread.<p>
+     * 
+     * This method will wait at most 1 second for the result.
+     * 
+     * @param <R> type of result
+     * @param task to execute
+     * 
+     * @return see JavaDoc
+     * 
+     * @throws NullPointerException
+     *             if {@code task} is {@code null}
+     * @throws InterruptedException
+     *             if the calling thread is interrupted while waiting
      * @throws TimeoutException
      *             if the {@code task} takes longer than 1 second
      */
-    public static <R> R getUsingVThread(Callable<? extends R> task)
-            throws InterruptedException, ExecutionException, TimeoutException {
+    public static <R> R getUsingVThread(Supplier<? extends R> task)
+            throws InterruptedException, TimeoutException {
         try (var scope = new StructuredTaskScope<>()) {
-            Future<R> fut = scope.fork(task);
+            Subtask<R> st = scope.fork(task::get);
             scope.joinUntil(now().plusSeconds(1));
-            // Future.resultNow() throws IllegalStateException, without a cause.
-            // For tests, it's kind of important to assert the cause 👍
-            return fut.get(0, SECONDS);
+            if (st.state() == FAILED) {
+                var thr = st.exception();
+                assert thr instanceof RuntimeException;
+                throw (RuntimeException) thr;
+            }
+            return st.get();
         }
     }
 }

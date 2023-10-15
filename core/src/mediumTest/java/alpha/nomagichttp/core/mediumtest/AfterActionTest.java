@@ -110,13 +110,13 @@ final class AfterActionTest extends AbstractRealTest
               "GET / HTTP/1.1" + CRLF + CRLF);
         assertThat(rsp)
               .isEmpty();
-        // The first error is handed off to the error handler, who also logs it
+        // The first exception is handed off to the exception handler, who also logs it
         assertAwaitHandledAndLoggedExc()
               .isExactlyInstanceOf(NoRouteFoundException.class)
               .hasMessage("/")
               .hasNoCause()
               .hasNoSuppressedExceptions();
-        // The subsequent after-action exception is logged, but no error handler
+        // The subsequent after-action exception is logged, but no exception handler
         logRecorder().assertAwaitRemoveThrown()
               .hasToString(
                   "alpha.nomagichttp.core.AfterActionException: " +

@@ -4,8 +4,6 @@ import alpha.nomagichttp.HttpServerFactory;
  * Now this has a comment.
  */
 module alpha.nomagichttp {
-    requires transitive jdk.incubator.concurrent;
-    
     uses HttpServerFactory;
     
     exports alpha.nomagichttp;

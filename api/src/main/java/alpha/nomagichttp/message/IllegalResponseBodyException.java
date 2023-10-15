@@ -3,8 +3,12 @@ package alpha.nomagichttp.message;
 import alpha.nomagichttp.ChannelWriter;
 import alpha.nomagichttp.HttpConstants;
 import alpha.nomagichttp.HttpServer;
-import alpha.nomagichttp.handler.ErrorHandler;
+import alpha.nomagichttp.handler.ExceptionHandler;
+import alpha.nomagichttp.handler.HasResponse;
 
+import java.io.Serial;
+
+import static alpha.nomagichttp.message.Responses.internalServerError;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -29,13 +33,15 @@ import static java.util.Objects.requireNonNull;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see HttpServer
- * @see ErrorHandler
+ * @see ExceptionHandler
  */
-public class IllegalResponseBodyException extends RuntimeException
+public final class IllegalResponseBodyException
+             extends RuntimeException implements HasResponse
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
-    private final transient Response response;
+    private final transient Response illegal;
     
     /**
      * Constructs this object.
@@ -46,15 +52,25 @@ public class IllegalResponseBodyException extends RuntimeException
      */
     public IllegalResponseBodyException(String message, Response response) {
         super(message);
-        this.response = requireNonNull(response);
+        illegal = requireNonNull(response);
     }
     
     /**
-     * Returns the response object.
+     * Returns the response which was illegal.
      * 
-     * @return the response object (never {@code null})
+     * @return see Javadoc
      */
-    public Response response() {
-        return response;
+    Response getIllegal() {
+        return illegal;
+    }
+    
+    /**
+     * Returns {@link Responses#internalServerError()}.
+     * 
+     * @return see Javadoc
+     */
+    @Override
+    public Response getResponse() {
+        return internalServerError();
     }
 }

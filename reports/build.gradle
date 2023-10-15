@@ -57,7 +57,7 @@ tasks.withType(TestReport).configureEach {
      // Change from...to
      //   ./build/reports/xxx-test/aggregated-results/
      //   ./build/gradle/xxxTest/
-    destinationDirectory = file("$buildDir/gradle/${type}")
+    destinationDirectory = layout.buildDirectory.dir("gradle/${type}").get().asFile
 }
 
 tasks.withType(JacocoReport).configureEach {
@@ -71,7 +71,7 @@ tasks.withType(JacocoReport).configureEach {
         // Change from...to
         //   ./build/reports/jacoco/xxxTestCoverage/html/
         //   ./build/jacoco/xxxTest/
-        html.outputLocation = file("$buildDir/jacoco/${type}")
+        html.outputLocation = layout.buildDirectory.dir("jacoco/${type}").get().asFile
     }
 }
 

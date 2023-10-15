@@ -1,17 +1,15 @@
 package alpha.nomagichttp.message;
 
-import alpha.nomagichttp.handler.ErrorHandler;
+import java.io.Serial;
 
 /**
- * Parsing headers from a request head or parsing request trailers failed.<p>
- * 
- * The {@linkplain ErrorHandler#BASE base error handler} translates this
- * exception to a {@link Responses#badRequest() 400 (Bad Request)}.
+ * Parsing headers from a request head or parsing request trailers failed.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
-public class HeaderParseException extends AbstractParseException
+public final class HeaderParseException extends AbstractParseException
 {
+    @Serial
     private static final long serialVersionUID = 1L;
     
     /**

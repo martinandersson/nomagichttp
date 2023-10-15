@@ -47,7 +47,7 @@ import static java.util.Objects.requireNonNull;
  * {@snippet :
  *   EventEmitter emitter = new DefaultEventHub(
  *         () -> !MY_SCOPED_VALUE.isBound(),
- *         listeners -> ScopedValue.where(MY_SCOPED_VALUE, ..., listeners));
+ *         listeners -> ScopedValue.runWhere(MY_SCOPED_VALUE, ..., listeners));
  *   // Listeners will now always be able to retrieve the scoped value
  *   emitter.dispatch("event");
  * }

@@ -1,12 +1,16 @@
+# Websites for the latest versions at the bottom!
+
+# Using latest versions as of 2023-10-14
+
 [versions]
-jdk     = '20'
+jdk     = '21'
 junit   = '5.10.0'
 assertj = '3.24.2'
-mockito = '5.4.0'
-okhttp  = '4.10.0'
-apache  = '5.1.1'
-jetty   = '11.0.13'
-reactor = '1.1.2'
+mockito = '5.6.0'
+okhttp  = '4.11.0'
+apache  = '5.2.1'
+jetty   = '12.0.2'
+reactor = '1.1.12'
 
 [libraries]
 assertj = { module = 'org.assertj:assertj-core', version.ref = 'assertj' }
@@ -18,3 +22,12 @@ client-reactor = { module = 'io.projectreactor.netty:reactor-netty-http', versio
 
 [bundles]
 clients = ['client-okhttp', 'client-apache', 'client-jetty', 'client-reactor']
+
+# https://github.com/gradle/FOOJAY-toolchains/issues/50
+# https://github.com/JUNIT-team/junit5/tags
+# https://github.com/ASSERTJ/assertj/tags
+# https://github.com/MOCKITO/mockito/tags
+# https://github.com/square/OKHTTP/tags
+# https://github.com/APACHE/httpcomponents-client/tags
+# https://github.com/JETTY/jetty.project/tags
+# https://github.com/REACTOR/reactor-netty/tags

@@ -86,7 +86,7 @@ import java.util.stream.Stream;
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
  * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3">RFC 7230 §3.3</a>
  */
-public interface Request extends HeaderHolder, AttributeHolder
+public interface Request extends HasHeaders, HasAttributes
 {
     /**
      * Returns the request-line's method token.<p>
@@ -392,8 +392,8 @@ public interface Request extends HeaderHolder, AttributeHolder
          *             if {@code name} is {@code null}
          * 
          * @throws UnsupportedOperationException
-         *             if called from an error handler
-         *             (has not registered a path pattern)
+         *             if called from an exception handler
+         *             (which has no association with a path pattern)
          */
         String pathParam(String name);
         
@@ -405,8 +405,8 @@ public interface Request extends HeaderHolder, AttributeHolder
          * @return a map of all path parameters (percent-decoded)
          * 
          * @throws UnsupportedOperationException
-         *             if called from an error handler
-         *             (has not registered a path pattern)
+         *             if called from an exception handler
+         *             (which has no association with a path pattern)
          */
         Map<String, String> pathParamMap();
         
@@ -425,8 +425,8 @@ public interface Request extends HeaderHolder, AttributeHolder
          *             if {@code name} is {@code null}
          * 
          * @throws UnsupportedOperationException
-         *             if called from an error handler
-         *             (has not registered a path pattern)
+         *             if called from an exception handler
+         *             (which has no association with a path pattern)
          * 
          * @see #pathParam(String) 
          */
@@ -440,8 +440,8 @@ public interface Request extends HeaderHolder, AttributeHolder
          * @return a map of all path parameters (not percent-decoded)
          * 
          * @throws UnsupportedOperationException
-         *             if called from an error handler
-         *             (has not registered a path pattern)
+         *             if called from an exception handler
+         *             (which has no association with a path pattern)
          */
         Map<String, String> pathParamRawMap();
         
@@ -645,24 +645,24 @@ public interface Request extends HeaderHolder, AttributeHolder
      * 
      * {@snippet :
      *   // Convert all bytes to a String
-     *   var string = request.body().toText();
+     *   String str = request.body().toText();
      *   
      *   // Gather all bytes
      *   byte[] onHeap = request.body().bytes();
      *   
      *   // Classic iteration
-     *   var it = request.body().iterator();
+     *   ByteBufferIterator it = request.body().iterator();
      *   while (it.hasNext()) {
-     *       var byteBuffer = it.next();
+     *       ByteBuffer buf = it.next();
      *       ...
      *   }
      *   
      *   // Functional iteration
      *   request.body().iterator()
-     *                 .forEachRemaining(byteBuffer -> ...);
+     *                 .forEachRemaining(buf -> ...);
      * }
      * 
-     * <h2>Handling errors</h2>
+     * <h2>Handling exceptions</h2>
      * 
      * In general, high-level exception types — in particular, when documented —
      * occurs before a channel read operation is made and will leave the
@@ -670,9 +670,9 @@ public interface Request extends HeaderHolder, AttributeHolder
      * operation to recover the body (for example, {@code toText() >} {@code
      * CharacterCodingException}).<p>
      * 
-     * Errors that originate from the channel's read operation will have shut
-     * down the input stream. Before attempting to read the body again, always
-     * check first if {@link ScopedValues#channel() channel}()
+     * Exceptions that originate from the channel's read operation will have
+     * shut down the input stream. Before attempting to read the body again,
+     * always check first if {@link ScopedValues#channel() channel}()
      * .{@link ClientChannel#isInputOpen() isInputOpen}().
      * 
      * <h2>Saving to file</h2>
