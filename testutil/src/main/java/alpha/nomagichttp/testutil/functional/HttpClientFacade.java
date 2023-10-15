@@ -137,6 +137,29 @@ import static org.assertj.core.api.Assertions.assertThat;
  * argument will be passed forward to the client who may then blow up with
  * another exception.<p>
  * 
+ * When necessary (because many clients are real dumb and does not pass the most
+ * basic compatibility tests), follow the convention to <i>abort</i> a test
+ * using a {@code Implementation} reference. This makes it much easier to trace
+ * what tests need to be revised when the client dependency is upgraded.<p>
+ * 
+ * Do something like this:<p>
+ * 
+ * {@snippet :
+ *   if (impl == DUMB_CLIENT || impl == ANOTHER_DUMB_CLIENT ... ) {
+ *       // Document why each client was particularly dumb in this case
+ *       throw new TestAbortedException();
+ *   }
+ *   // ... test logic comes afterward ...
+ * }
+ * 
+ * And NOT this:<p>
+ * 
+ * {@snippet :
+ *   if (impl == SMART_CLIENT ) {
+ *       // ... test logic comes here ...
+ *   }
+ * }
+ * 
  * This class is not thread-safe and does not implement {@code hashCode} or
  * {@code equals}.
  * 
