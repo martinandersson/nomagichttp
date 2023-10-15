@@ -52,7 +52,7 @@ tasks.withType(JavaCompile).configureEach {
         // Talk more
         '-Xdiags:verbose')
         // Fail on warnings
-        // TEMP: Not while using jdk.incubator.concurrent
+        // TEMP: Not while using preview features
         //'-Werror')
 }
 
@@ -149,7 +149,7 @@ tasks.named('assemble') {
 
 
 
-// ---- TEMPORARY while using preview features ----
+// ---- TEMPORARY: preview features ----
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.addAll(
         '--enable-preview')
@@ -164,4 +164,4 @@ tasks.withType(Javadoc).configureEach {
         addStringOption('-release', libs.versions.jdk.get())
     }
 }
-// ------------------------------------------------
+// -------------------------------------
