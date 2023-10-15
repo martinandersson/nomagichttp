@@ -351,11 +351,8 @@ final class ExampleTest extends AbstractRealTest
             // Checking a Set instead of "impl != APACHE" for the type system.
             // Rather have a static trace of failed clients instead of
             // successful ones (see the next comment).
-            if (EnumSet.of(JDK, OKHTTP, JETTY, REACTOR).contains(impl)) {
-                // Only Apache and Curl will pass this test lol.
-                // 
-                // JDK takes everything after the first 102 (Processing) as
-                // the response body.
+            if (EnumSet.of(OKHTTP, JETTY, REACTOR).contains(impl)) {
+                // Only JDK, Apache and Curl will pass this test lol.
                 // 
                 // OkHttp and Jetty yields an empty body ("").
                 // 
