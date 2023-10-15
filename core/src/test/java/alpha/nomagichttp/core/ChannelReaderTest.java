@@ -105,7 +105,7 @@ final class ChannelReaderTest
     }
     
     @Test
-    void EndOfStreamException() throws Exception {
+    void EndOfStreamExc() throws Exception {
         // Exc is thrown only if we had a limit residue when observing EOS
         testee.limit(4);
         var ch = withChannelMock(() ->
@@ -118,7 +118,7 @@ final class ChannelReaderTest
     }
     
     @Test
-    void IllegalArgumentException() {
+    void IllegalArgumentExc() {
         assertThatThrownBy(() -> testee.limit(-1))
             .isExactlyInstanceOf(IllegalArgumentException.class)
             .hasMessage("Negative limit: -1")
@@ -127,7 +127,7 @@ final class ChannelReaderTest
     }
     
     @Test
-    void UnsupportedOperationException() {
+    void UnsupportedOperationExc() {
         testee.limit(123);
         assertThatThrownBy(() -> testee.limit(456))
             .isExactlyInstanceOf(UnsupportedOperationException.class)
@@ -137,7 +137,7 @@ final class ChannelReaderTest
     }
     
     @Test
-    void IllegalStateException() {
+    void IllegalStateExc() {
         assertThatThrownBy(() -> testee.dismiss())
             .isExactlyInstanceOf(IllegalStateException.class)
             .hasMessage("Is not empty.")
