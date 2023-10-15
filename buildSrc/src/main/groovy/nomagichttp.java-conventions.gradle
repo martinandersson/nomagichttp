@@ -149,7 +149,7 @@ tasks.named('assemble') {
 
 
 
-// ---- TEMPORARY while using preview features and incubator ----
+// ---- TEMPORARY while using preview features ----
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.addAll(
         '--enable-preview')
@@ -164,4 +164,4 @@ tasks.withType(Javadoc).configureEach {
         addStringOption('-release', libs.versions.jdk.get())
     }
 }
-// --------------------------------------------------------------
+// ------------------------------------------------
