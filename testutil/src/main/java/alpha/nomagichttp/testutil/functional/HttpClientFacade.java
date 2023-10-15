@@ -29,10 +29,10 @@ import org.apache.hc.core5.http.ProtocolVersion;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.entity.InputStreamEntity;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.eclipse.jetty.client.api.ContentResponse;
-import org.eclipse.jetty.client.util.BytesRequestContent;
-import org.eclipse.jetty.client.util.InputStreamRequestContent;
-import org.eclipse.jetty.client.util.StringRequestContent;
+import org.eclipse.jetty.client.BytesRequestContent;
+import org.eclipse.jetty.client.ContentResponse;
+import org.eclipse.jetty.client.InputStreamRequestContent;
+import org.eclipse.jetty.client.StringRequestContent;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufFlux;
@@ -796,7 +796,7 @@ public abstract class HttpClientFacade
         private <B> ResponseFacade<B> executeReq(
                 String method, String path,
                 HttpConstants.Version ver,
-                org.eclipse.jetty.client.api.Request.Content reqBody,
+                org.eclipse.jetty.client.Request.Content reqBody,
                 Function<? super ContentResponse, ? extends B> rspBodyConverter
                 ) throws ExecutionException, InterruptedException, TimeoutException
         {
@@ -1016,7 +1016,7 @@ public abstract class HttpClientFacade
         }
         
         static <B> ResponseFacade<B> fromJetty(
-                org.eclipse.jetty.client.api.ContentResponse jetty,
+                ContentResponse jetty,
                 Function<? super ContentResponse, ? extends B> bodyConverter)
         {
             return new ResponseFacade<>(
