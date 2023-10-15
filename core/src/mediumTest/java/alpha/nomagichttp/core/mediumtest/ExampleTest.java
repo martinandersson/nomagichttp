@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.EnumSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -349,14 +348,11 @@ final class ExampleTest extends AbstractRealTest
                 throws IOException, ExecutionException,
                        InterruptedException, TimeoutException
         {
-            if (EnumSet.of(OKHTTP, REACTOR).contains(impl)) {
+            if (impl == OKHTTP || impl == REACTOR) {
                 // OkHttp throws "IllegalStateException: state: 3"
-                // 
-                // Reactor does what Reactor does best; crashes with a
-                // NullPointerException.
+                // Reactor does what Reactor does best; crashes with NPE.
                 throw new TestAbortedException();
             }
-            
             addRoute();
             var rsp = impl.create(serverPort()).getText("/", HTTP_1_1);
             assertThat(rsp.body()).isEqualTo("Done!");
