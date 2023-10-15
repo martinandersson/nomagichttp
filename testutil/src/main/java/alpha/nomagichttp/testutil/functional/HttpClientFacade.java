@@ -711,16 +711,15 @@ public abstract class HttpClientFacade
         private <B> ResponseFacade<B> execute(
                 ClassicHttpRequest req, IOFunction<HttpEntity, B> rspBodyConverter)
                 throws IOException {
-            B body = null;
             try (var cli = HttpClients.createDefault()) {
-                var rsp = cli.execute(req);
-                try (rsp) {
+                return cli.execute(req, rsp -> {
+                    B body = null;
                     var entity = rsp.getEntity();
                     if (entity != null) {
                         body = rspBodyConverter.apply(entity);
                     }
-                }
-                return ResponseFacade.fromApache(rsp, body);
+                    return ResponseFacade.fromApache(rsp, body);
+                });
             }
         }
         
