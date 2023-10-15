@@ -44,7 +44,7 @@ tasks.named('jacocoTestReport') {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(libs.versions.jdk.get())
-        vendor = JvmVendorSpec.ORACLE
+        vendor = JvmVendorSpec.ADOPTIUM
     }
 }
 
