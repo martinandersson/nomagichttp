@@ -33,6 +33,7 @@ import org.eclipse.jetty.client.BytesRequestContent;
 import org.eclipse.jetty.client.ContentResponse;
 import org.eclipse.jetty.client.InputStreamRequestContent;
 import org.eclipse.jetty.client.StringRequestContent;
+import org.eclipse.jetty.http.HttpField;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufFlux;
@@ -1019,15 +1020,15 @@ public abstract class HttpClientFacade
                 ContentResponse jetty,
                 Function<? super ContentResponse, ? extends B> bodyConverter)
         {
+            Function<HttpField, String>
+                    k = HttpField::getName, v = HttpField::getValue;
             return new ResponseFacade<>(
                     () -> jetty.getVersion().toString(),
                     jetty::getStatus,
                     jetty::getReason,
-                    supplyOurHeadersType(() -> jetty.getHeaders().stream(),
-                            org.eclipse.jetty.http.HttpField::getName,
-                            org.eclipse.jetty.http.HttpField::getValue),
+                    supplyOurHeadersType(() -> jetty.getHeaders().stream(), k, v),
                     () -> bodyConverter.apply(jetty),
-                    unsupportedIO());
+                    supplyOurHeadersTypeIO(() -> jetty.getTrailers().stream(), k, v));
         }
         
         static <B> ResponseFacade<B> fromReactor(HttpClientResponse reactor, B body) {
