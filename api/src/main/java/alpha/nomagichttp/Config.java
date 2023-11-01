@@ -71,8 +71,7 @@ public interface Config
     Config DEFAULT = DefaultConfig.DefaultBuilder.ROOT.build();
     
     /**
-     * Returns the max number of bytes processed while parsing a request head
-     * before giving up.<p>
+     * {@return the max number of request head bytes to process}<p>
      * 
      * Once the limit has been exceeded, a {@link MaxRequestHeadSizeException}
      * is thrown.<p>
@@ -83,17 +82,15 @@ public interface Config
      * href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
      * as well as
      * <a href="https://stackoverflow.com/a/8623061/1268003">common practice</a>.
-     * 
-     * @return number of request head bytes processed before exception
      */
     int maxRequestHeadSize();
     
     /**
-     * Returns the max number of bytes that the {@link Request.Body} API accepts
-     * to internally buffer.<p>
+     * {@return the max number of request body bytes to internally buffer}<p>
      * 
-     * Once the limit has been exceeded, a
-     * {@link MaxRequestBodyBufferSizeException} is thrown.<p>
+     * Before (if an unacceptable length is known in advance) or when the limit
+     * has been exceeded, a {@link MaxRequestBodyBufferSizeException} is
+     * thrown.<p>
      * 
      * This configuration applies <i>only</i> to high-level methods that
      * internally buffer the whole body, such as {@link Request.Body#bytes()}
@@ -112,41 +109,36 @@ public interface Config
      * body straight into memory until memory runs out).<p>
      * 
      * The default implementation returns {@code 20_971_520} (20 MB).
-     * 
-     * @return see JavaDoc
      */
     int maxRequestBodyBufferSize();
     
     /**
-     * Returns the max number of bytes processed while parsing request trailers
-     * before giving up.<p>
+     * {@return the max number of request trailer bytes to process}<p>
      * 
      * Once the limit has been exceeded, a
      * {@link MaxRequestTrailersSizeException} is thrown.<p>
      * 
      * The default implementation returns {@code 8_000}.
-     * 
-     * @return number of request trailer bytes processed before exception
      */
     int maxRequestTrailersSize();
     
     /**
-     * Returns the max number of consecutive responses sent to a client with a
-     * status code classified as 4XX (Client Error) or 5XX (Server Error), before
-     * closing the client channel.<p>
+     * {@return the max number of consecutively unsuccessful responses}<p>
+     * 
+     * An unsuccessful response is one with a status code classified as 4XX
+     * (Client Error) or 5XX (Server Error).<p>
+     * 
+     * Once the limit has been reached, the client channel is closed.<p>
      * 
      * Closing the channel after repeatedly unsuccessful exchanges increases
      * security.<p>
      * 
      * The default implementation returns {@code 3}.
-     * 
-     * @return max number of consecutively unsuccessful responses
-     *         before closing channel
      */
     int maxErrorResponses();
     
     /**
-     * Returns the minimum supported HTTP version.<p>
+     * {@return the minimum supported HTTP version}<p>
      * 
      * By default, this method returns
      * {@link HttpConstants.Version#HTTP_1_0 HTTP/1.0}.<p>
@@ -166,14 +158,12 @@ public interface Config
      * 
      * The minimum version the NoMagicHTTP implements is HTTP/1.0, and the
      * maximum version currently implemented is HTTP/1.1.
-     * 
-     * @return the minimum supported HTTP version
      */
     Version minHttpVersion();
     
     /**
-     * Discard 1XX (Informational) responses when the recipient is a client
-     * using an HTTP version older than HTTP/1.1.<p>
+     * {@return whether to discard 1XX (Informational) responses for
+     * HTTP/1.0 clients}<p>
      * 
      * The default value is {@code true} and the application can safely write
      * 1XX responses to the channel without a concern for incompatible
@@ -185,28 +175,35 @@ public interface Config
      * either handle the exception explicitly, or query the active HTTP version
      * ({@link Request#httpVersion()}) before attempting to send such a
      * response.
-     * 
-     * @return whether to discard 1XX responses for incompatible clients
      */
     boolean discardRejectedInformational();
     
     /**
-     * Immediately respond a 100 (Continue) interim response to a request with a
-     * {@code Expect: 100-continue} header.<p>
+     * {@return whether to immediately reply a 100 (Continue) response}<p>
      * 
-     * This value is by default {@code false}, which enables the application to
-     * delay the client's body submission until it responds a 100 (Continue)
-     * response.<p>
+     * If {@code true} and the server receives a request with the
+     * {@code Expect: 100-continue} header set, an 100 (Continue) interim
+     * response will immediately be sent back, which prompts the client to
+     * continue sending the rest of the request.<p>
      * 
-     * Even when this configuration value is {@code false}, the server will
-     * still attempt to respond a 100 (Continue) response to the client, but
-     * delayed until the application's first access of a non-empty request body
+     * This is how most servers work, which is dubious, as it effectively kills
+     * the entire concept of having a client verify with the server first if it
+     * is ready to receive a large body. Probably because most servers don't
+     * support the hosted software to send interim responses to begin with
+     * (very, very sad).<p>
+     * 
+     * The NoMagicHTTP server does support interim responses, and the default
+     * value for this configuration is {@code false}, leaving it up to the
+     * application to decide.<p>
+     * 
+     * That decision will either be an explicitly sent 100 (Continue) response,
+     * or one implicitly sent upon the first access of a non-empty request body
      * (all methods in {@link Request.Body} except
      * {@link Request.Body#length() size} and
      * {@link Request.Body#isEmpty() isEmpty}).<p>
      * 
      * This means that the application developer does not need to be aware of
-     * the {@code Expect: 100-continue} feature but still receive the full
+     * the {@code Expect: 100-continue} feature but will still receive the full
      * benefit, and the developer who is aware can take control as he
      * pleases.<p>
      * 
@@ -214,31 +211,29 @@ public interface Config
      * send a 100 (Continue) response to an HTTP/1.0 client since HTTP/1.0 does
      * not support interim responses (
      * <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>
-     * ).
-     * 
-     * @return whether to immediately respond a 100 (Continue) interim response
-     *         to a request with a {@code Expect: 100-continue} header
      * 
      * @see HttpConstants.StatusCode#ONE_HUNDRED
      */
     boolean immediatelyContinueExpect100();
     
     /**
-     * Max duration the library awaits a file lock.<p>
+     * {@return max duration the library awaits a file lock}<p>
      * 
      * This configuration value is used by
      * {@link Request.Body#toFile(Path, OpenOption...)} and
      * {@link ByteBufferIterables#ofFile(Path)}.<p>
      * 
      * The call-site is free to cap the total length of the duration to
-     * {@code Long.MAX_VALUE} nanoseconds (that's over 292 years).
+     * {@code Long.MAX_VALUE} nanoseconds (that's over 292 years).<p>
      * 
-     * @return file-lock timeout duration (default is 3 seconds)
+     * The default is 3 seconds.
      */
     Duration timeoutFileLock();
     
     /**
-     * Max duration a connection is allowed to be idle.<p>
+     * {@return the max duration a connection is allowed to be idle}<p>
+     * 
+     * The default is default is 3 minutes.<p>
      * 
      * The timer leading up to the timeout is <i>started</i> each time a client
      * channel operation begins (reading or writing), and <i>stops</i> when the
@@ -280,54 +275,47 @@ public interface Config
      * 
      * There is currently no configuration to explicitly set minimum transfer
      * rates.
-     * 
-     * @return idle connection timeout duration (default is 3 minutes)
      */
     // TODO: After HTTP/2 support, we'll have to cap the buffer anyways, so pro-tip in Javadoc can be removed
     //       (but instead the pro-tip will go somewhere else; please use a buffer no larger than max frame)
     Duration timeoutIdleConnection();
     
     /**
-     * If {@code true} (which is the default), any {@link Route} not
-     * implementing the {@value HttpConstants.Method#OPTIONS} method will get
-     * one.<p>
+     * {@return whether to implement an {@value HttpConstants.Method#OPTIONS}
+     * handler if not provided by the route}.<p>
      * 
-     * This works in the following way: As with any HTTP method, if the route
-     * exists but the method implementation is missing, a {@link
-     * MethodNotAllowedException} is thrown which may eventually reach the
+     * The default is {@code true}, which works in the following way: As with
+     * any HTTP method, if the route exists but the method implementation is
+     * missing, a {@link MethodNotAllowedException} is thrown, which may
+     * eventually reach the
      * {@linkplain ExceptionHandler#BASE base exception handler}. This handler
-     * in turn will - if this configuration is enabled - respond a
-     * <i>successful</i> 204 (No Content). Had this configuration not been
-     * enabled, the response would have been a <i>client error</i> 405
-     * (Method Not Allowed).<p>
+     * will then return to the server a <i>successful</i> 204 (No Content).<p>
+     * 
+     * Had this configuration not been enabled, the returned response would have
+     * been a <i>client error</i> 405 (Method Not Allowed).<p>
      * 
      * In both cases, the {@value HttpConstants.HeaderName#ALLOW} header will be
      * set and populated with all the HTTP methods that are implemented. So
      * there's really no other difference between the two outcomes, other than
      * the status code.<p>
      * 
-     * With or without this configuration enabled, the application can easily
-     * add its own {@code OPTIONS} implementation to the route or override the
+     * With or without this configuration enabled, the application is free to
+     * add its own {@code OPTIONS} implementation to the route, or override the
      * base exception handler.
-     * 
-     * @return see JavaDoc
      */
     boolean implementMissingOptions();
     
      /**
-     * Returns the builder instance that built this configuration.<p>
+     * {@return the builder instance that built this configuration object}<p>
      * 
      * The builder may be used to modify configuration values.
-     * 
-     * @return the builder instance that built this configuration object
      */
     Config.Builder toBuilder();
     
     /**
-     * Returns the builder used to build the default configuration.
+     * {@return the builder used to build the default configuration}
      * 
-     * @return the builder used to build the default configuration
-     * @see #toBuilder()
+     * The builder may be used to modify default configuration values.
      */
     static Config.Builder configuration() {
         return DEFAULT.toBuilder();
@@ -460,9 +448,9 @@ public interface Config
         Builder implementMissingOptions(boolean newVal);
         
         /**
-         * Builds a configuration object.
+         * Creates a new {@code Config} from the current state of this builder.
          * 
-         * @return the configuration object
+         * @return a new {@code Config}
          */
         Config build();
     }

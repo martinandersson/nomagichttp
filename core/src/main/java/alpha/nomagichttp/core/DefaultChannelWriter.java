@@ -146,7 +146,7 @@ final class DefaultChannelWriter implements ChannelWriter
     }
     
     /**
-     * Returns the HTTP version that must be used for the response.<p>
+     * {@return the HTTP version that must be used for the response}<p>
      * 
      * Currently, this method returns {@code HTTP_1_1}, whether a request has
      * been successfully parsed and whatever version the request may be
@@ -183,8 +183,6 @@ final class DefaultChannelWriter implements ChannelWriter
      * into specialized types for a given major version of HTTP, or, some other
      * mechanism will be put in place to quote unquote "shape" the response
      * message into whatever is accepted by the client.
-     * 
-     * @return see JavaDoc
      */
     private static Version conformantResponseVer() {
         return HTTP_1_1;

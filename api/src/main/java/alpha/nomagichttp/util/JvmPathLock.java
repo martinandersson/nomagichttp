@@ -319,11 +319,9 @@ public final class JvmPathLock implements AutoCloseable
     }
     
     /**
-     * Returns the cache (unmodifiable).<p>
+     * {@return the cache (unmodifiable)}<p>
      * 
      * For tests only!
-     * 
-     * @return see JavaDoc
      */
     static Map<Path, ReentrantReadWriteLock> map() {
         return unmodifiableMap(RWL);

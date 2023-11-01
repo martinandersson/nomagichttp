@@ -112,18 +112,16 @@ public final class ChannelReader implements ByteBufferIterable
     }
     
     /**
-     * Returns the exception that caused a read operation to fail.<p>
+     * {@return the exception that caused a read operation to fail}<p>
      * 
      * This method returns {@code null} if no read operation has failed.
-     * 
-     * @return see JavaDoc
      */
     IOException getThrown() {
         return thr;
     }
     
     /**
-     * Returns {@code true} if no read operation has completed.<p>
+     * {@return {@code true} if no read operation has completed}<p>
      * 
      * If this method returns {@code true}, then the connection is considered
      * idling, and it is safe to close the child during a graceful shutdown of
@@ -144,8 +142,6 @@ public final class ChannelReader implements ByteBufferIterable
      * received. There's just no way around that (see
      * <a href="https://datatracker.ietf.org/doc/html/rfc9112#name-failures-and-timeouts">
      * RFC 9112 "9.5. Failures and Timeouts"</a>).
-     * 
-     * @return see JavaDoc
      */
     boolean hasNotStarted() {
         return !startedVol;

@@ -62,8 +62,8 @@ public abstract class AbstractEventEmitter implements EventEmitter
     private final Consumer<Runnable> decorator;
     
     /**
-     * Constructs a non-blocking and thread-safe emitter backed by a {@link
-     * ConcurrentHashMap} and value-sets from the same type.
+     * Constructs this objct as a non-blocking and thread-safe emitter backed by
+     * a {@link ConcurrentHashMap} and value-sets from the same type.
      */
     protected AbstractEventEmitter() {
         // does not allow null to be used as a key or value
@@ -72,8 +72,8 @@ public abstract class AbstractEventEmitter implements EventEmitter
     }
     
     /**
-     * Constructs a non-blocking and thread-safe emitter backed by a {@link
-     * ConcurrentHashMap} and value-sets from the same type.
+     * Constructs this object as a non-blocking and thread-safe emitter backed
+     * by a {@link ConcurrentHashMap} and value-sets from the same type.
      * 
      * @param when conditionally decorate the call to listeners
      * @param decorator of the listener's call
@@ -85,7 +85,7 @@ public abstract class AbstractEventEmitter implements EventEmitter
     }
     
     /**
-     * Constructs an emitter.
+     * Constructs this object.
      * 
      * @param mapImpl to use as listeners' map
      * @param setImpl to use as listeners' container (map value)
@@ -102,7 +102,7 @@ public abstract class AbstractEventEmitter implements EventEmitter
     }
     
     /**
-     * Constructs an emitter.
+     * Constructs this object.
      * 
      * @param mapImpl to use as listeners' map
      * @param setImpl to use as listeners' container (map value)
@@ -127,7 +127,7 @@ public abstract class AbstractEventEmitter implements EventEmitter
     }
     
     /**
-     * Synchronously emit an event to subscribed listeners.
+     * Synchronously emits an event to subscribed listeners.
      * 
      * @param ev to emit
      * @param att1 optional attachment (may be {@code null})
@@ -141,7 +141,7 @@ public abstract class AbstractEventEmitter implements EventEmitter
     }
     
     /**
-     * Synchronously emit an event to subscribed listeners.
+     * Synchronously emits an event to subscribed listeners.
      * 
      * @param ev to emit
      * @param att1 optional attachment (may produce {@code null})
@@ -158,7 +158,7 @@ public abstract class AbstractEventEmitter implements EventEmitter
     }
     
     /**
-     * Synchronously invoke all listeners with the given event and attachments.
+     * Synchronously invokes all listeners with the given event and attachments.
      * 
      * @param listeners to invoke
      * @param ev to emit
@@ -176,7 +176,7 @@ public abstract class AbstractEventEmitter implements EventEmitter
     }
     
     /**
-     * Synchronously invoke all listeners with the given event and lazy
+     * Synchronously invokes all listeners with the given event and lazy
      * attachment.
      * 
      * @param listeners to invoke

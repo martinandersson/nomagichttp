@@ -535,8 +535,8 @@ public class MediaType
     }
     
     /**
-     * Returns a compatibility score of <i>this</i> media type compared with the
-     * specified <i>other</i>.<p>
+     * {@return a compatibility score of <i>this</i> media type compared with the
+     * specified <i>other</i>}<p>
      * 
      * Primary use-case is for {@link Route} implementations which during the
      * handler selection process ask the question: given a handler's consuming
@@ -558,9 +558,6 @@ public class MediaType
      * performing String comparisons.
      * 
      * @param other whom to compare with
-     * 
-     * @return a compatibility score of <i>this</i> media type compared with the
-     *         specified {@code other}
      * 
      * @see RequestHandler
      */
@@ -699,7 +696,7 @@ public class MediaType
      * Returns the same string instance used when this media type was parsed.<p>
      * 
      * Except for sentinel values which were not constructed through parsing.
-     * Sentinel values uses a placeholder value instead, enclosed in diamond
+     * Sentinel values use a placeholder value instead, enclosed in diamond
      * brackets, e.g. &lt;nothing and all&gt;.
      * 
      * @return the same string instance used when this media type was parsed,

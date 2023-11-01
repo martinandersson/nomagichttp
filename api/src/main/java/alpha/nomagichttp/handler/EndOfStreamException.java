@@ -26,16 +26,14 @@ public final class EndOfStreamException
     private static final long serialVersionUID = 1L;
     
     /**
-     * Constructs an {@code EndOfStreamException}.
+     * Constructs this object.
      */
     public EndOfStreamException() {
         // Empty
     }
     
     /**
-     * Returns {@link Responses#badRequest()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#badRequest()}}
      */
     @Override
     public Response getResponse() {

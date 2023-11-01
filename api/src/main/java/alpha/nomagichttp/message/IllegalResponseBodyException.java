@@ -56,18 +56,14 @@ public final class IllegalResponseBodyException
     }
     
     /**
-     * Returns the response which was illegal.
-     * 
-     * @return see Javadoc
+     * {@return the response which was illegal}
      */
     Response getIllegal() {
         return illegal;
     }
     
     /**
-     * Returns {@link Responses#internalServerError()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#internalServerError()}}
      */
     @Override
     public Response getResponse() {

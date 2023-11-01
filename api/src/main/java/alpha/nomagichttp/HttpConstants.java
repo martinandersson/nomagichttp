@@ -452,78 +452,60 @@ public final class HttpConstants {
         }
         
         /**
-         * Returns {@code true} if the status-code is 1XX (Informational),
-         * otherwise {@code false}.
+         * {@return {@code true} if the status-code is 1XX (Informational),
+         * otherwise {@code false}}
          * 
          * @param statusCode to check
-         * 
-         * @return {@code true} if the status-code is 1XX (Informational),
-         *         otherwise {@code false}
          */
         public static boolean isInformational(int statusCode) {
             return statusCode >= 100 && statusCode <= 199;
         }
         
         /**
-         * Returns {@code true} if the status-code is not 1XX (Informational),
-         * otherwise {@code false}.
+         * {@return {@code true} if the status-code is not 1XX (Informational),
+         * otherwise {@code false}}
          * 
          * @param statusCode to check
-         * 
-         * @return {@code true} if the status-code is not 1XX (Informational),
-         *         otherwise {@code false}
          */
         public static boolean isFinal(int statusCode) {
             return !isInformational(statusCode);
         }
         
         /**
-         * Returns {@code true} if the status-code is 2XX (Successful),
-         * otherwise {@code false}.
+         * {@return {@code true} if the status-code is 2XX (Successful),
+         * otherwise {@code false}}
          *
          * @param statusCode to check
-         *
-         * @return {@code true} if the status-code is 2XX (Successful),
-         *         otherwise {@code false}
          */
         public static boolean isSuccessful(int statusCode) {
             return statusCode >= 200 && statusCode <= 299;
         }
         
         /**
-         * Returns {@code true} if the status-code is 3XX (Redirection),
-         * otherwise {@code false}.
+         * {@return {@code true} if the status-code is 3XX (Redirection),
+         * otherwise {@code false}}
          *
          * @param statusCode to check
-         *
-         * @return {@code true} if the status-code is 3XX (Redirection),
-         *         otherwise {@code false}
          */
         public static boolean isRedirection(int statusCode) {
             return statusCode >= 300 && statusCode <= 399;
         }
         
         /**
-         * Returns {@code true} if the status-code is 4XX (Client Error),
-         * otherwise {@code false}.
+         * {@return {@code true} if the status-code is 4XX (Client Error),
+         * otherwise {@code false}}
          *
          * @param statusCode to check
-         *
-         * @return {@code true} if the status-code is 4XX (Client Error),
-         *         otherwise {@code false}
          */
         public static boolean isClientError(int statusCode) {
             return statusCode >= 400 && statusCode <= 499;
         }
         
         /**
-         * Returns {@code true} if the status-code is 5XX (Server Error),
-         * otherwise {@code false}.
+         * {@return {@code true} if the status-code is 5XX (Server Error),
+         * otherwise {@code false}}
          *
          * @param statusCode to check
-         *
-         * @return {@code true} if the status-code is 5XX (Server Error),
-         *         otherwise {@code false}
          */
         public static boolean isServerError(int statusCode) {
             return statusCode >= 500 && statusCode <= 599;
@@ -3052,35 +3034,29 @@ public final class HttpConstants {
         }
         
         /**
-         * Returns the major protocol version.
-         * 
-         * @return the major protocol version
+         * {@return the major protocol version}
          */
         public int major() {
             return major;
         }
         
         /**
-         * Returns the minor protocol version.
+         * {@return the minor protocol version}<p>
          * 
          * Only HTTP/0.9, HTTP/1.0 and HTTP/1.1 use the minor version. Since
          * HTTP/2, the minor version has been dropped.
-         * 
-         * @return the minor protocol version
          */
         public OptionalInt minor() {
             return minor;
         }
     
         /**
-         * Returns {@code true} if the given version is less than this version,
-         * otherwise {@code false}.<p>
+         * {@return {@code true} if the given version is less than this version,
+         * otherwise {@code false}}<p>
          * 
          * E.g., this returns true: {@code HTTP_1.0.isLessThan(HTTP_1.1)}.
          * 
          * @param other version to compare with
-         * 
-         * @return see JavaDoc
          * 
          * @throws NullPointerException
          *             if {@code other} is {@code null}
@@ -3102,14 +3078,12 @@ public final class HttpConstants {
         }
         
         /**
-         * Returns {@code true} if the given version is greater than this
-         * version, otherwise {@code false}.<p>
+         * {@return {@code true} if the given version is greater than this
+         * version, otherwise {@code false}}<p>
          * 
          * E.g., this returns true: {@code HTTP_1.1.isGreaterThan(HTTP_1.0)}.
          * 
          * @param other version to compare with
-         * 
-         * @return see JavaDoc
          * 
          * @throws NullPointerException
          *             if {@code other} is {@code null}
@@ -3133,11 +3107,10 @@ public final class HttpConstants {
         private String str;
         
         /**
-         * Returns the HTTP-version field value.<p>
+         * {@return the HTTP-version field value}<p>
          * 
-         * I.e., one of "HTTP/0.9", "HTTP/1.0", "HTTP/1.1", "HTTP/2" or "HTTP/3".
-         * 
-         * @return the HTTP-version field value
+         * I.e., one of "HTTP/0.9", "HTTP/1.0", "HTTP/1.1", "HTTP/2" or
+         * "HTTP/3".
          */
         @Override
         public String toString() {

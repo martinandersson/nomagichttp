@@ -120,18 +120,14 @@ final class DefaultActionRegistry implements ActionRegistry
      */
     interface Match<A> {
         /**
-         * Returns the matched action.
-         * 
-         * @return the matched action
+         * {@return the matched action}
          */
         A action();
         
         /**
-         * Returns the segments (pattern) used to register the action with.<p>
+         * {@return the segments (pattern) used to register the action with}<p>
          * 
          * The returned iterable is unmodifiable and effectively immutable.
-         * 
-         * @return the segments (pattern) used to register the action with.
          */
         Iterable<String> segments();
     }

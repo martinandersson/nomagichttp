@@ -29,30 +29,26 @@ abstract class AbstractTokenParser
     private byte curr = MIN_VALUE;
     
     /**
-     * Sets the current byte being processed.<p>
+     * Sets the current byte to be processed.<p>
      * 
      * The concrete parser must call this method before processing the byte.
      * 
-     * @param b see JavaDoc
+     * @param b byte to process
      */
     protected final void current(byte b) {
         this.curr = b;
     }
     
     /**
-     * Returns the current byte being processed.
-     * 
-     * @return see JavaDoc
+     * {@return the current byte being processed}
      */
     final byte current() {
         return curr;
     }
     
     /**
-     * Returns true if no bytes have been consumed and the current character is
-     * whitespace.
-     * 
-     * @return see JavaDoc
+     * {@return {@code true} if no bytes have been consumed and the current
+     * character is whitespace}
      */
     final boolean isLeadingWhitespace() {
         return !hasConsumed() && isWhitespace();
@@ -65,17 +61,16 @@ abstract class AbstractTokenParser
      * 
      * The concrete parser must call this method after each byte processed.
      * 
-     * @param b see JavaDoc
-     */
+     * @param b byte previously processed
+     */ 
+    // TODO: Can be side-effect, no need to set explicitly?
     protected final void previous(byte b) {
         this.prev = b;
         current(MIN_VALUE);
     }
     
     /**
-     * Returns the previous byte processed.
-     * 
-     * @return see JavaDoc
+     * {@return the previous byte processed}
      */
     final byte previous() {
         return prev;
@@ -86,54 +81,42 @@ abstract class AbstractTokenParser
     private static final byte CR = 13, LF = 10;
     
     /**
-     * Returns true if the current character is carriage-return.
-     * 
-     * @return see JavaDoc
+     * {@return {@code true} if the current character is carriage-return}
      */
     final boolean isCR() {
         return curr == CR;
     }
     
     /**
-     * Returns true if the current character is not carriage-return.
-     * 
-     * @return see JavaDoc
+     * {@return {@code true} if the current character is not carriage-return}
      */
     final boolean isNotCR() {
         return curr != CR;
     }
     
     /**
-     * Returns true if the current character is line-feed.
-     * 
-     * @return see JavaDoc
+     * {@return {@code true} if the current character is line-feed}
      */
     final boolean isLF() {
         return curr == LF;
     }
     
     /**
-     * Returns true if the current character is not line-feed.
-     * 
-     * @return see JavaDoc
+     * {@return {@code true} if the current character is not line-feed}
      */
     final boolean isNotLF() {
         return curr != LF;
     }
     
     /**
-     * Returns true if the current character is a colon (':').
-     * 
-     * @return see JavaDoc
+     * {@return {@code true} if the current character is a colon (':')}
      */
     final boolean isColon() {
         return curr == ':';
     }
     
     /**
-     * Returns true if the current character is whitespace.
-     * 
-     * @return see JavaDoc
+     * {@return {@code true} if the current character is whitespace}
      */
     final boolean isWhitespace() {
         return Character.isWhitespace(curr);
@@ -165,9 +148,8 @@ abstract class AbstractTokenParser
     }
     
     /**
-     * Returns true if one or more chars have been appended to the active token.
-     * 
-     * @return see JavaDoc
+     * {@return {@code true} if one or more chars have been appended to the
+     * active token}
      */
     final boolean hasConsumed() {
         return token.hasAppended();
@@ -178,7 +160,7 @@ abstract class AbstractTokenParser
      * 
      * The returned token may be empty, but never {@code null}.
      * 
-     * @return see JavaDoc
+     * @return the built token
      */
     final String finish() {
         final var v = token.finish();
@@ -202,7 +184,7 @@ abstract class AbstractTokenParser
      * The returned token is never empty and never {@code null}.
      * 
      * @param tokenName used as part of a parse exception message
-     * @return see JavaDoc
+     * @return the built token
      * @throws RuntimeException if the token is empty
      */
     final String finishNonEmpty(String tokenName) {
@@ -223,7 +205,7 @@ abstract class AbstractTokenParser
      * 
      * If the current char is not LF, {@code null} is returned.
      * 
-     * @return see JavaDoc
+     * @return the built token, exceptionally or {@code null}
      */
     final String tryFinishOnLF() {
         return tryFinishSomethingOnLF(this::finish);

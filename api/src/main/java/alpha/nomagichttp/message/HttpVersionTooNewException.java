@@ -58,9 +58,7 @@ public final class HttpVersionTooNewException
     }
     
     /**
-     * Returns {@link Responses#httpVersionNotSupported()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#httpVersionNotSupported()}}
      */
     @Override
     public Response getResponse() {

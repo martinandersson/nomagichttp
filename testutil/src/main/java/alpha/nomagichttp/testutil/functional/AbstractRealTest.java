@@ -363,12 +363,10 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Returns the server instance.<p>
+     * {@return the server instance}<p>
      * 
      * If the current server reference is null, a server will be created;
      * listening on a system-picked port.
-     * 
-     * @return the server instance
      * 
      * @throws IOException if an I/O error occurs
      */
@@ -404,13 +402,11 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Returns the cached server port.<p>
+     * {@return the cached server port}<p>
      * 
      * This method is useful for testing communication on the port even after
      * the server has stopped (at which point the port can no longer be
      * retrieved from the server instance).
-     * 
-     * @return see JavaDoc
      * 
      * @throws IllegalStateException
      *             if the server has never started
@@ -421,12 +417,10 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Returns the client instance.<p>
+     * {@return the client instance}<p>
      * 
      * If the current client reference is null, a client will be created with
      * the server's port.
-     * 
-     * @return the client instance
      * 
      * @throws IllegalStateException
      *             if the server has never started
@@ -469,10 +463,9 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Retrieves and removes the first exception caught by this class's
-     * exception handler.
+     * Removes the first exception caught by this class's exception handler.
      * 
-     * @return an exception, or {@code null} if none is available
+     * @return the exception, or {@code null} if none is available
      */
     protected final Exception pollServerExceptionNow() {
         requireServerIsRunning();
@@ -480,9 +473,7 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Returns the log recorder instance.
-     * 
-     * @return see JavaDoc
+     * {@return the log recorder instance}
      * 
      * @throws IllegalStateException
      *             if log recording is not active

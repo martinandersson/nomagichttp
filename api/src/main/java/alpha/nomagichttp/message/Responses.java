@@ -101,7 +101,7 @@ public final class Responses
     }
     
     /**
-     * Returns a response with the specified status code.<p>
+     * {@return a response with the specified status code}<p>
      * 
      * If the status code is a constant declared in {@link
      * HttpConstants.StatusCode}, then the returned reference is a cached
@@ -109,7 +109,6 @@ public final class Responses
      * each time.
      * 
      * @param code HTTP status code
-     * @return a response with the specified status code
      * @see HttpConstants.StatusCode
      */
     public static Response status(int code) {
@@ -119,7 +118,7 @@ public final class Responses
     }
     
     /**
-     * Returns a response with the specified status code and reason phrase.<p>
+     * {@return a response with the specified status code and reason phrase}<p>
      * 
      * If the code and phrase are a related pair as declared in {@link
      * HttpConstants.StatusCode} and {@link HttpConstants.ReasonPhrase} (object
@@ -136,8 +135,6 @@ public final class Responses
      * @param code HTTP status code
      * @param phrase reason phrase
      * 
-     * @return a response with the specified status code and reason phrase
-     * 
      * @throws NullPointerException
      *             if {@code phrase} is {@code null}
      * 
@@ -153,9 +150,7 @@ public final class Responses
     }
     
     /**
-     * Retrieves a cached 100 (Continue) interim response.
-     * 
-     * @return a cached 100 (Continue) response
+     * {@return a cached 100 (Continue) interim response}
      * 
      * @see StatusCode#ONE_HUNDRED
      */
@@ -164,9 +159,7 @@ public final class Responses
     }
     
     /**
-     * Retrieves a cached 102 (Processing) interim response.
-     * 
-     * @return a cached 102 (Processing) response
+     * {@return a cached 102 (Processing) interim response}
      *
      * @see StatusCode#ONE_HUNDRED_TWO
      */
@@ -175,13 +168,11 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with a text body.<p>
+     * {@return a new 200 (OK) response with a text body}<p>
      * 
      * The content-type header will be set to "text/plain; charset=utf-8".
      * 
      * @param textPlain message body
-     * 
-     * @return a new 200 (OK) response
      * 
      * @throws CharacterCodingException
      *             if input is malformed, or
@@ -195,15 +186,13 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with a text body.<p>
+     * {@return a new 200 (OK) response with a text body}<p>
      * 
      * The content-type header will be set to "text/plain; charset=" + lower
      * cased canonical name of the given charset, e.g. "utf-8".
      * 
      * @param textPlain message body
      * @param charset for encoding
-     * 
-     * @return a new 200 (OK) response
      * 
      * @throws CharacterCodingException
      *             if input is malformed, or
@@ -217,7 +206,7 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with a text body.<p>
+     * {@return a new 200 (OK) response with a text body}<p>
      * 
      * The content-type's type/subtype will be set to "text/plain".<p>
      * 
@@ -242,8 +231,6 @@ public final class Responses
      * @param textPlain message body
      * @param charsetSource to extract charset from
      * 
-     * @return a new 200 (OK) response
-     * 
      * @throws CharacterCodingException
      *             if input is malformed, or
      *             if a character is unmappable
@@ -257,12 +244,11 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with a HTML body.<p>
+     * {@return a new 200 (OK) response with a HTML body}<p>
      * 
      * The content-type header will be set to "text/html; charset=utf-8".
      * 
      * @param textHtml message body
-     * @return a new 200 (OK) response
      * 
      * @throws CharacterCodingException
      *             if input is malformed, or
@@ -276,15 +262,13 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with an HTML body.<p>
+     * {@return a new 200 (OK) response with an HTML body}<p>
      * 
      * The content-type header will be set to "text/html; charset=" + lower
      * cased canonical name of the given charset, e.g. "utf-8".
      * 
      * @param textHtml message body
      * @param charset for encoding
-     * 
-     * @return a new 200 (OK) response
      * 
      * @throws CharacterCodingException
      *             if input is malformed, or
@@ -298,7 +282,7 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with a HTML body.<p>
+     * {@return a new 200 (OK) response with a HTML body}<p>
      * 
      * The content-type header will be set to "text/html".<p>
      * 
@@ -306,8 +290,6 @@ public final class Responses
      * 
      * @param textHtml message body
      * @param charsetSource to extract charset from
-     * 
-     * @return a new 200 (OK) response
      * 
      * @throws CharacterCodingException
      *             if input is malformed, or
@@ -321,14 +303,12 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with a JSON body.<p>
+     * {@return a new 200 (OK) response with a JSON body}<p>
      * 
      * The content-type header will be set to "application/json;
      * charset=utf-8".
      * 
      * @param json message body
-     * 
-     * @return a new 200 (OK) response
      * 
      * @throws CharacterCodingException
      *             if input is malformed, or
@@ -341,15 +321,13 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with a JSON body.<p>
+     * {@return a new 200 (OK) response with a JSON body}<p>
      * 
      * The content-type header will be set to "application/json; charset=" +
      * lower cased canonical name of the given charset, e.g. "utf-8".
      * 
      * @param json message body
      * @param charset for encoding
-     * 
-     * @return a new 200 (OK) response
      * 
      * @throws CharacterCodingException
      *             if input is malformed, or
@@ -363,7 +341,7 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with an HTML body.<p>
+     * {@return a new 200 (OK) response with an HTML body}<p>
      * 
      * The content-type header will be set to "application/json".<p>
      * 
@@ -371,8 +349,6 @@ public final class Responses
      * 
      * @param json message body
      * @param charsetSource to extract charset from
-     * 
-     * @return a new 200 (OK) response
      * 
      * @throws CharacterCodingException
      *             if input is malformed, or
@@ -386,13 +362,11 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with the given body.<p>
+     * {@return a new 200 (OK) response with the given body}<p>
      * 
      * The content-type will be set to "application/octet-stream".
      * 
      * @param body data
-     * 
-     * @return a new 200 (OK) response
      *
      * @see StatusCode#TWO_HUNDRED
      */
@@ -401,7 +375,7 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with the given body.<p>
+     * {@return a new 200 (OK) response with the given body}<p>
      * 
      * The given content-type will not be validated. For validation, do
      * <pre>
@@ -411,8 +385,6 @@ public final class Responses
      * 
      * @param body data
      * @param contentType header value
-     * 
-     * @return a new 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see HttpConstants.HeaderName#CONTENT_TYPE
@@ -426,12 +398,10 @@ public final class Responses
     }
     
     /**
-     * Creates a new 200 (OK) response with the given body.
+     * {@return a new 200 (OK) response with the given body}
      * 
      * @param body data
      * @param contentType header value
-     * 
-     * @return a new 200 (OK) response
      * 
      * @see StatusCode#TWO_HUNDRED
      * @see HttpConstants.HeaderName#CONTENT_TYPE
@@ -442,19 +412,16 @@ public final class Responses
     }
     
     /**
-     * Retrieves a cached 202 (Accepted) response without a body.
+     * {@return a cached 202 (Accepted) response without a body}
      * 
-     * @return  a cached 202 (Accepted)
-     * @see    StatusCode#TWO_HUNDRED_TWO
+     * @see StatusCode#TWO_HUNDRED_TWO
      */
     public static Response accepted() {
         return CACHE.get(TWO_HUNDRED_TWO, ACCEPTED);
     }
     
     /**
-     * Retrieves a cached 204 (No Content) response without a body.
-     * 
-     * @return a cached 204 (No Content) response
+     * {@return a cached 204 (No Content) response without a body}
      * 
      * @see StatusCode#TWO_HUNDRED_FOUR
      */
@@ -463,70 +430,64 @@ public final class Responses
     }
     
     /**
-     * Retrieves a cached 400 (Bad Request) response without a body.<p>
+     * {@return a cached 400 (Bad Request) response without a body}<p>
      * 
      * The returned response contains the header "Connection: close" which will
      * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
-     * @return  a cached 400 (Bad Request) response
-     * @see     StatusCode#FOUR_HUNDRED
+     * @see StatusCode#FOUR_HUNDRED
      */
     public static Response badRequest() {
         return CACHE.get(FOUR_HUNDRED, BAD_REQUEST);
     }
     
     /**
-     * Retrieves a cached 403 (Forbidden) response without a body.
+     * {@return a cached 403 (Forbidden) response without a body}
      * 
-     * @return  a cached 403 (Forbidden) response
-     * @see     StatusCode#FOUR_HUNDRED_THREE
+     * @see StatusCode#FOUR_HUNDRED_THREE
      */
     public static Response forbidden() {
         return CACHE.get(FOUR_HUNDRED_THREE, FORBIDDEN);
     }
     
     /**
-     * Retrieves a cached 404 (Not Found) response without a body.
+     * {@return a cached 404 (Not Found) response without a body}
      * 
-     * @return a cached 404 (Not Found)
-     * @see     StatusCode#FOUR_HUNDRED_FOUR
+     * @see StatusCode#FOUR_HUNDRED_FOUR
      */
     public static Response notFound() {
         return CACHE.get(FOUR_HUNDRED_FOUR, NOT_FOUND);
     }
     
     /**
-     * Retrieves a cached 405 (Method Not Allowed) response without a body.
+     * {@return a cached 405 (Method Not Allowed) response without a body}
      * 
-     * @return  a cached 405 (Method Not Allowed) response
-     * @see     StatusCode#FOUR_HUNDRED_FIVE
+     * @see StatusCode#FOUR_HUNDRED_FIVE
      */
     public static Response methodNotAllowed() {
         return CACHE.get(FOUR_HUNDRED_FIVE, METHOD_NOT_ALLOWED);
     }
     
     /**
-     * Retrieves a cached 406 (Not Acceptable) response without a body.
+     * {@return a cached 406 (Not Acceptable) response without a body}
      * 
-     * @return  a cached 406 (Not Acceptable) response
-     * @see     StatusCode#FOUR_HUNDRED_SIX
+     * @see StatusCode#FOUR_HUNDRED_SIX
      */
     public static Response notAcceptable() {
         return CACHE.get(FOUR_HUNDRED_SIX, NOT_ACCEPTABLE);
     }
 
     /**
-     * Retrieves a cached 412 (Precondition Failed) response without a body.
+     * {@return a cached 412 (Precondition Failed) response without a body}
      * 
-     * @return  a cached 412 (Precondition Failed) response
-     * @see     StatusCode#FOUR_HUNDRED_TWELVE
+     * @see StatusCode#FOUR_HUNDRED_TWELVE
      */
     public static Response preconditionFailed() {
         return CACHE.get(FOUR_HUNDRED_TWELVE, PRECONDITION_FAILED);
     }
     
     /**
-     * Retrieves a cached 408 (Request Timeout) response without a body.<p>
+     * {@return a cached 408 (Request Timeout) response without a body}<p>
      * 
      * There's not much hope that following this response, the client software
      * would algorithmically make up a new request just for the fun of it.
@@ -534,52 +495,47 @@ public final class Responses
      * which will cause the connection to gracefully close (see
      * {@link ClientChannel}).
      * 
-     * @return  a cached 408 (Request Timeout) response
-     * @see     StatusCode#FOUR_HUNDRED_EIGHT
+     * @see StatusCode#FOUR_HUNDRED_EIGHT
      */
     public static Response requestTimeout() {
         return CACHE.get(FOUR_HUNDRED_EIGHT, REQUEST_TIMEOUT);
     }
     
     /**
-     * Retrieves a cached 413 (Entity Too Large) response without a body.<p>
+     * {@return a cached 413 (Entity Too Large) response without a body}<p>
      * 
      * The returned response contains the header "Connection: close" which will
      * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
-     * @return  a cached 413 (Entity Too Large)
-     * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
+     * @see StatusCode#FOUR_HUNDRED_THIRTEEN
      */
     public static Response entityTooLarge() {
         return CACHE.get(FOUR_HUNDRED_THIRTEEN, ENTITY_TOO_LARGE);
     }
     
     /**
-     * Retrieves a cached 418 (I'm a Teapot) response without a body.
+     * {@return a cached 418 (I'm a Teapot) response without a body}
      * 
-     * @return  a cached 418 (I'm a Teapot)
-     * @see    StatusCode#FOUR_HUNDRED_THIRTEEN
+     * @see StatusCode#FOUR_HUNDRED_THIRTEEN
      */
     public static Response teapot() {
         return CACHE.get(FOUR_HUNDRED_EIGHTEEN, IM_A_TEAPOT);
     }
     
     /**
-     * Retrieves a cached 415 (Unsupported Media Type) response without a body.
+     * {@return a cached 415 (Unsupported Media Type) response without a body}
      * 
-     * @return  a cached 415 (Unsupported Media Type) response
-     * @see     StatusCode#FOUR_HUNDRED_FIFTEEN
+     * @see StatusCode#FOUR_HUNDRED_FIFTEEN
      */
     public static Response unsupportedMediaType() {
         return CACHE.get(FOUR_HUNDRED_FIFTEEN, UNSUPPORTED_MEDIA_TYPE);
     }
     
     /**
-     * Creates a new 426 (Upgrade Required) response without a body.
+     * {@return a new 426 (Upgrade Required) response without a body}
      * 
-     * @param   upgrade header value (proposition for new protocol version)
-     * @return  a new 426 (Upgrade Required) response
-     * @see     StatusCode#FOUR_HUNDRED_TWENTY_SIX
+     * @param upgrade header value (proposition for new protocol version)
+     * @see StatusCode#FOUR_HUNDRED_TWENTY_SIX
      */
     public static Response upgradeRequired(String upgrade) {
         return CACHE.get(FOUR_HUNDRED_TWENTY_SIX, UPGRADE_REQUIRED).toBuilder()
@@ -603,44 +559,40 @@ public final class Responses
     }
     
     /**
-     * Retrieve a cached 500 (Internal Server Error) response without a body.
+     * {@return a cached 500 (Internal Server Error) response without a body}
      * 
-     * @return  a cached 500 (Internal Server Error) response
-     * @see     StatusCode#FIVE_HUNDRED
+     * @see StatusCode#FIVE_HUNDRED
      */
     public static Response internalServerError() {
         return CACHE.get(FIVE_HUNDRED, INTERNAL_SERVER_ERROR);
     }
     
     /**
-     * Retrieves a cached 501 (Not Implemented) response without a body.
+     * {@return a cached 501 (Not Implemented) response without a body}
      * 
-     * @return  a cached 501 (Not Implemented) response
-     * @see     StatusCode#FIVE_HUNDRED_ONE
+     * @see StatusCode#FIVE_HUNDRED_ONE
      */
     public static Response notImplemented() {
         return CACHE.get(FIVE_HUNDRED_ONE, NOT_IMPLEMENTED);
     }
     
     /**
-     * Retrieves a cached 503 (Service Unavailable) response without a body.<p>
+     * {@return a cached 503 (Service Unavailable) response without a body}<p>
      * 
      * The returned response contains the header "Connection: close" which will
      * cause the connection to gracefully close (see {@link ClientChannel}).
      * 
-     * @return  a cached 503 (Service Unavailable) response
-     * @see     StatusCode#FIVE_HUNDRED_THREE
+     * @see StatusCode#FIVE_HUNDRED_THREE
      */
     public static Response serviceUnavailable() {
         return CACHE.get(FIVE_HUNDRED_THREE, SERVICE_UNAVAILABLE);
     }
     
     /**
-     * Retrieves a cached 505 (HTTP Version Not Supported) response without a
-     * body.
+     * {@return a cached 505 (HTTP Version Not Supported) response without a
+     * body}
      * 
-     * @return a cached 505 (HTTP Version Not Supported) response
-     * @see    StatusCode#FIVE_HUNDRED_FIVE
+     * @see StatusCode#FIVE_HUNDRED_FIVE
      */
     public static Response httpVersionNotSupported() {
         return CACHE.get(FIVE_HUNDRED_FIVE, HTTP_VERSION_NOT_SUPPORTED);

@@ -23,12 +23,11 @@ final class Segments
     }
     
     /**
-     * Returns the given segments without parameter names. E.g. {@code
-     * /some/:arg/*rest} becomes {@code /some/:/*}.
+     * {@return the given segments without parameter names}<p>
+     * 
+     * For example, {@code /some/:arg/*rest} becomes {@code /some/:/*}.
      * 
      * @param segments to strip of names
-     * 
-     * @return the given segments without parameter names
      */
     static List<String> noParamNames(Iterable<String> segments) {
         return StreamSupport.stream(segments.spliterator(), false)

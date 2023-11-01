@@ -45,7 +45,7 @@ final class ThreadLocalCache
             CACHE = ThreadLocal.withInitial(WeakHashMap::new);
     
     /**
-     * Retrieve a new or cached instance of the specified type.<p>
+     * {@return a new or cached instance of the specified type}<p>
      * 
      * The factory may return null, in which case null will be returned until
      * the factory yields a non-null result.
@@ -53,8 +53,6 @@ final class ThreadLocalCache
      * @param type     key
      * @param factory  producer
      * @param <T>      static type
-     * 
-     * @return  a cached, new instance or null
      * 
      * @throws NullPointerException  if {@code type} is {@code null}
      */

@@ -31,7 +31,7 @@ public interface Attributes {
      * 
      * @param name of attribute
      * 
-     * @return the value of the named attribute as an object (may be {@code null})
+     * @return the value of the named attribute as an object (can be {@code null})
      * 
      * @throws NullPointerException if {@code name} is {@code null}
      */
@@ -41,9 +41,9 @@ public interface Attributes {
      * Set the value of the named attribute.
      * 
      * @param name  of attribute (any non-null string)
-     * @param value of attribute (may be {@code null})
+     * @param value of attribute (can be {@code null})
      * 
-     * @return the old value (may be {@code null})
+     * @return the old value (can be {@code null})
      * 
      * @throws NullPointerException if {@code name} is {@code null}
      */
@@ -107,7 +107,7 @@ public interface Attributes {
      *             by Java compiler)
      * @param name of attribute
      * 
-     * @return the value of the named attribute as an object (may be {@code null})
+     * @return the value of the named attribute as an object (can be {@code null})
      * 
      * @throws NullPointerException if {@code name} is {@code null}
      */
@@ -169,8 +169,10 @@ public interface Attributes {
     ConcurrentMap<String, Object> asMap();
     
     /**
-     * Returns a modifiable map view of the attributes. Changes to the map
-     * are reflected in the attributes, and vice-versa.<p>
+     * {@return a modifiable map view of the attributes}<p>
+     * 
+     * Changes to the returned map are reflected in this object, and
+     * vice-versa.<p>
      * 
      * Unlike {@link #getOptAny(String)}, using this method can not lead to
      * heap pollution if the returned map is immediately used to work with
@@ -184,8 +186,6 @@ public interface Attributes {
      * 
      * @param <V> value type (explicitly provided on call site or inferred 
      *            by Java compiler)
-     * 
-     * @return a modifiable map view of the attributes
      */
     <V> ConcurrentMap<String, V> asMapAny();
 }

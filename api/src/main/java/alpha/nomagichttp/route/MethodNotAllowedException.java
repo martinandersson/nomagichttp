@@ -37,9 +37,7 @@ public final class MethodNotAllowedException extends NoHandlerResolvedException
     }
     
     /**
-     * Returns {@link Responses#methodNotAllowed()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#methodNotAllowed()}}
      */
     @Override
     public Response getResponse() {

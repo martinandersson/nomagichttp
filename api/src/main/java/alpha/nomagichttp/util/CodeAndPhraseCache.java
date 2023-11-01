@@ -71,13 +71,11 @@ public final class CodeAndPhraseCache<T>
     }
     
     /**
-     * Retrieve a value constructed from the given status-code.<p>
+     * {@return a value constructed from the given status-code}<p>
      * 
      * If the value does not exist, {@code null} is returned.
      * 
      * @param code of status
-     * 
-     * @return a value constructed from the given status-code
      */
     public T get(int code) {
         var v = get0(code);
@@ -85,15 +83,13 @@ public final class CodeAndPhraseCache<T>
     }
     
     /**
-     * Retrieve a value constructed from the given status-code and
-     * reason-phrase (case-sensitive).<p>
+     * {@return a value constructed from the given status-code and
+     * reason-phrase}.<p>
      * 
      * If the value does not exist, {@code null} is returned.
      * 
      * @param code of status
-     * @param phrase of reason
-     * 
-     * @return a value constructed from the given status-code and phrase
+     * @param phrase of reason (case-sensitive)
      * 
      * @throws NullPointerException
      *             if the entry based on status code is found and {@code phrase}

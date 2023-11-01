@@ -46,12 +46,10 @@ public interface ByteBufferIterator extends Closeable
     }
     
     /**
-     * Returns {@code true} if the iteration has more byte buffers.<p>
+     * {@return {@code true} if the iteration has more byte buffers}<p>
      * 
      * In other words, returns {@code true} if {@link #next} would
      * return a byte buffer rather than throwing {@link NoSuchElementException}.
-     * 
-     * @return see JavaDoc
      */
     boolean hasNext();
     
@@ -85,7 +83,7 @@ public interface ByteBufferIterator extends Closeable
      * @param action the action to be performed for each byte buffer
      * 
      * @throws NullPointerException
-     *             if the specified action is {@code null}
+     *             if the {@code action} is {@code null}
      * @throws IOException
      *             if an I/O error occurs
      */

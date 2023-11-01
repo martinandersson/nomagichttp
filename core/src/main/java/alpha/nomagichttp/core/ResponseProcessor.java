@@ -77,7 +77,7 @@ final class ResponseProcessor
      * method, again, as this could cause the application's response body
      * implementation to unnecessarily open more system resources. Even worse, a
      * nested call to {@code iterator} could forever block if there's a
-     * non-reentrant mutex involved (weird, but still).<p>
+     * non-reentrant mutex involved (which would be weird, but still).<p>
      * 
      * The reason why this method calls {@code iterator} is primarily to
      * lock down the response body length.
@@ -86,7 +86,7 @@ final class ResponseProcessor
      * @param req the request (may be {@code null})
      * @param reqVer client/request HTTP version (may be {@code null})
      * 
-     * @return see JavaDoc
+     * @return the result
      * 
      * @throws InterruptedException
      *             from {@link ResourceByteBufferIterable#iterator()}

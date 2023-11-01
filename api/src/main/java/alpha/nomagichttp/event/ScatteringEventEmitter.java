@@ -11,7 +11,7 @@ import alpha.nomagichttp.util.TriConsumer;
  */
 public interface ScatteringEventEmitter {
     /**
-     * Subscribe a listener.
+     * Subscribes a listener.
      * 
      * @param listener receiver of events
      * @param <T> call-site inferred type argument of event
@@ -25,7 +25,7 @@ public interface ScatteringEventEmitter {
     <T, U, V> boolean onAll(TriConsumer<? super T, ? super U, ? super V> listener);
     
     /**
-     * Unsubscribe a listener.
+     * Unsubscribes a listener.
      * 
      * @param listener receiver of events
      * @return {@code true} if removed, otherwise {@code false}

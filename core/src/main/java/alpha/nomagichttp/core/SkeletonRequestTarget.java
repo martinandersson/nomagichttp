@@ -132,9 +132,7 @@ final class SkeletonRequestTarget
     }
     
     /**
-     * Equivalent to {@link RequestTarget#raw()}.
-     * 
-     * @return see JavaDoc
+     * {@return {@link RequestTarget#raw()}}
      */
     String raw() {
         return raw;
@@ -143,9 +141,7 @@ final class SkeletonRequestTarget
     private List<String> segmentsPercentDecoded;
     
     /**
-     * Equivalent to {@link RequestTarget#segments()}.
-     * 
-     * @return see JavaDoc
+     * {@return {@link RequestTarget#segments()}}
      */
     List<String> segments() {
         var s = segmentsPercentDecoded;
@@ -157,9 +153,7 @@ final class SkeletonRequestTarget
     }
     
     /**
-     * Equivalent to {@link RequestTarget#segmentsRaw()}.
-     * 
-     * @return see JavaDoc
+     * {@return {@link RequestTarget#segmentsRaw()}}
      */
     List<String> segmentsRaw() {
         return segmentsNotPercentDecoded;
@@ -168,9 +162,7 @@ final class SkeletonRequestTarget
     private Map<String, List<String>> queryMapPercentDecoded;
     
     /**
-     * Equivalent to {@link RequestTarget#queryMap()}.
-     * 
-     * @return see JavaDoc
+     * {@return {@link RequestTarget#queryMap()}}
      */
     Map<String, List<String>> queryMap() {
         Map<String, List<String>> m = queryMapPercentDecoded;
@@ -189,9 +181,7 @@ final class SkeletonRequestTarget
     private Map<String, List<String>> queryMapNotPercentDecoded;
     
     /**
-     * Equivalent to {@link RequestTarget#queryMapRaw()}.
-     * 
-     * @return see JavaDoc
+     * {@return {@link RequestTarget#queryMapRaw()}}
      */
     Map<String, List<String>> queryMapRaw() {
         Map<String, List<String>> m = queryMapNotPercentDecoded;
@@ -219,9 +209,7 @@ final class SkeletonRequestTarget
     }
     
     /**
-     * Equivalent to {@link RequestTarget#fragment()}.
-     * 
-     * @return see JavaDoc
+     * {@return {@link RequestTarget#fragment()}}
      */
     String fragment() {
         return fragment;

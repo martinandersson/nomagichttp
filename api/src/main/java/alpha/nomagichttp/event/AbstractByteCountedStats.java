@@ -23,9 +23,7 @@ public abstract class AbstractByteCountedStats extends AbstractStats
     }
     
     /**
-     * Returns the number of bytes processed.
-     * 
-     * @return see JavaDoc
+     * {@return the number of bytes processed}
      */
     public final long byteCount() {
         return byteCount;

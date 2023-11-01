@@ -33,9 +33,7 @@ public final class BadRequestException
     }
     
     /**
-     * Returns {@link Responses#badRequest()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#badRequest()}}
      */
     @Override
     public Response getResponse() {

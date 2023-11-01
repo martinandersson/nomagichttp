@@ -21,7 +21,7 @@ import static alpha.nomagichttp.util.Streams.stream;
 public interface EventHub extends ScatteringEventEmitter, EventEmitter
 {
     /**
-     * Combine the given emitters into one hub.<p>
+     * Combines the given emitters into one hub.<p>
      * 
      * Events from the sourced emitters will be observed by the source's own
      * listeners as well as listeners subscribed to the hub instance returned.
@@ -43,7 +43,7 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
     }
     
     /**
-     * Combine the given emitters into one hub.<p>
+     * Combines the given emitters into one hub.<p>
      * 
      * Event from the sourced emitters will be observed by the source's own
      * listeners as well as listeners subscribed to the hub. Events dispatched
@@ -63,7 +63,7 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
     }
     
     /**
-     * Synchronously dispatch an event to subscribed listeners.
+     * Synchronously dispatches an event to subscribed listeners.
      * 
      * @param event to emit/dispatch
      * @return a count of listeners invoked (capped at {@code Integer.MAX_VALUE})
@@ -73,7 +73,7 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
     int dispatch(Object event);
     
     /**
-     * Synchronously dispatch an event with an attachment to subscribed
+     * Synchronously dispatches an event with an attachment to subscribed
      * listeners.<p>
      * 
      * This method does <i>not</i> throw {@code NullPointerException} if the
@@ -88,7 +88,7 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
     int dispatch(Object event, Object attachment);
     
     /**
-     * Synchronously dispatch an event with attachments to subscribed
+     * Synchronously dispatches an event with attachments to subscribed
      * listeners.<p>
      * 
      * This method does <i>not</i> throw {@code NullPointerException} if one or
@@ -104,7 +104,7 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
     int dispatch(Object event, Object attachment1, Object attachment2);
     
     /**
-     * Synchronously dispatch an event with a lazy attachment to subscribed
+     * Synchronously dispatches an event with a lazy attachment to subscribed
      * listeners.<p>
      * 
      * The attachment is lazily produced only once if there are listeners who
@@ -126,7 +126,7 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
     int dispatchLazy(Object event, Supplier<?> attachment);
     
     /**
-     * Synchronously dispatch an event with lazy attachments to subscribed
+     * Synchronously dispatches an event with lazy attachments to subscribed
      * listeners.<p>
      * 
      * The attachments are lazily produced only once if there are listeners who
@@ -149,7 +149,7 @@ public interface EventHub extends ScatteringEventEmitter, EventEmitter
     int dispatchLazy(Object event, Supplier<?> attachment1, Supplier<?> attachment2);
     
     /**
-     * Assign this hub to redistribute all events from the given emitter.<p>
+     * Assigns this hub to redistribute all events from the given emitter.<p>
      * 
      * The reference to the given emitter is not stored in the hub and using
      * this will not hinder the emitter from being garbage collected.<p>

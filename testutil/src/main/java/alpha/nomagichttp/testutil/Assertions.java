@@ -27,7 +27,7 @@ public final class Assertions {
     }
     
     /**
-     * Returns a {@code MapAssert} of the given headers.<p>
+     * {@return a {@code MapAssert} of the given headers}<p>
      * 
      * This method is equivalent to:
      * <pre>
@@ -36,8 +36,6 @@ public final class Assertions {
      * </pre>
      * 
      * @param thing to get headers from
-     * 
-     * @return see JavaDoc
      */
     public static MapAssert<String, List<String>> assertHeaders(
             HasHeaders thing) {
@@ -45,15 +43,13 @@ public final class Assertions {
     }
     
     /**
-     * Returns a {@code MapAssert} of the given {@code headers}.<p>
+     * {@return a {@code MapAssert} of the given {@code headers}}<p>
      * 
      * The headers are copied into a {@code LinkedHashMap}; i.e. the returned
      * API may be used to assert both <i>order and case-sensitive header
      * names</i>.
      * 
      * @param headers to assert
-     * 
-     * @return see JavaDoc
      */
     public static MapAssert<String, List<String>> assertHeaders(
             BetterHeaders headers) {

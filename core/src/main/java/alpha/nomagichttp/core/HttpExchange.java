@@ -81,7 +81,7 @@ final class HttpExchange
             SKELETON_REQUEST = newInstance();
     
     /**
-     * Returns the skeleton request.<p>
+     * {@return the skeleton request}<p>
      * 
      * The skeleton request is only available (non-empty Optional) after the
      * request head has been received, parsed and validated.<p>
@@ -92,8 +92,6 @@ final class HttpExchange
      * just not mappable on our side to a {@link Version Version} literal, or, a
      * particular Transfer-Encoding token is not supported (we wouldn't be able
      * to read the body).
-     * 
-     * @return see JavaDoc
      */
     static Optional<SkeletonRequest> skeletonRequest() {
         try {
@@ -271,7 +269,7 @@ final class HttpExchange
     }
     
     /**
-     * Executes the request processor.<p>
+     * Executes the request processing chain.<p>
      * 
      * The returned response is guaranteed to be in conformance with the state
      * of the writer; either an empty {@code Optional} because a final response
@@ -280,10 +278,10 @@ final class HttpExchange
      * 
      * @param req the request
      * 
-     * @return see JavaDoc
+     * @return the response produced by the request processing chain
      * 
      * @throws Exception
-     *             from the request processor
+     *             from the request processing chain
      */
     private Optional<Response> processRequest(SkeletonRequest req) throws Exception {
         // Potentially send 100 (Continue)...

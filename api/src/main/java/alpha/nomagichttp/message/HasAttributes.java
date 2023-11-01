@@ -7,9 +7,9 @@ package alpha.nomagichttp.message;
  */
 public interface HasAttributes {
     /**
-     * Returns an attributes API bound to this object.
+     * Returns attributes.
      * 
-     * @return an attributes API object bound to this object
+     * @return attributes (never {@code null})
      */
     Attributes attributes();
 }

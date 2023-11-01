@@ -153,7 +153,7 @@ import java.util.function.Consumer;
  */
 public interface EventEmitter {
     /**
-     * Subscribe a listener.
+     * Subscribes a listener.
      * 
      * @param eventType invariant class of events received by the listener
      * @param listener receiver of events
@@ -171,7 +171,7 @@ public interface EventEmitter {
     <T> boolean on(Class<T> eventType, Consumer<? super T> listener);
     
     /**
-     * Subscribe a listener that expects an attachment.
+     * Subscribes a listener that expects an attachment.
      * 
      * @param eventType invariant class of events received by the listener
      * @param listener receiver of events, possibly with an attachment
@@ -190,7 +190,7 @@ public interface EventEmitter {
     <T, U> boolean on(Class<T> eventType, BiConsumer<? super T, ? super U> listener);
     
     /**
-     * Subscribe a listener that expects two attachments.
+     * Subscribes a listener that expects two attachments.
      * 
      * @param eventType invariant class of events received by the listener
      * @param listener receiver of events, possibly with attachments
@@ -210,7 +210,7 @@ public interface EventEmitter {
     <T, U, V> boolean on(Class<T> eventType, TriConsumer<? super T, ? super U, ? super V> listener);
     
     /**
-     * Unsubscribe a listener.
+     * Unsubscribes a listener.
      * 
      * @param eventType invariant class of events received by the listener
      * @param listener to unsubscribe
@@ -223,7 +223,7 @@ public interface EventEmitter {
     <T> boolean off(Class<T> eventType, Consumer<? super T> listener);
     
     /**
-     * Unsubscribe a listener.
+     * Unsubscribes a listener.
      * 
      * @param eventType invariant class of events received by the listener
      * @param listener to unsubscribe
@@ -236,7 +236,7 @@ public interface EventEmitter {
     <T> boolean off(Class<T> eventType, BiConsumer<? super T, ?> listener);
     
     /**
-     * Unsubscribe a listener.
+     * Unsubscribes a listener.
      * 
      * @param eventType invariant class of events received by the listener
      * @param listener to unsubscribe

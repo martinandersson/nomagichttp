@@ -51,21 +51,13 @@ public final class MediaTypeUnsupportedException
         super(message, route, method, requireNonNull(contentType), accepts);
     }
     
-    /**
-     * {@inheritDoc}
-     * 
-     * @return Content-Type (never {@code null})
-     * @see HttpConstants.HeaderName#CONTENT_TYPE
-     */
     @Override
     public MediaType getContentType() {
         return super.getContentType();
     }
     
     /**
-     * Returns {@link Responses#unsupportedMediaType()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#unsupportedMediaType()}}
      */
     @Override
     public Response getResponse() {

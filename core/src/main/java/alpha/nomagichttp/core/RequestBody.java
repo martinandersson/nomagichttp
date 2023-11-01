@@ -54,7 +54,7 @@ final class RequestBody implements Request.Body
      * @param headers of request
      * @param reader the channel
      * 
-     * @return a request body
+     * @return the new request body
      * 
      * @throws BadRequestException
      *             on invalid message framing

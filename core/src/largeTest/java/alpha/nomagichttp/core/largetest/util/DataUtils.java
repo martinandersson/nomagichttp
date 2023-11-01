@@ -14,11 +14,9 @@ public final class DataUtils
     }
     
     /**
-     * Returns a new {@code byte[]} of sequentially filled data.
+     * {@return a new {@code byte[]} of sequentially filled data}
      * 
      * @param length of array
-     * 
-     * @return see JavaDoc
      */
     public static byte[] bytes(int length) {
         var data = new byte[length];
@@ -30,13 +28,10 @@ public final class DataUtils
     }
     
     /**
-     * Returns a char sequence of all printable ASCII letters, repeated over and
-     * over again as necessary to reach specified {@code length} of string.
+     * {@return a char sequence of all printable ASCII letters, repeated over and
+     * over again as necessary to reach specified {@code length} of string}
      * 
      * @param length of returned string
-     * 
-     * @return a char sequence of all printable ASCII letters, repeated over and
-     * over again as necessary to reach specified {@code length} of string
      */
     public static String text(int length) {
         byte[] source = lettersRange('!', '~');

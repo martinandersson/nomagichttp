@@ -31,9 +31,7 @@ public final class MediaTypeParseException extends RuntimeException
     }
     
     /**
-     * Returns the text input that attempted to parse.
-     * 
-     * @return the text input that attempted to parse
+     * {@return the text input that attempted to parse}
      */
     public String getText() {
         return text;

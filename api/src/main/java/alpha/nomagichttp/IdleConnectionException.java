@@ -33,7 +33,7 @@ public final class IdleConnectionException
     }
     
     /**
-     * {@inheritDoc}<p>
+     * {@return {@link Responses#requestTimeout()}}<p>
      * 
      * If this exception is passed to an exception handler, it can only be
      * because the input stream shut down, and the unused output stream remains
@@ -43,15 +43,12 @@ public final class IdleConnectionException
      * and the connection will come to an abrupt end. Meaning that for this
      * case, exception handlers are not called.<p>
      * 
-     * Consequently, this method returns {@link Responses#requestTimeout()}.<p>
-     * 
      * There will never in a million years make much sense to even try writing
      * a fallback response if the write operation times out. Why would the
      * second attempt succeed better than the failed one?<p>
      * 
-     * To be uber clear, this method never returns 503 (Service Unavailable).
-     * 
-     * @return see Javadoc
+     * To be uber clear, this method will never return 503
+     * (Service Unavailable).
      */
     @Override
     public Response getResponse() {

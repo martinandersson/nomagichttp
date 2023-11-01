@@ -132,8 +132,8 @@ public interface HasResponse {
      * 
      * The exception class should never return a response indicating success.<p>
      * 
-     * <i>Handling</i> of an exception is the job of {@link ExceptionHandler}. The
-     * server's {@linkplain ExceptionHandler#BASE base handler} will respond
+     * <i>Handling</i> of an exception is the job of {@link ExceptionHandler}.
+     * The server's {@linkplain ExceptionHandler#BASE base handler} will respond
      * {@link Responses#teapot()}, if the response returned from this method has
      * a status code which is not in the 3XX (Redirection), 4XX (Client Error),
      * nor 5XX (Server Error) category.
@@ -143,7 +143,7 @@ public interface HasResponse {
      * It does not impose subjective/interpretive, and unnecessary
      * implementation requirements.
      * 
-     * @return an advisory fallback response (never {@code null})
+     * @return an advisory, fallback response (never {@code null})
      */
     Response getResponse();
 }

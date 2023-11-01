@@ -103,19 +103,15 @@ public interface ChannelWriter
             throws InterruptedException, FileLockTimeoutException, IOException;
     
     /**
-     * Returns whether a final response has been sent.
-     * 
-     * @return see JavaDoc
+     * {@return whether a final response has been sent}
      */
     boolean wroteFinal();
     
     /**
-     * Returns the number of bytes written to the underlying channel.<p>
+     * {@return the number of bytes written to the underlying channel}<p>
      * 
      * The count is never reset. It reflects the total number of bytes written
      * since the beginning of the HTTP exchange until this method is called.
-     * 
-     * @return see JavaDoc
      */
     long byteCount();
 }

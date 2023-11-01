@@ -197,8 +197,7 @@ import java.util.function.IntConsumer;
 public interface HttpServer extends RouteRegistry, ActionRegistry
 {
     /**
-     * Create a server using the {@linkplain Config#DEFAULT default
-     * configuration}.<p>
+     * Creates a new {@code HttpServer} using {@link Config#DEFAULT}.<p>
      * 
      * The provided array of exception handlers will be copied as-is. The
      * application should make sure that the array does not contain duplicates,
@@ -207,7 +206,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * @param eh exception handler(s)
      * 
-     * @return an HTTP server instance
+     * @return a new {@code HttpServer}
      * 
      * @throws NullPointerException
      *             if {@code eh} or an element therein is {@code null}
@@ -217,7 +216,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     }
     
     /**
-     * Creates a server.<p>
+     * Creates a new {@code HttpServer}.<p>
      * 
      * The provided array of exception handlers will be copied as-is. The
      * application should make sure that the array does not contain duplicates,
@@ -227,7 +226,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * @param config of server
      * @param eh     exception handler(s)
      * 
-     * @return an HTTP server instance
+     * @return a new {@code HttpServer}
      * 
      * @throws NullPointerException
      *             if an argument or array element is {@code null}
@@ -311,7 +310,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * 
      * Calling the method {@code cancel} on the returned Future does nothing.
      * 
-     * @return a future that only completes exceptionally
+     * @return a future that completes only exceptionally
      *         (see {@link #start(SocketAddress)})
      * 
      * @throws IllegalStateException
@@ -508,7 +507,8 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     void kill() throws IOException, InterruptedException;
     
     /**
-     * Returns {@code true} if the server is running.<p>
+     * {@return {@code true} if the server is running, otherwise
+     * {@code false}}<p>
      * 
      * By running means, is the server listening on a port for new client
      * connections?<p>
@@ -530,13 +530,11 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      * scheduled to close the channel. A {@code false} return value will
      * therefor semantically mean "server is not running, or it is just about to
      * stop within the blink of an eye".
-     * 
-     * @return {@code true} if the server is running
      */
     boolean isRunning();
     
     /**
-     * Returns the event hub associated with this server.<p>
+     * {@return the event hub associated with this server}<p>
      * 
      * The event hub can be used to subscribe to server-related events. For
      * example:<p>
@@ -611,23 +609,17 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *   </tbody>
      * </table>
      * 
-     * @return the event hub associated with this server (never {@code null})
-     * 
      * @see EventEmitter
      */
     EventHub events();
     
     /**
-     * Returns the server's configuration.
-     * 
-     * @return see JavaDoc (never {@code null})
+     * {@return the server's configuration}
      */
     Config getConfig();
     
     /**
-     * Returns the socket address that the server's channel's socket is bound to.
-     * 
-     * @return see JavaDoc (never {@code null})
+     * {@return the socket address this server's channel's socket is bound to}
      * 
      * @throws IllegalStateException
      *             if the server is not running
@@ -639,7 +631,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     SocketAddress getLocalAddress() throws IOException;
     
     /**
-     * Returns the port this server is listening to.
+     * {@return the port this server is listening to}
      * 
      * @implSpec
      * The default implementation is equivalent to:<p>
@@ -653,8 +645,6 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
      *   // @end
      *   // @end
      * }
-     * 
-     * @return see JavaDoc
      * 
      * @throws IllegalStateException
      *             if the server is not running

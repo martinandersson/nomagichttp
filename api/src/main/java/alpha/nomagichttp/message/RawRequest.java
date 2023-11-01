@@ -63,10 +63,8 @@ public final class RawRequest
         }
         
         /**
-         * Returns the value from {@link System#nanoTime()} polled just before
-         * parsing the request-line began.
-         * 
-         * @return see JavaDoc
+         * {@return the value from {@link System#nanoTime()} polled just before
+         * parsing the request-line began}
          */
         @Override
         public long nanoTimeOnStart() {
@@ -74,10 +72,8 @@ public final class RawRequest
         }
         
         /**
-         * Returns the number of bytes processed in order to split the
-         * request-line into tokens.
-         * 
-         * @return see JavaDoc
+         * {@return the number of bytes processed in order to split the
+         * request-line into tokens}
          */
         @Override
         public int length() {

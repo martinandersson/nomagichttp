@@ -28,9 +28,7 @@ public sealed abstract class AbstractSizeException
     }
     
     /**
-     * Returns {@link Responses#entityTooLarge()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#entityTooLarge()}}
      */
     @Override
     public final Response getResponse() {

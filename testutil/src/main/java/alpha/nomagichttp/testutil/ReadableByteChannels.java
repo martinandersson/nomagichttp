@@ -17,11 +17,11 @@ public final class ReadableByteChannels
     }
     
     /**
-     * Creates a channel from the given data, encoded as ASCII bytes.
+     * Creates a new channel reading the specified data, encoded as ASCII bytes.
      * 
      * @param data channel content
      * 
-     * @return see JavaDoc
+     * @return a new channel
      */
     public static ReadableByteChannel ofString(String data) {
         var src = asciiBytes(data);
