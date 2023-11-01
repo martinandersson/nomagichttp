@@ -59,13 +59,11 @@ import java.util.stream.Stream;
 public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
 {
     /**
-     * If a header is present, returns {@code true}, otherwise {@code false}.<p>
+     * {@return {@code true} if a header is present, otherwise {@code false}}<p>
      * 
      * The header value(s) has no effect on the result of this method.
      * 
      * @param headerName the header name
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code headerName} is {@code null}
@@ -76,7 +74,7 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
     boolean contains(String headerName);
     
     /**
-     * If a header is present, check if it contains a value substring.<p>
+     * If a header is present, checks if it contains a value substring.<p>
      * 
      * Suppose the server receives this request:
      * <pre>
@@ -109,8 +107,8 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
     boolean contains(String headerName, String valueSubstring);
     
     /**
-     * Returns whether the {@value HttpConstants.HeaderName#CONNECTION} header
-     * is present and contains the value substring "close".<p>
+     * {@return whether the {@value HttpConstants.HeaderName#CONNECTION} header
+     * is present and contains the value substring "close"}<p>
      * 
      * This method is equivalent to:<p>
      * 
@@ -118,14 +116,12 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      *   // @link substring="contains" target="#contains(String, String)" :
      *   contains("Connection", "close");
      * }
-     * 
-     * @return see JavaDoc
      */
     boolean hasConnectionClose();
     
     /**
-     * Returns whether the {@value HttpConstants.HeaderName#TRANSFER_ENCODING}
-     * header is present and contains the value "chunked".<p>
+     * {@return whether the {@value HttpConstants.HeaderName#TRANSFER_ENCODING}
+     * header is present and contains the value "chunked"}<p>
      * 
      * This method is equivalent to:<p>
      * 
@@ -133,14 +129,12 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      *   // @link substring="contains" target="#contains(String, String)" :
      *   contains("Transfer-Encoding", "chunked");
      * }
-     * 
-     * @return see JavaDoc
      */
     boolean hasTransferEncodingChunked();
     
     /**
-     * Returns {@code true} if the given header is missing or all of its mapped
-     * values are empty, otherwise {@code false}.<p>
+     * {@return {@code true} if the given header is missing or all of its mapped
+     * values are empty, otherwise {@code false}}<p>
      * 
      * A method semantically equivalent to "isMissing" is already provided:<p>
      * 
@@ -149,9 +143,7 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      *   boolean isMissing = !headers.contains("My-Fortune");
      * }
      * 
-     * @param headerName the header name
-     * 
-     * @return see JavaDoc
+     * @param headerName the header nam
      * 
      * @throws NullPointerException
      *             if {@code headerName} is {@code null}
@@ -161,11 +153,9 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
     boolean isMissingOrEmpty(String headerName);
     
     /**
-     * Returns the first value of the given header name.
+     * {@return the first value of the given header name}
      * 
      * @param headerName the header name
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code headerName} is {@code null}
@@ -175,11 +165,9 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
     Optional<String> firstValue(String headerName);
     
     /**
-     * Returns the first value of the given header name, as a {@code long}.
+     * {@return the first value of the given header name, as a {@code long}}
      * 
      * @param headerName the header name
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code headerName} is {@code null}
@@ -193,7 +181,7 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
     OptionalLong firstValueAsLong(String headerName);
     
     /**
-     * Returns a {@code List} of all values mapped to the given header name.<p>
+     * {@return a list of all values mapped to the given header name}<p>
      * 
      * An immutable and non-null {@code List} that implements
      * {@link RandomAccess}, is always returned, which may be empty if the
@@ -205,8 +193,6 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      *             if {@code headerName} is {@code null}
      * @throws IllegalArgumentException
      *             if {@code headerName} has leading or trailing whitespace
-     * 
-     * @return see JavaDoc
      */
     List<String> allValues(String headerName);
     
@@ -233,7 +219,7 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      * 
      * @param headerName the header name
      * 
-     * @return see JavaDoc
+     * @return header value tokens
      * 
      * @throws NullPointerException
      *             if {@code headerName} is {@code null}
@@ -265,7 +251,7 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      * 
      * @param headerName the header name
      * 
-     * @return see JavaDoc
+     * @return header value tokens
      * 
      * @throws NullPointerException
      *             if {@code headerName} is {@code null}

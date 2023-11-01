@@ -28,23 +28,19 @@ abstract class AbstractResultParser<R>
     }
     
     /**
-     * Returns the number of bytes read from the upstream
-     * 
-     * @return the number of bytes read from the upstream
+     * {@return the number of bytes read from the upstream}
      */
     final int byteCount() {
         return count;
     }
     
     /**
-     * Returns the current position.<p>
+     * {@return the current position}<p>
      * 
      * The position could be thought of as an index of a byte stream.<p>
      * 
      * This implementation returns {@code byteCount() - 1}. But the concrete
      * parser is free to override this logic.
-     * 
-     * @return see JavaDoc
      */
     int position() {
         int v = byteCount();
@@ -90,11 +86,9 @@ abstract class AbstractResultParser<R>
     protected abstract R tryParse(byte b);
     
     /**
-     * Produces a parse exception.
+     * {@return a parse exception}
      * 
      * @param message pass to super/Throwable (never {@code null} nor empty)
-     * 
-     * @return see JavaDoc
      */
     protected abstract RuntimeException parseException(String message);
 }

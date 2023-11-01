@@ -19,21 +19,20 @@ public final class ByteBuffers
     }
     
     /**
-     * Extracts a {@code byte[]} from the given buffer.<p>
+     * {@return a {@code byte[]} with the content from the given buffer}<p>
      * 
      * If the given bytebuffer is backed by an array, is not read-only, and the
      * bytebuffer's remaining content is fully represented by the array, then
      * the backing array is returned.<p>
      * 
      * Otherwise, a new array is created and the remaining bytes will be
-     * transferred without updating the bytebuffer's position.<p>
+     * copied without updating the bytebuffer's position.<p>
      * 
      * In other words, neither the buffer nor the returned array should be
      * modified unless it is intended that the modification is visible to
      * holders of both.
      * 
-     * @param buf to extract bytes from
-     * @return see JavaDoc
+     * @param buf to get a bytearray from
      */
     public static byte[] asArray(ByteBuffer buf) {
         final byte[] bytes;
@@ -55,7 +54,7 @@ public final class ByteBuffers
      * returns normally, the buffer will have no more bytes remaining.
      * 
      * @param buf to drain
-     * @return see JavaDoc
+     * @return a new {@code byte[]}
      */
     public static byte[] toArray(ByteBuffer buf) {
         if (!buf.hasRemaining()) {
@@ -70,7 +69,7 @@ public final class ByteBuffers
      * Encode the given string using {@link StandardCharsets#US_ASCII}.
      * 
      * @param str to encode
-     * @return the bytes
+     * @return the bytes as a bytebuffer
      */
     public static ByteBuffer asciiBytes(String str) {
         return wrap(str.getBytes(US_ASCII));

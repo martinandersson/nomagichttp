@@ -12,6 +12,13 @@ base {
     archivesName = "${rootProject.name}-${archivesName.get()}"
 }
 
+// For the sake of consumers, build reproducible archives
+// https://docs.gradle.org/current/userguide/working_with_files.html#sec:reproducible_archives
+jar {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
 repositories {
     mavenCentral()
 }
@@ -37,7 +44,7 @@ tasks.named('jacocoTestReport') {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(libs.versions.jdk.get())
-        vendor = JvmVendorSpec.ORACLE
+        vendor = JvmVendorSpec.ADOPTIUM
     }
 }
 

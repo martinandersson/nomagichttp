@@ -46,6 +46,8 @@ import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
+import static alpha.nomagichttp.testutil.functional.Environment.isGitHubActions;
+import static alpha.nomagichttp.testutil.functional.Environment.isJitPack;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofString;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
@@ -578,10 +580,17 @@ final class ErrorTest extends AbstractRealTest
     class IdleConnectionExc {
         @Test
         void duringHead() throws IOException, InterruptedException {
-            usingConfiguration()
-                .timeoutIdleConnection(ofMillis(1));
+            // On the author's machine, ofMillis(1) was never any problem.
+            // But for GitHub's environment, such a short duration may
+            // occasionally also time out the write operation (i.e. background
+            // thread closes the write stream, and we get no response or a
+            // corrupt one)!
+            // TODO: Fix brittle and nondeterministic test
+            usingConfiguration().timeoutIdleConnection(
+                (isGitHubActions() || isJitPack()) ? ofMillis(10) : ofMillis(1));
             server();
             try (var closeConn = client().openConnection()) {
+                // Never send anything and expect a response
                 String rsp = client().readTextUntilNewlines();
                 assertThat(rsp).isEqualTo(
                     "HTTP/1.1 408 Request Timeout" + CRLF +

@@ -60,9 +60,7 @@ public final class MediaTypeNotAcceptedException
     }
     
     /**
-     * Returns {@link Responses#notAcceptable()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#notAcceptable()}}
      */
     @Override
     public Response getResponse() {

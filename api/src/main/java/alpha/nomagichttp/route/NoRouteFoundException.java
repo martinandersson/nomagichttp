@@ -35,11 +35,8 @@ public final class NoRouteFoundException
     }
     
     /**
-     * Returns normalized- and percent-decoded path segments from the request
-     * target.
-     * 
-     * @return
-     *     normalized- and percent-decoded path segments from the request target
+     * {@return normalized- and percent-decoded path segments from the request
+     * target}
      * 
      * @see Route
      */
@@ -62,9 +59,7 @@ public final class NoRouteFoundException
     }
     
     /**
-     * Returns {@link Responses#notFound()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#notFound()}}
      */
     @Override
     public Response getResponse() {

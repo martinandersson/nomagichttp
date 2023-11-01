@@ -1133,27 +1133,21 @@ public abstract class HttpClientFacade
         }
         
         /**
-         * Returns the HTTP version.
-         * 
-         * @return the HTTP version
+         * {@return the HTTP version}
          */
         public String version() {
             return version.get();
         }
         
         /**
-         * Returns the response status-code.
-         * 
-         * @return status-code
+         * {@return the response status-code}
          */
         public int statusCode() {
             return statusCode.getAsInt();
         }
         
         /**
-         * Returns the response reason-phrase.
-         * 
-         * @return reason-phrase
+         * {@return the response reason-phrase}
          * 
          * @throws UnsupportedOperationException
          *             if the underlying client does not support this operation
@@ -1163,9 +1157,7 @@ public abstract class HttpClientFacade
         }
          
         /**
-         * Returns the response headers.
-         * 
-         * @return headers
+         * {@return the response headers}
          */
         @Override
         public ContentHeaders headers() {
@@ -1173,9 +1165,7 @@ public abstract class HttpClientFacade
         }
         
         /**
-         * Returns the response body.
-         * 
-         * @return body
+         * {@return the response body}
          */
         public B body() {
             // TODO: Throw Unsupported if empty
@@ -1183,9 +1173,8 @@ public abstract class HttpClientFacade
         }
         
         /**
-         * Returns the trailers.
+         * {@return the trailers}
          * 
-         * @return the trailers
          * @throws IOException if an I/O error occurs (only by OkHttp)
          */
         public BetterHeaders trailers() throws IOException {

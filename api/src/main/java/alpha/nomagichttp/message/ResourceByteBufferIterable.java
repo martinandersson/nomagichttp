@@ -68,7 +68,7 @@ public interface ResourceByteBufferIterable
             throws InterruptedException, FileLockTimeoutException, IOException;
     
     /**
-     * Returns the number of iterable bytes.<p>
+     * {@return the number of iterable bytes}<p>
      * 
      * This method returns {@code -1} if the length is unknown, meaning that an
      * iteration can observe any number of bytes, from none at all to infinite.
@@ -99,14 +99,12 @@ public interface ResourceByteBufferIterable
      * <a href="https://www.rfc-editor.org/rfc/rfc7230#section-3.3.3">RFC 7230</a> 
      * and Java itself (e.g. array.length).
      * 
-     * @return the number of iterable bytes
-     * 
      * @throws IOException if an I/O error occurs
      */
     long length() throws IOException;
     
     /**
-     * Returns true if this iterable is known to be empty.<p>
+     * {@return {@code true} if this iterable is known to be empty}<p>
      * 
      * As is the case with {@link #length()}, the returned value may be
      * immediately outdated, unless called synchronously in-between
@@ -117,8 +115,6 @@ public interface ResourceByteBufferIterable
      * <pre>{@code
      *   return length() == 0;
      * }</pre>
-     * 
-     * @return see JavaDoc
      * 
      * @throws IOException if an I/O error occurs
      */

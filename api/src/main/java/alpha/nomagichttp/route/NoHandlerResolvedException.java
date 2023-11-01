@@ -77,7 +77,7 @@ public abstract class NoHandlerResolvedException
     /**
      * Returns the "Content-Type" request header value.
      * 
-     * @return Content-Type (may be {@code null})
+     * @return Content-Type (can be {@code null})
      * @see HttpConstants.HeaderName#CONTENT_TYPE
      */
     public MediaType getContentType() {
@@ -91,7 +91,7 @@ public abstract class NoHandlerResolvedException
      * shouldn't be modified. Doing so may lead to undefined application
      * behavior.
      * 
-     * @return Accept (may be {@code null})
+     * @return Accept (can be {@code null})
      * @see HttpConstants.HeaderName#ACCEPT
      */
     public Collection<MediaType> getAccepts() {

@@ -117,20 +117,16 @@ public final class Confined<V>
     }
     
     /**
-     * Returns {@code true} if a value is contained in the box.
-     * 
-     * @return {@code true} if a value is contained in the box
+     * {@return {@code true} if a value is contained in the box}
      */
     boolean isPresent() {
         return IS_USER_VALUE.test(ref.get());
     }
     
     /**
-     * Returns the confined value.
+     * {@return the confined value}<p>
      * 
      * The call-site must not mutate the value.
-     * 
-     * @return the confined value
      */
     Optional<V> peek() {
         Object o = ref.get();

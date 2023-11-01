@@ -34,21 +34,17 @@ public final class UnsupportedTransferCodingException
     }
     
     /**
-     * Returns the unsupported coding token.<p>
+     * {@return the unsupported coding token}<p>
      * 
      * The request's {@value HttpConstants.HeaderName#TRANSFER_ENCODING} header
      * may contain even more unsupported codings.
-     * 
-     * @return see JavaDoc
      */
     public String coding() {
         return coding;
     }
     
     /**
-     * Returns {@link Responses#notImplemented()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#notImplemented()}}
      */
     @Override
     public Response getResponse() {

@@ -30,7 +30,7 @@ public final class ScopedValues {
     }
     
     /**
-     * Returns the server.<p>
+     * {@return the running server}<p>
      * 
      * The value will be accessible by code running within a server. For
      * example; before-actions, request handlers and after-actions.<p>
@@ -48,8 +48,6 @@ public final class ScopedValues {
      *       dispatch}("Something happened");
      * </pre>
      * 
-     * @return the running server
-     * 
      * @throws NoSuchElementException if the server instance is not bound
      */
     public static HttpServer httpServer() {
@@ -57,11 +55,9 @@ public final class ScopedValues {
     }
     
     /**
-     * Returns the client channel.<p>
+     * {@return the client channel}<p>
      * 
      * The value will be accessible by code running within an HTTP exchange.
-     * 
-     * @return the client channel
      * 
      * @throws NoSuchElementException
      *             if the client channel instance is not bound

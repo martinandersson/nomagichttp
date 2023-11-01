@@ -83,16 +83,14 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an empty {@code ByteBufferIterable}.
-     * 
-     * @return see JavaDoc
+     * {@return an empty {@code ByteBufferIterable}}
      */
     public static ByteBufferIterable empty() {
         return Empty.INSTANCE;
     }
     
     /**
-     * Returns a {@code ByteBufferIterable} backed by byte arrays.<p> 
+     * {@return a {@code ByteBufferIterable} backed by byte arrays}<p> 
      * 
      * The iterable's bytebuffers read from the given byte arrays, they are not
      * copied. The application should not modify the byte arrays after having
@@ -100,8 +98,6 @@ public final class ByteBufferIterables
      * 
      * @param first bytearray
      * @param more bytearrays
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if any argument is {@code null}
@@ -111,7 +107,7 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable backed by the given bytebuffers.<p> 
+     * {@return an iterable backed by the given bytebuffers}<p> 
      * 
      * The iterable's content is the given bytebuffers, they are not copied. The
      * application should not modify the bytebuffers after having called this
@@ -119,8 +115,6 @@ public final class ByteBufferIterables
      * 
      * @param first bytebuffer
      * @param more bytebuffers
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if any argument is {@code null}
@@ -130,15 +124,13 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of the given bytebuffers.<p> 
+     * {@return an iterable of the given bytebuffers}<p> 
      * 
      * The iterable's content is the given bytebuffers, they are not copied. The
      * application should not modify the bytebuffers after having called this
      * method.
      * 
      * @param items backing byte arrays
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code items} is {@code null}
@@ -149,11 +141,9 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of a {@code String} encoded using UTF-8.
+     * {@return an iterable of a {@code String} encoded using UTF-8}
      * 
      * @param str to be encoded
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code str} is {@code null}
@@ -167,7 +157,7 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of a {@code String} encoded using UTF-8.<p>
+     * {@return an iterable of a {@code String} encoded using UTF-8}<p>
      * 
      * Malformed input and unmappable characters will be replaced. This should
      * not happen for most inputs. Nonetheless, specifying the string "\uD83F"
@@ -180,8 +170,6 @@ public final class ByteBufferIterables
      * method offers a benefit is to not have to deal with a checked exception.
      * 
      * @param str to be encoded
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code str} is {@code null}
@@ -197,12 +185,10 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of an encoded {@code String}.
+     * {@return an iterable of an encoded {@code String}}
      * 
      * @param str to be encoded
      * @param cs to use for encoding
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code str} is {@code null}
@@ -218,7 +204,7 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of a {@code String} as encoded bytes.<p>
+     * {@return an iterable of a {@code String} as encoded bytes}<p>
      * 
      * The method used for encoding is
      * {@link CharsetEncoder#encode(CharBuffer)}, which will reset the encoder
@@ -231,8 +217,6 @@ public final class ByteBufferIterables
      * 
      * @param str to be encoded
      * @param enc encoder to use
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if any argument is {@code null}
@@ -247,7 +231,7 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of a file.<p>
+     * {@return an iterable of a file}<p>
      * 
      * An invocation of this method behaves in exactly the same way as the
      * invocation
@@ -265,8 +249,6 @@ public final class ByteBufferIterables
      * 
      * @param file to read bytes from
      * 
-     * @return see JavaDoc
-     * 
      * @throws NullPointerException
      *             if {@code file} is {@code null}
      */
@@ -275,7 +257,7 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of a file.<p>
+     * {@return an iterable of a file}<p>
      * 
      * This method does not require the file to exist. The file should exist,
      * however, no later than when an iterator is created; which is when the
@@ -302,8 +284,6 @@ public final class ByteBufferIterables
      * @param timeout  the time the iterator waits for a lock
      * @param unit     the time unit of the timeout argument
      * 
-     * @return see JavaDoc
-     * 
      * @throws NullPointerException
      *             if any argument is {@code null}
      */
@@ -313,7 +293,7 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable of a file.<p>
+     * {@return an iterable of a file}<p>
      * 
      * An invocation of this method behaves in exactly the same way as the
      * invocation
@@ -327,8 +307,6 @@ public final class ByteBufferIterables
      * 
      * @param file to read bytes from
      * 
-     * @return see JavaDoc
-     * 
      * @throws NullPointerException
      *             if {@code file} is {@code null}
      * 
@@ -339,7 +317,7 @@ public final class ByteBufferIterables
     }
     
     /**
-     * Returns an iterable generating bytebuffers from the given supplier.<p>
+     * {@return an iterable generating bytebuffers from the given supplier}<p>
      * 
      * Each new iterator will pull the supplier at least once, until an empty
      * bytebuffer is returned.<p>
@@ -359,8 +337,6 @@ public final class ByteBufferIterables
      * {@link ByteBuffer#asReadOnlyBuffer()}.
      * 
      * @param s supplier of the iterable's content
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code s} is {@code null}

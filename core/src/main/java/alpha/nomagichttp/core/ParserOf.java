@@ -84,7 +84,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * @param reqLineLen number of bytes already parsed from the head
      * @param maxHeadSize max total bytes to parse for a head
      * 
-     * @return a parser of request headers
+     * @return the new parser
      */
     static ParserOf<Request.Headers>
             headers(ByteBufferIterable in, int reqLineLen, int maxHeadSize)
@@ -105,7 +105,7 @@ final class ParserOf<H extends BetterHeaders> extends AbstractResultParser<H>
      * 
      * @param in byte source
      * @param maxTrailersSize max bytes to parse
-     * @return a parser of request trailers
+     * @return the new parser
      */
     static ParserOf<BetterHeaders>
             trailers(ByteBufferIterable in, int maxTrailersSize)

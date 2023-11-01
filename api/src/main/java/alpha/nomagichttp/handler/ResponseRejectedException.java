@@ -83,10 +83,10 @@ public final class ResponseRejectedException
     }
     
     /**
-     * {@inheritDoc}
+     * {@return a response different for each reason}
      * 
      * <table>
-     *   <caption style="display:none">Reason to response mappings</caption>
+     *   <caption style="display:none">N/A</caption>
      *   <thead>
      *   <tr>
      *     <th scope="col">Reason</th>
@@ -106,8 +106,6 @@ public final class ResponseRejectedException
      *   </tr>
      *   </tbody>
      * </table>
-     * 
-     * @return see Javadoc
      */
     @Override
     public Response getResponse() {

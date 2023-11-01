@@ -24,13 +24,15 @@ public final class Headers
     }
     
     /**
-     * Constructs the default implementation of {@code ContentHeaders}.<p>
+     * Returns a new instance of the default implementation containing the
+     * specified pairs.<p>
      * 
-     * The values will <i>not</i> have trailing whitespace stripped.
+     * The specified header values will <i>not</i> have trailing whitespace
+     * stripped.
      * 
      * @param nameValuePairs header entries
      * 
-     * @return see JavaDoc
+     * @return new content headers
      * 
      * @throws NullPointerException
      *             if {@code nameValuePairs} is {@code null}
@@ -42,15 +44,13 @@ public final class Headers
     }
     
     /**
-     * Constructs a multivalued {@code LinkedHashMap}.<p>
+     * {@return a new {@code LinkedHashMap} containing the specified pairs}<p>
      * 
      * The returned map will obviously retain the provided order of headers, but
      * does not provide a case-insensitive {@code equals} method for the header
      * names.
      * 
      * @param nameValuePairs header entries
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code nameValuePairs} is {@code null}
@@ -65,15 +65,12 @@ public final class Headers
     }
     
     /**
-     * Copies the given headers into a multivalued {@code LinkedHashMap}.<p>
+     * {@return a new linked hash map containing the specified headers}<p>
      * 
-     * The returned map will obviously retain the provided order of headers, but
-     * does not provide a case-insensitive {@code equals} method for the header
-     * names.
+     * The returned map will retain the order of headers, but does not provide a
+     * case-insensitive {@code equals} method for the header names.
      * 
      * @param headers to copy
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code headers} is {@code null}
@@ -86,8 +83,7 @@ public final class Headers
     }
     
     /**
-     * Puts the given headers into a multivalued, case-insensitive
-     * {@code TreeMap}.<p>
+     * {@return a new tree map containing the specified pairs}<p>
      * 
      * The returned map will be equal to another {@code TreeMap}, as long as the
      * other map contains the same set of header names (case-insensitive) and
@@ -97,8 +93,6 @@ public final class Headers
      * {@link String#compareToIgnoreCase(String)}.
      * 
      * @param nameValuePairs header entries
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code headers} is {@code null}
@@ -115,8 +109,7 @@ public final class Headers
     }
     
     /**
-     * Copies the given headers into a multivalued, case-insensitive
-     * {@code TreeMap}.<p>
+     * {@return a new tree map containing the specified headers}<p>
      * 
      * The returned map will be equal to another {@code TreeMap}, as long as the
      * other map contains the same set of header names (case-insensitive) and
@@ -126,8 +119,6 @@ public final class Headers
      * {@link String#compareToIgnoreCase(String)}.
      * 
      * @param headers to copy
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code headers} is {@code null}

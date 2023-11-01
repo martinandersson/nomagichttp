@@ -259,9 +259,7 @@ public interface Route
     Iterable<String> segments();
     
     /**
-     * Returns unique method tokens of all handlers registered with this route.
-     * 
-     * @return unique method tokens of all handlers registered with this route
+     * {@return unique method tokens of all handlers registered with this route}
      */
     Stream<String> supportedMethods();
     

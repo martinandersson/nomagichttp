@@ -29,21 +29,17 @@ public class ExposedByteArrayOutputStream extends ByteArrayOutputStream {
     }
     
     /**
-     * Returns the number of valid bytes in the buffer.<p>
+     * {@return the number of valid bytes in the buffer}<p>
      * 
      * Warning: Unlike other methods in ByteArrayOutputStream, this method is
      * not synchronized.
-     * 
-     * @return the number of valid bytes in the buffer
      */
     public int count() {
         return super.count;
     }
     
     /**
-     * Returns the buffer reference.
-     * 
-     * @return the buffer reference
+     * {@return the buffer reference}
      */
     public byte[] buffer() {
         try {

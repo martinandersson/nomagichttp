@@ -39,53 +39,39 @@ public abstract class AbstractStats
     }
     
     /**
-     * Returns the value from {@link System#nanoTime()} polled just before
-     * the task begun.
-     * 
-     * @return the value from {@link System#nanoTime()} polled just before
-     *         the task begun
+     * {@return the value from {@link System#nanoTime()} polled just before the
+     * task begun}
      */
     public final long nanoTimeOnStart() {
         return start;
     }
     
     /**
-     * Returns the value from {@link System#nanoTime()} polled just after
-     * the task completed.
-     * 
-     * @return the value from {@link System#nanoTime()} polled just after
-     * the task completed
+     * {@return the value from {@link System#nanoTime()} polled just after the
+     * task completed}
      */
     public final long nanoTimeOnStop() {
         return stop;
     }
     
     /**
-     * Returns nanos elapsed between {@link #nanoTimeOnStart()} and {@link
-     * #nanoTimeOnStop()}.
-     * 
-     * @return nanos elapsed between {@link #nanoTimeOnStart()} and {@link
-     *         #nanoTimeOnStop()}
+     * {@return nanos elapsed between {@link #nanoTimeOnStart()} and {@link
+     * #nanoTimeOnStop()}}
      */
     public final long elapsedNanos() {
         return nanoTimeOnStop() - nanoTimeOnStart();
     }
     
     /**
-     * Returns milliseconds elapsed between {@link #nanoTimeOnStart()} and
-     * {@link #nanoTimeOnStop()}.
-     * 
-     * @return milliseconds elapsed between {@link #nanoTimeOnStart()} and
-     *         {@link #nanoTimeOnStop()}
+     * {@return milliseconds elapsed between {@link #nanoTimeOnStart()} and
+     * {@link #nanoTimeOnStop()}}
      */
     public final long elapsedMillis() {
         return NANOSECONDS.toMillis(elapsedNanos());
     }
     
     /**
-     * Returns a {@code Duration} of {@link #elapsedNanos()}.
-     * 
-     * @return a {@code Duration} of {@link #elapsedNanos()}
+     * {@return a {@code Duration} of {@link #elapsedNanos()}}
      */
     public final Duration elapsedDuration() {
         return Duration.ofNanos(elapsedNanos());

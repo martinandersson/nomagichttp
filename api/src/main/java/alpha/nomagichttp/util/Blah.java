@@ -130,7 +130,7 @@ public final class Blah
     }
     
     /**
-     * Returns the result of the given supplier.<p>
+     * {@return the result of the given supplier}<p>
      * 
      * If the supplier throws a checked exception, an {@link AssertionError}
      * will be thrown instead (with the checked exception set as its cause).<p>
@@ -152,8 +152,6 @@ public final class Blah
      * 
      * @param f function to get the result from
      * @param <T> result type
-     * 
-     * @return the result from the function
      */
     public static <T> T throwsNoChecked(Throwing.Supplier<T, ?> f) {
         try {
@@ -167,12 +165,10 @@ public final class Blah
     }
     
     /**
-     * Returns {@code v} as an integer; capping the result at
-     * {@code Integer.MAX_VALUE}
+     * {@return {@code v} as an integer; capping the result at
+     * {@code Integer.MAX_VALUE}}
      * 
      * @param v to cast to an integer
-     * 
-     * @return see JavaDoc
      */
     public static int toIntOrMaxValue(long v) {
         try {
@@ -183,11 +179,10 @@ public final class Blah
     }
     
     /**
-     * Returns {@code v.toNanos()}; capping the result at {@code Long.MAX_VALUE}.
+     * {@return {@code v.toNanos()}; capping the result at
+     * {@code Long.MAX_VALUE}}
      * 
      * @param d to get total nanos from
-     * 
-     * @return see JavaDoc
      */
     public static long toNanosOrMaxValue(Duration d) {
         try {

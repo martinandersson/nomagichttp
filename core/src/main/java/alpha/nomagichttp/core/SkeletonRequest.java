@@ -151,9 +151,7 @@ final class SkeletonRequest
     }
     
     /**
-     * Returns the parsing status of trailers.
-     * 
-     * @return see JavaDoc
+     * {@return the parsing status of trailers}
      */
     TrParsingStatus trParsingStatus() {
         return status;

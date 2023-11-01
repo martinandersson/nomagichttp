@@ -35,8 +35,6 @@ public interface ByteBufferIterable extends ResourceByteBufferIterable
      * 
      * @apiNote
      * {@inheritDoc}
-     * 
-     * @return {@inheritDoc}
      */
     @Override
     long length();
@@ -46,8 +44,6 @@ public interface ByteBufferIterable extends ResourceByteBufferIterable
      * 
      * @implSpec
      * {@inheritDoc}
-     * 
-     * @return {@inheritDoc}
      */
     @Override
     default boolean isEmpty() {

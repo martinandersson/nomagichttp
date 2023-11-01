@@ -41,9 +41,7 @@ public class DefaultContentHeaders implements ContentHeaders
             = new DefaultContentHeaders(new LinkedHashMap<>(), false);
     
     /**
-     * Returns an empty {@code DefaultContentHeaders} (singleton).
-     * 
-     * @return see JavaDoc
+     * {@return an empty {@code DefaultContentHeaders} (singleton)}
      */
     public static DefaultContentHeaders empty() {
         return EMPTY;

@@ -170,13 +170,13 @@ import alpha.nomagichttp.route.RouteRegistry;
  */
 public interface ActionRegistry {
      /**
-     * Register a before-action.
+     * Registers a before-action.
      * 
      * @param pattern of action(s)
      * @param first   action
      * @param more    optionally more actions
      * 
-     * @return the HttpServer (for chaining/fluency)
+     * @return the HttpServer instance (for chaining/fluency)
      * 
      * @throws NullPointerException
      *             if any argument is {@code null}
@@ -190,13 +190,13 @@ public interface ActionRegistry {
     HttpServer before(String pattern, BeforeAction first, BeforeAction... more);
     
     /**
-     * Register an after-action.
+     * Registers an after-action.
      * 
      * @param pattern of action(s)
      * @param first   action
      * @param more    optionally more actions
      * 
-     * @return the HttpServer (for chaining/fluency)
+     * @return the HttpServer instance (for chaining/fluency)
      * 
      * @throws NullPointerException
      *             if any argument is {@code null}

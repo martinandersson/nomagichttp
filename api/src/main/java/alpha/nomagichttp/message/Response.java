@@ -100,35 +100,29 @@ public interface Response extends HasHeaders
     }
     
     /**
-     * Returns the status code.<p>
+     * {@return the status code}<p>
      * 
      * As far as the server is concerned, the returned value may be any integer
      * value, but should be conforming to the HTTP protocol.
-     * 
-     * @return the status code
      * 
      * @see HttpConstants.StatusCode
      */
     int statusCode();
     
     /**
-     * Returns the reason phrase.<p>
+     * {@return the reason phrase}<p>
      * 
      * The returned value may be {@code null} or an empty string, in which case
      * no reason phrase will be added to the status line.<p>
      * 
      * The default implementation will return "Unknown" if not set.
      * 
-     * @return the reason phrase
-     * 
      * @see HttpConstants.ReasonPhrase
      */
     String reasonPhrase();
     
     /**
-     * Returns the message body (possibly empty).
-     * 
-     * @return the message body
+     * {@return the message body (can be empty)}
      */
     ResourceByteBufferIterable body();
     
@@ -165,7 +159,7 @@ public interface Response extends HasHeaders
     }
     
     /**
-     * Returns {@code true} if the status-code is 1XX (Informational).
+     * {@return {@code true} if the status-code is 1XX (Informational)}
      * 
      * @implSpec
      * The default implementation is equivalent to:
@@ -173,15 +167,13 @@ public interface Response extends HasHeaders
      *   return StatusCode.{@link StatusCode#isInformational(int)
      *       isInformational}(this.statusCode());
      * </pre>
-     * 
-     * @return see JavaDoc
      */
     default boolean isInformational() {
         return StatusCode.isInformational(statusCode());
     }
     
     /**
-     * Returns {@code true} if the status-code is 2XX (Successful).
+     * {@return {@code true} if the status-code is 2XX (Successful)}
      * 
      * @implSpec
      * The default implementation is equivalent to:
@@ -189,15 +181,13 @@ public interface Response extends HasHeaders
      *   return StatusCode.{@link StatusCode#isSuccessful(int)
      *       isInformational}(this.statusCode());
      * </pre>
-     * 
-     * @return see JavaDoc
      */
     default boolean isSuccessful() {
         return StatusCode.isSuccessful(statusCode());
     }
     
     /**
-     * Returns {@code true} if the status-code is not 1XX (Informational).
+     * {@return {@code true} if the status-code is not 1XX (Informational)}
      * 
      * @implSpec
      * The default implementation is equivalent to:
@@ -205,19 +195,15 @@ public interface Response extends HasHeaders
      *   return StatusCode.{@link StatusCode#isFinal(int)
      *       isFinal}(this.statusCode());
      * </pre>
-     * 
-     * @return see JavaDoc
      */
     default boolean isFinal() {
         return StatusCode.isFinal(statusCode());
     }
     
     /**
-     * Returns the builder instance that built this response.<p>
+     * {@return the builder instance that built this response}<p>
      * 
      * The builder may be used for further response templating.
-     * 
-     * @return the builder instance that built this response
      */
     Builder toBuilder();
     
@@ -552,11 +538,10 @@ public interface Response extends HasHeaders
         Builder removeTrailers();
         
         /**
-         * Builds the response.<p>
+         * Creates a new {@code Response} from the state represented by this
+         * builder.
          * 
-         * This method returns a new response object on each call.
-         * 
-         * @return a response
+         * @return a new {@code Response}
          * 
          * @throws IllegalStateException
          *             if a header name is repeated using different casing

@@ -94,11 +94,9 @@ public final class MediaRange extends MediaType {
     }
     
     /**
-     * Returns the quality value.<p>
+     * {@return the quality value}<p>
      * 
      * The returned value is any value between 0 and 1 (inclusive), default 1.
-     * 
-     * @return the quality value
      * 
      * @see MediaRange
      */

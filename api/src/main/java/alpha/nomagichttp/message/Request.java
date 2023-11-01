@@ -109,7 +109,7 @@ public interface Request extends HasHeaders, HasAttributes
     String method();
     
     /**
-     * Returns the request-line's resource-target.<p>
+     * {@return the request-line's resource-target}<p>
      * 
      * Given this request:
      * <pre>{@code
@@ -122,13 +122,11 @@ public interface Request extends HasHeaders, HasAttributes
      * The returned value is a complex type of "/where?q=now#fragment". The raw
      * string value can be retrieved using {@code target().}{@link Target#raw()
      * raw()}.
-     * 
-     * @return the request-line's resource-target
      */
     Target target();
     
     /**
-     * Returns the request-line's HTTP version.<p>
+     * {@return the request-line's HTTP version}<p>
      * 
      * Given this request:
      * <pre>{@code
@@ -139,8 +137,6 @@ public interface Request extends HasHeaders, HasAttributes
      * }</pre>
      * 
      * The returned version is "HTTP/1.1".
-     * 
-     * @return the request-line's HTTP version
      */
     HttpConstants.Version httpVersion();
     
@@ -148,16 +144,14 @@ public interface Request extends HasHeaders, HasAttributes
     Headers headers();
     
     /**
-     * Returns a body API object bound to this request.
-     * 
-     * @return a body API object bound to this request
+     * {@return a body API object bound to this request}
      * 
      * @see Body
      */
     Body body();
     
     /**
-     * Returns trailing headers.<p>
+     * {@return trailing headers}<p>
      * 
      * The request processing chain will be invoked immediately after the
      * request headers have been received, and trailers occur on the wire after
@@ -204,8 +198,6 @@ public interface Request extends HasHeaders, HasAttributes
      * accessed. The resulting trailers are cached and returned on subsequent
      * invocations.
      * 
-     * @return trailing headers
-     * 
      * @throws IllegalStateException
      *             if the body has not been consumed
      * @throws HeaderParseException
@@ -222,8 +214,8 @@ public interface Request extends HasHeaders, HasAttributes
     /**
      * The resource-target of a request.<p>
      * 
-     * The components of the target are path segments, path parameters (named
-     * segments), query key/value pairs, and a fragment (document anchor).<p>
+     * The components are path segments, path parameters (named segments), query
+     * key/value pairs, and a fragment (document anchor).<p>
      * 
      * Path parameters come in two forms; single- and catch-all. Single path
      * parameters are required for the action/handler to be matched. Catch-all
@@ -332,7 +324,7 @@ public interface Request extends HasHeaders, HasAttributes
         String raw();
         
         /**
-         * Returns normalized and escaped path segment values.<p>
+         * {@return normalized and escaped path segment values}<p>
          * 
          * The root ("/") is not represented in the returned list. If the parsed
          * request path was empty or effectively a single "/", then the returned
@@ -340,15 +332,13 @@ public interface Request extends HasHeaders, HasAttributes
          * 
          * The returned list is unmodifiable and implements
          * {@link RandomAccess}.
-         * 
-         * @return normalized and escaped segment values 
          * 
          * @see Route
          */
         List<String> segments();
         
         /**
-         * Returns normalized but unescaped segment values.<p>
+         * {@return normalized but unescaped segment values}<p>
          * 
          * The root ("/") is not represented in the returned list. If the parsed
          * request path was empty or effectively a single "/", then the returned
@@ -357,14 +347,12 @@ public interface Request extends HasHeaders, HasAttributes
          * The returned list is unmodifiable and implements
          * {@link RandomAccess}.
          * 
-         * @return normalized but unescaped segment values
-         * 
          * @see Route
          */
         List<String> segmentsRaw();
         
         /**
-         * Returns a path parameter value (percent-decoded).<p>
+         * {@return the path parameter value (percent-decoded)}<p>
          * 
          * Suppose that the HTTP server has a route registered which accepts a
          * parameter "who":
@@ -386,8 +374,6 @@ public interface Request extends HasHeaders, HasAttributes
          * 
          * @param name of path parameter (case-sensitive)
          * 
-         * @return the path parameter value (percent-decoded)
-         * 
          * @throws NullPointerException
          *             if {@code name} is {@code null}
          * 
@@ -398,11 +384,9 @@ public interface Request extends HasHeaders, HasAttributes
         String pathParam(String name);
         
         /**
-         * Returns a map of all path parameters (percent-decoded).<p>
+         * {@return a map of all path parameters (percent-decoded)}<p>
          * 
          * The returned map has no defined iteration order and is unmodifiable.
-         * 
-         * @return a map of all path parameters (percent-decoded)
          * 
          * @throws UnsupportedOperationException
          *             if called from an exception handler
@@ -411,15 +395,13 @@ public interface Request extends HasHeaders, HasAttributes
         Map<String, String> pathParamMap();
         
         /**
-         * Returns a raw path parameter value (not percent-decoded).<p>
+         * {@return the raw path parameter value (not percent-decoded)}<p>
          * 
          * Path parameters are not optional and so this method never returns the
          * empty string. {@code null} is only returned if the given name is
          * different from what the route declared.
          * 
          * @param name of path parameter (case-sensitive)
-         * 
-         * @return the raw path parameter value (not percent-decoded)
          * 
          * @throws NullPointerException
          *             if {@code name} is {@code null}
@@ -433,11 +415,9 @@ public interface Request extends HasHeaders, HasAttributes
         String pathParamRaw(String name);
         
         /**
-         * Returns a map of all path parameters (not percent-decoded).<p>
+         * {@return a map of all path parameters (not percent-decoded)}<p>
          * 
          * The returned map has no defined iteration order and is unmodifiable.
-         * 
-         * @return a map of all path parameters (not percent-decoded)
          * 
          * @throws UnsupportedOperationException
          *             if called from an exception handler
@@ -446,8 +426,8 @@ public interface Request extends HasHeaders, HasAttributes
         Map<String, String> pathParamRawMap();
         
         /**
-         * Returns a query parameter value (first occurrence,
-         * percent-decoded).<p>
+         * {@return the query parameter value (first occurrence,
+         * percent-decoded)}<p>
          * 
          * Given this request:
          * <pre>{@code
@@ -459,8 +439,6 @@ public interface Request extends HasHeaders, HasAttributes
          * 
          * @param key of query parameter (case sensitive, not encoded/escaped)
          * 
-         * @return the query parameter value (first occurrence, percent-decoded)
-         * 
          * @throws NullPointerException
          *             if {@code name} is {@code null}
          * 
@@ -470,12 +448,10 @@ public interface Request extends HasHeaders, HasAttributes
         Optional<String> queryFirst(String key);
         
         /**
-         * Returns a raw query parameter value (first occurrence, not
-         * decoded/unescaped).
+         * {@return a raw query parameter value (first occurrence, not
+         * decoded/unescaped)}
          * 
          * @param keyRaw of query parameter (case sensitive, encoded/escaped)
-         * 
-         * @return the raw query parameter value (not decoded/unescaped)
          * 
          * @throws NullPointerException
          *             if {@code keyRaw} is {@code null}
@@ -485,14 +461,12 @@ public interface Request extends HasHeaders, HasAttributes
         Optional<String> queryFirstRaw(String keyRaw);
         
         /**
-         * Returns a new stream of query parameter values (percent-decoded).<p>
+         * {@return a new stream of query parameter values (percent-decoded)}<p>
          * 
          * The returned stream's encounter order follows the order in which
          * repeated query keys appeared in the client-provided query string.
          * 
          * @param key of query parameter (case sensitive, not encoded/escaped)
-         * 
-         * @return a new stream of query parameter values (percent-decoded)
          * 
          * @throws NullPointerException
          *             if {@code key} is {@code null}
@@ -505,16 +479,13 @@ public interface Request extends HasHeaders, HasAttributes
         Stream<String> queryStream(String key);
         
         /**
-         * Returns a new stream of raw query parameter values (not
-         * decoded/unescaped).<p>
+         * {@return a new stream of raw query parameter values (not
+         * decoded/unescaped)}<p>
          * 
          * The returned stream's encounter order follows the order in which
          * repeated query keys appeared in the client-provided query string.
          * 
          * @param keyRaw of query parameter (case sensitive, encoded/escaped)
-         * 
-         * @return a new stream of raw query parameter values
-         *         (not decoded/unescaped)
          * 
          * @throws NullPointerException
          *             if {@code keyRaw} is {@code null}
@@ -568,15 +539,12 @@ public interface Request extends HasHeaders, HasAttributes
         List<String> queryListRaw(String keyRaw);
         
         /**
-         * Returns an unmodifiable map of query key to parameter values
-         * (percent-decoded).<p>
+         * {@return an unmodifiable map of query key to parameter values
+         * (percent-decoded)}<p>
          * 
          * The returned map's iteration order follows the order in which the
          * query keys appeared in the client-provided query string. Same is true
          * for the associated list of the values.
-         * 
-         * @return an unmodifiable map of query key to parameter values
-         *         (percent-decoded)
          * 
          * @throws IllegalArgumentException
          *             if the decoder encounters illegal characters
@@ -586,22 +554,19 @@ public interface Request extends HasHeaders, HasAttributes
         Map<String, List<String>> queryMap();
         
         /**
-         * Returns an unmodifiable map of raw query key to raw parameter values
-         * (not decoded/escaped).<p>
+         * {@return an unmodifiable map of raw query key to raw parameter values
+         * (not decoded/escaped)}<p>
          * 
          * The returned map's iteration order follows the order in which the
          * query keys appeared in the client-provided query string. Same is true
          * for the associated list of the values.
-         * 
-         * @return an unmodifiable map of raw query key to raw parameter values
-         *         (not decoded/escaped)
          * 
          * @see Target
          */
         Map<String, List<String>> queryMapRaw();
         
         /**
-         * Returns the fragment of the resource-target.<p>
+         * {@return the fragment of the resource-target}<p>
          * 
          * Given the resource-target "/where?q=now#fragment", this method
          * returns "fragment".<p>
@@ -612,8 +577,6 @@ public interface Request extends HasHeaders, HasAttributes
          * place.<p>
          * 
          * If the fragment isn't present, this method returns the empty string.
-         * 
-         * @return the fragment of the resource-target
          */
         String fragment();
     }
@@ -1012,7 +975,7 @@ public interface Request extends HasHeaders, HasAttributes
         // TODO: toEverythingElse()
         
         /**
-         * Iterates all bytes into a byte array.<p>
+         * Iterates all bytes into a returned byte array.<p>
          * 
          * This method should only be used if the final destination is on Java's
          * heap space. Otherwise, use {@code iterator} and prefer to have the

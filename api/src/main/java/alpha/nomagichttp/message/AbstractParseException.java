@@ -37,18 +37,14 @@ abstract class AbstractParseException
     }
     
     /**
-     * Returns the number of bytes read from upstream.
-     * 
-     * @return see JavaDoc
+     * {@return the number of bytes read from upstream}
      */
     public final int byteCount() {
         return byteCount;
     }
     
     /**
-     * Returns {@link Responses#badRequest()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#badRequest()}}
      */
     @Override
     public final Response getResponse() {

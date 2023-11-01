@@ -49,19 +49,19 @@ public final class HttpVersionParseException
     }
     
     /**
-     * Returns the HTTP-version field value from the request (which did not
-     * successfully parse).
+     * Returns the HTTP-version field value from the request.<p>
+     * 
+     * The returned valued is the raw value, which could not be successfully
+     * parsed.
      * 
      * @return the HTTP-version field value from the request (never {@code null})
      */
     public String getRequestFieldValue() {
         return requestFieldValue;
     }
-
+    
     /**
-     * Returns {@link Responses#badRequest()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#badRequest()}}
      */
     @Override
     public Response getResponse() {

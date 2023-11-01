@@ -331,54 +331,42 @@ import static alpha.nomagichttp.message.MediaType.parse;
 public interface RequestHandler extends Throwing.Function<Request, Response, Exception>
 {
     /**
-     * Returns a builder with HTTP method set to "GET".
-     *
-     * @return a builder with HTTP method set to "GET"
+     * {@return a builder with HTTP method set to "GET"}
      */
     static Builder GET() {
         return builder(HttpConstants.Method.GET);
     }
     
     /**
-     * Returns a builder with HTTP method set to "POST".
-     *
-     * @return a builder with HTTP method set to "POST"
+     * {@return a builder with HTTP method set to "POST"}
      */
     static Builder POST() {
         return builder(HttpConstants.Method.POST);
     }
     
     /**
-     * Returns a builder with HTTP method set to "PUT".
-     *
-     * @return a builder with HTTP method set to "PUT"
+     * {@return a builder with HTTP method set to "PUT"}
      */
     static Builder PUT() {
         return builder(HttpConstants.Method.PUT);
     }
     
     /**
-     * Returns a builder with HTTP method set to "DELETE".
-     *
-     * @return a builder with HTTP method set to "DELETE"
+     * {@return a builder with HTTP method set to "DELETE"}
      */
     static Builder DELETE() {
         return builder(HttpConstants.Method.DELETE);
     }
     
     /**
-     * Returns a builder with HTTP method set to "HEAD".
-     *
-     * @return a builder with HTTP method set to "HEAD"
+     * {@return a builder with HTTP method set to "HEAD"}
      */
     static Builder HEAD() {
         return builder(HttpConstants.Method.HEAD);
     }
     
     /**
-     * Returns a builder with HTTP method set to "TRACE".
-     *
-     * @return a builder with HTTP method set to "TRACE"
+     * {@return a builder with HTTP method set to "TRACE"}
      */
     static Builder TRACE() {
         return builder(HttpConstants.Method.TRACE);
@@ -392,7 +380,7 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
      * 
      * @param method token qualifier
      * 
-     * @return a builder with the {@code method} set
+     * @return a new builder with the {@code method} set
      * 
      * @throws NullPointerException
      *             if {@code method} is {@code null}
@@ -442,7 +430,7 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
      * @implSpec
      * The default implementation returns {@link MediaType#ALL}.
      * 
-     * @return the media type his handler produces (never {@code null})
+     * @return the media type (never {@code null})
      * 
      * @see RequestHandler
      */
@@ -523,7 +511,7 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
     interface Builder
     {
         /**
-         * Sets consumption media-type to {@link MediaType#NOTHING}.
+         * Sets the consumption media-type to {@link MediaType#NOTHING}.
          * 
          * @implSpec
          * The default implementation is equivalent to:<p>
@@ -539,7 +527,7 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
         }
         
         /**
-         * Parses and sets consumption media-type.
+         * Parses and sets the consumption media-type.
          * 
          * @param mediaType to set
          * 
@@ -562,7 +550,7 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
         }
         
         /**
-         * Sets consumption media type.
+         * Sets the consumption media type.
          * 
          * @param mediaType to set
          * 
@@ -574,7 +562,7 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
         Builder consumes(MediaType mediaType);
         
         /**
-         * Parses and sets producing {@code mediaType}.
+         * Parses and sets the producing {@code mediaType}.
          * 
          * @param mediaType to set
          * 
@@ -597,7 +585,7 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
         }
         
         /**
-         * Sets producing media type.
+         * Sets the producing media type.
          * 
          * @param mediaType to set
          * 
@@ -609,11 +597,12 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
         Builder produces(MediaType mediaType);
         
         /**
-         * Builds a request handler.
+         * Creates a {@code RequestHandler} from the current state of this
+         * builder.
          * 
          * @param delegate the request-processing function
          * 
-         * @return a new request handler
+         * @return a new {@code RequestHandler}
          * 
          * @throws NullPointerException
          *             if {@code delegate} is {@code null}

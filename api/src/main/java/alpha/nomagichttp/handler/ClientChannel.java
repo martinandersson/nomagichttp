@@ -145,7 +145,7 @@ public interface ClientChannel extends ChannelWriter, HasAttributes
     }
     
     /**
-     * Shutdown the input stream.<p>
+     * Shuts down the input stream.<p>
      * 
      * A purist developer may be tempted to use this method after having
      * finished reading a request, and there is no intent to run more exchanges
@@ -162,7 +162,7 @@ public interface ClientChannel extends ChannelWriter, HasAttributes
     void shutdownInput();
     
     /**
-     * Shutdown the output stream.<p>
+     * Shuts down the output stream.<p>
      * 
      * Is NOP if output already shutdown or channel is closed.
      */
@@ -180,61 +180,52 @@ public interface ClientChannel extends ChannelWriter, HasAttributes
     void close();
     
     /**
-     * Returns {@code true} if the input stream is open.
+     * {@return {@code true} if the input stream is open}
      * 
      * @implNote
      * Because of non-volatile state, a thread other than the request thread may
      * observe a false positive (assuming that no happens-before relationship is
      * established).
-     * 
-     * @return see JavaDoc
      */
     boolean isInputOpen();
     
     /**
-     * Returns {@code true} if the output stream is open.
+     * {@return {@code true} if the output stream is open}
      * 
      * @implNote
      * Because of non-volatile state, a thread other than the request thread may
      * observe a false positive (assuming that no happens-before relationship is
      * established).
-     * 
-     * @return see JavaDoc
      */
     boolean isOutputOpen();
     
     /**
-     * Returns {@code true} if the input- and/or output stream is open.
+     * {@return {@code true} if the input- and/or output stream is open}
      * 
      * @implNote
      * Because of non-volatile state, a thread other than the request thread may
      * observe a false positive (assuming that no happens-before relationship is
      * established).
-     * 
-     * @return see JavaDoc
      */
     boolean isAnyStreamOpen();
     
     /**
-     * Returns {@code true} if the input- and output streams are both open.
+     * {@return {@code true} if the input- and output streams are both open}
      * 
      * @implNote
      * Because of non-volatile state, a thread other than the request thread may
      * observe a false positive (assuming that no happens-before relationship is
      * established).
-     * 
-     * @return see JavaDoc
      */
     boolean areBothStreamsOpen();
     
     /**
-     * Returns {@code true} if the input- and output streams are both shut down.
+     * {@return {@code true} if the input- and output streams are both shut
+     * down}
      * 
      * @implNote
      * Because of non-volatile state, a thread other than the request thread may
      * observe a false negative (but {@code true} means true).
-     * 
-     * @return see JavaDoc
      */
     boolean isClosed();
 }

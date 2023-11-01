@@ -21,7 +21,7 @@ public interface ContentHeaders extends BetterHeaders
      * 
      * TODO: Example.
      * 
-     * @return parsed value (never {@code null})
+     * @return parsed value
      * 
      * @throws BadHeaderException
      *           if the headers has multiple Content-Type values, or
@@ -41,7 +41,7 @@ public interface ContentHeaders extends BetterHeaders
      * 
      * An empty optional is returned if the header is not present.
      * 
-     * @return parsed value (never {@code null})
+     * @return parsed value
      * 
      * @throws BadHeaderException
      *             if the headers has multiple Content-Length values, or
@@ -55,14 +55,15 @@ public interface ContentHeaders extends BetterHeaders
     /**
      * Returns all "Transfer-Encoding" tokens.<p>
      * 
-     * The returned deque is modifiable, and consequently, not cached.
+     * The returned deque is new (not cached) and modifiable.
      * 
      * @apiNote
      * Will do unmodifiable and cache whenever
      * <a href="https://bugs.openjdk.java.net/browse/JDK-6407460">JDK-6407460</a>
      * is resolved.
      * 
-     * @return all Transfer-Encoding tokens (never {@code null})
+     * @return all Transfer-Encoding tokens
+     *         (never {@code null}, but can be empty)
      * 
      * @throws BadHeaderException
      *       if the last token in the Transfer-Encoding header is not "chunked"

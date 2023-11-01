@@ -27,9 +27,7 @@ final class ReusableStringBuilder {
     }
     
     /**
-     * Returns true if the builder has had something appended to it.
-     * 
-     * @return true if the builder has had something appended to it
+     * {@return true if the builder has had something appended to it}
      */
     boolean hasAppended() {
         return str.length() > 0;

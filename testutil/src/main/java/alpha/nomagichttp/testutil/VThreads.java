@@ -23,14 +23,15 @@ public final class VThreads {
     // TODO: DRY (callUsingVThread and getUsingVThread)
     
     /**
-     * Get a result from the given callable, using a forked virtual thread.<p>
+     * Gets a result from the specified callable, using a forked virtual
+     * thread.<p>
      * 
      * This method will wait at most 1 second for the result.
      * 
      * @param <R> type of result
      * @param task to execute
      * 
-     * @return see JavaDoc
+     * @return the result from the specified callable
      * 
      * @throws NullPointerException
      *             if {@code task} is {@code null}
@@ -63,7 +64,7 @@ public final class VThreads {
      * @param <R> type of result
      * @param task to execute
      * 
-     * @return see JavaDoc
+     * @return the result from the specified callable
      * 
      * @throws NullPointerException
      *             if {@code task} is {@code null}

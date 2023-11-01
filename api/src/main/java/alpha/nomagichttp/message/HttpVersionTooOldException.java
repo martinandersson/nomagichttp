@@ -82,10 +82,8 @@ public final class HttpVersionTooOldException
     }
     
     /**
-     * Returns {@link Responses#upgradeRequired(String)} with
-     * {@link #getUpgrade()} as argument.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#upgradeRequired(String)} with
+     * {@link #getUpgrade()} as argument}
      */
     @Override
     public Response getResponse() {

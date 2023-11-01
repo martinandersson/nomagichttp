@@ -68,9 +68,7 @@ public final class AmbiguousHandlerException extends NoHandlerResolvedException
     }
     
     /**
-     * Returns {@link Responses#internalServerError()}.
-     * 
-     * @return see Javadoc
+     * {@return {@link Responses#internalServerError()}}
      */
     @Override
     public Response getResponse() {

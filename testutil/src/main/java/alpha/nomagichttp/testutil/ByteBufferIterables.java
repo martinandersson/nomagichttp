@@ -27,11 +27,9 @@ public final class ByteBufferIterables {
     }
     
     /**
-     * Returns a bytebuffer iterable of US-ASCII decoded strings.
+     * {@return a bytebuffer iterable of US-ASCII decoded strings}
      * 
      * @param items contents
-     * 
-     * @return see JavaDoc
      * 
      * @throws NullPointerException
      *             if {@code items} is {@code null}
@@ -113,7 +111,7 @@ public final class ByteBufferIterables {
      * 
      * @param source to iterate
      * 
-     * @return see JavaDoc
+     * @return iterated bytearrays
      * 
      * @throws NullPointerException
      *             if {@code source} is {@code null}
@@ -139,7 +137,7 @@ public final class ByteBufferIterables {
      * 
      * @param source to iterate
      * 
-     * @return see JavaDoc
+     * @return iterated bytearrays
      * 
      * @throws NullPointerException
      *             if {@code source} is {@code null}

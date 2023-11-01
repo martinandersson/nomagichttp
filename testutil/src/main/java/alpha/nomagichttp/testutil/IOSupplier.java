@@ -12,9 +12,7 @@ import java.util.function.Supplier;
 @FunctionalInterface
 public interface IOSupplier<T> {
     /**
-     * Gets a result.
-     * 
-     * @return a result
+     * {@return a result}
      * 
      * @throws IOException if shit happens
      */

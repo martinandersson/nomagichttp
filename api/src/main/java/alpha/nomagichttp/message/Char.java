@@ -30,14 +30,14 @@ public enum Char {
     BACKSLASH       ('\\', "\\\\");
     
     /**
-     * Returns a char debug String, like this (example provided for '\n'):
+     * {@return a char debug String}<p>
+     * 
+     * Here's an example result given the the char '\n':
      * <pre>
      *   (hex:0xA, decimal:10, char:"\n")
      * </pre>
      * 
-     * @param c character to dump
-     * 
-     * @return see JavaDoc
+     * @param c character to debug
      */
     public static String toDebugString(char c) {
         final String hex = Integer.toHexString(c).toUpperCase(ROOT),

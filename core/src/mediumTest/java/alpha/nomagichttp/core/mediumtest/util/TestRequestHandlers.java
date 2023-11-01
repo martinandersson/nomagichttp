@@ -16,10 +16,10 @@ public final class TestRequestHandlers {
     }
     
     /**
-     * Produces {@code Request.body().isEmpty()} as the response body to {@code
-     * POST} requests.
+     * Creates a {@code POST} request handler which responds
+     * {@code Request.body().isEmpty()} as the response body.
      * 
-     * @return see JavaDoc
+     * @return a request handler
      */
     public static RequestHandler respondIsBodyEmpty() {
         return POST().apply(req ->
