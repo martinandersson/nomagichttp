@@ -1,5 +1,5 @@
 /*
- * If this name is not set, Gradle 8.8 yields a warning:
+ * If this name is not set, Gradle 8.9 yields a warning:
  * 
  *   "Project accessors enabled, but root project name not explicitly set for
  *    'buildSrc'. Checking out the project in different folders will impact the
