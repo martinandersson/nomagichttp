@@ -12,6 +12,9 @@ apache  = '5.2.1'
 jetty   = '12.0.2'
 reactor = '1.1.12'
 
+# Missing "foojay = ..."
+# See ./docs/BUILD.md
+
 [libraries]
 assertj = { module = 'org.assertj:assertj-core', version.ref = 'assertj' }
 mockito = { module = 'org.mockito:mockito-core', version.ref = 'mockito' }
