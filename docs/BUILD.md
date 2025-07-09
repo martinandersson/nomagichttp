@@ -85,18 +85,18 @@ Alas Gradle does not support this: the version catalog is inaccessible from the
 settings.gradle file. The _technical cause_ is that settings.gradle is evaluated
 before the version catalog.
 
-For now, this seems to be dismissed by Gradle as a "chicken and egg" problem,
-out of sheer convenience: they rather float a half-baked version catalog feature
-coupled with unexplained warning boxes all over the documentation notifying
-developers to not reference the version catalog in a settings.gradle file,
-rather than to hack at Gradle's life-cycle.
+For now, this seems to be dismissed by Gradle as a "chicken and egg" problem
+(verbiage from user guide v8.10), out of sheer convenience: they rather float a
+half-baked version catalog feature coupled with unexplained warning boxes all
+over the documentation notifying developers to not reference the version catalog
+in a settings.gradle file, rather than to hack at Gradle's life-cycle.
 
 See [Gradle's user guide][NCDS-3], a [blog post][NCDS-4] and a
 [GitHub issue][NCDS-5].
 
 [NCDS-1]: ../settings.gradle
 [NCDS-2]: ../gradle/libs.versions.toml
-[NCDS-3]: https://docs.gradle.org/8.10/userguide/platforms.html#sec:dependency-bundles
+[NCDS-3]: https://docs.gradle.org/8.11/userguide/version_catalogs.html#sec:plugins-ver
 [NCDS-4]: https://melix.github.io/blog/2021/03/version-catalogs-faq.html#_can_i_use_a_version_catalog_to_declare_plugin_versions
 [NCDS-5]: https://github.com/gradle/gradle/issues/24876
 
@@ -116,7 +116,7 @@ Currently, [./buildSrc/settings.gradle][EBN-1] consists of only one line:
 
     rootProject.name = 'buildSrc'
 
-Without it, Gradle 8.10 yields a warning:
+Without it, Gradle 8.11 yields a warning:
 
 > Project accessors enabled, but root project name not explicitly set for
 > 'buildSrc'. Checking out the project in different folders will impact the
@@ -147,4 +147,4 @@ an exception into the algorithm, or treat buildSrc as a quote unquote "hidden
 subproject", whatever.
 
 [EBN-1]: ../buildSrc/settings.gradle
-[EBN-2]: https://docs.gradle.org/8.10/userguide/composite_builds.html#included_builds
+[EBN-2]: https://docs.gradle.org/8.11/userguide/composite_builds.html#included_builds
