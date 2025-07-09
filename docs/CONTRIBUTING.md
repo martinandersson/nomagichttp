@@ -31,21 +31,7 @@ Quoting the [Gradle docs][ETC-1]:
 > If you want all the wrapper files to be completely up-to-date, you will need
 > to run the wrapper task a second time.
 
-Starting with Gradle 8.10, the only other file updated when invoking the command
-a second time, is `gradle-wrapper.jar`.
-
-Through experience, it was observed that running the second command without
-any arguments replaced the distribution type suffix in
-`gradle-wrapper.properties` to the default `-bin`. This indicates that the
-resulting wrapper binary is not the complete distribution.
-
-Thus it is safest to re-execute the same command with the same arguments, as
-previously shown.
-
-How on earth they managed to screw up such a simple task and still haven't
-fixed the issue only God knows.
-
-[ETC-1]: https://docs.gradle.org/8.10/userguide/gradle_wrapper.html#sec:upgrading_wrapper
+[ETC-1]: https://docs.gradle.org/8.11/userguide/gradle_wrapper.html#sec:upgrading_wrapper
 
 ### Fix failing build issues, commit
 
