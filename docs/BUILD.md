@@ -110,6 +110,55 @@ To be removed when said feature is promoted to public.
 
 [UFP-1]: ../settings.gradle
 
+### Clumsy project accessor
+
+[./reports/build.gradle][CPA-1] configures the test tasks in `core` to be
+finalized by the `reports` aggregation tasks.
+
+Traversing to `core`'s tasks used to be done like this:
+
+    projects.core.dependencyProject.tasks.named("e.g. mediumTest") ...
+
+`projects.core` is a "type-safe project accessor", but contrary to what the
+feature name suggests; what is referenced is not the `Project` object, but
+rather a `ProjectDependency` thing. And so the code must traverse further
+using `getDependencyProject()`.
+
+Gradle doesn't like this idiom and starting from v8.11, they deprecated
+`getDependencyProject()`. Instead they added `getPath()`.
+
+So the code was replaced with:
+
+    project(projects.core.path).tasks.named("e.g. mediumTest") ...
+
+This is arguably just as butt-ugly as the previous version, but it is
+nonetheless Gradle's endorsed replacement.
+
+One alternative would be to not use project accessors:
+
+    project(':core').tasks.named("e.g. mediumTest") ...
+
+To be consistent with other parts of the build using project accessors, and to
+be forward-compatible (string literals are being phased out?), means that we
+don't really have an option.
+
+It is noted here as a build issue, because there may be a better way to
+accomplish the same configuration. Or perhaps Gradle will evolve project
+accessors further. It does seem fragile that Gradle deprecates a method based on
+an aversion against what the method is used for, only to provide a new method as
+a direct replacement to accomplish the same thing.
+
+See [GitHub issue][CPA-2], a [discussion][CPA-3], and [Gradle's user guide][CPA-4].
+
+💡 One option may be to set up the task relationships from the root, but for
+now we'd rather have all configuration related to `reports` in said project
+(cohesion) 🤔
+
+[CPA-1]: ../reports/build.gradle
+[CPA-2]: https://github.com/gradle/gradle/issues/30992
+[CPA-3]: https://discuss.gradle.org/t/very-long-syntax-when-using-type-safe-project-accessors/39423
+[CPA-4]: https://docs.gradle.org/8.11/userguide/declaring_dependencies_basics.html#sec:type-safe-project-accessors
+
 ### Explicit buildSrc name
 
 Currently, [./buildSrc/settings.gradle][EBN-1] consists of only one line:

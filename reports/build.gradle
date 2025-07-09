@@ -76,12 +76,9 @@ tasks.withType(JacocoReport).configureEach {
 }
 
 // Test tasks automagically trigger report aggregation
-['test', 'mediumTest', 'largeTest'].each {
-    def outerRef = it
-    // TODO: Fix extremely long syntax
-    // https://discuss.gradle.org/t/very-long-syntax-when-using-type-safe-project-accessors/39423
-    projects.core.dependencyProject.tasks.named(outerRef) {
-        finalizedBy(tasks.named("${outerRef}Result"))
-        finalizedBy(tasks.named("${outerRef}Coverage"))
+['test', 'mediumTest', 'largeTest'].each { str ->
+    project(projects.core.path).tasks.named(str) {
+        finalizedBy(tasks.named("${str}Result"))
+        finalizedBy(tasks.named("${str}Coverage"))
     }
 }
