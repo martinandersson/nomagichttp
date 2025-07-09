@@ -165,7 +165,7 @@ Currently, [./buildSrc/settings.gradle][EBN-1] consists of only one line:
 
     rootProject.name = 'buildSrc'
 
-Without it, Gradle 8.11 yields a warning:
+Without it, Gradle yields a warning:
 
 > Project accessors enabled, but root project name not explicitly set for
 > 'buildSrc'. Checking out the project in different folders will impact the
