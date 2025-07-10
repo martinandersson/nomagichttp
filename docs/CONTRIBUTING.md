@@ -31,7 +31,17 @@ Quoting the [Gradle docs][ETC-1]:
 > If you want all the wrapper files to be completely up-to-date, you will need
 > to run the wrapper task a second time.
 
-[ETC-1]: https://docs.gradle.org/8.11/userguide/gradle_wrapper.html#sec:upgrading_wrapper
+These other files not updated the first time, may be none, or any combination of
+`gradlew`, `gradlew.bat`, and `gradle-wrapper.jar`.
+
+It was observed that running the second command without any arguments replaces
+the distribution type suffix in `gradle-wrapper.properties` to the default
+"-bin".
+
+Thus, for a complete update and a consistent one, please re-execute the same
+command with the same arguments as shown 🤯
+
+[ETC-1]: https://docs.gradle.org/8.12/userguide/gradle_wrapper.html#sec:upgrading_wrapper
 
 ### Fix failing build issues, commit
 
