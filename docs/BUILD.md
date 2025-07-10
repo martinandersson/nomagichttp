@@ -197,3 +197,19 @@ subproject", whatever.
 
 [EBN-1]: ../buildSrc/settings.gradle
 [EBN-2]: https://docs.gradle.org/8.11/userguide/composite_builds.html#included_builds
+
+## Improvements
+
+### Verify Gradle Wrapper integrity
+
+Quoting [Gradle's user guide][VGWI-1]:
+
+> Since the Wrapper JAR is usually checked into a project’s version control
+> system, there is the potential for a malicious actor to replace the original
+> JAR with a modified one by submitting a pull request that only upgrades the
+> Gradle version.
+
+Same page speaks of a GitHub Action, but we'd like to have this done locally as
+well.
+
+[VGWI-1]: https://docs.gradle.org/8.12/userguide/gradle_wrapper.html#wrapper_checksum_verification
