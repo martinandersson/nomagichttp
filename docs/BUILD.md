@@ -96,7 +96,7 @@ See [Gradle's user guide][NCDS-3], a [blog post][NCDS-4] and a
 
 [NCDS-1]: ../settings.gradle
 [NCDS-2]: ../gradle/libs.versions.toml
-[NCDS-3]: https://docs.gradle.org/8.11/userguide/version_catalogs.html#sec:plugins-ver
+[NCDS-3]: https://docs.gradle.org/8.12/userguide/version_catalogs.html#sec:plugins-ver
 [NCDS-4]: https://melix.github.io/blog/2021/03/version-catalogs-faq.html#_can_i_use_a_version_catalog_to_declare_plugin_versions
 [NCDS-5]: https://github.com/gradle/gradle/issues/24876
 
@@ -157,7 +157,7 @@ now we'd rather have all configuration related to `reports` in said project
 [CPA-1]: ../reports/build.gradle
 [CPA-2]: https://github.com/gradle/gradle/issues/30992
 [CPA-3]: https://discuss.gradle.org/t/very-long-syntax-when-using-type-safe-project-accessors/39423
-[CPA-4]: https://docs.gradle.org/8.11/userguide/declaring_dependencies_basics.html#sec:type-safe-project-accessors
+[CPA-4]: https://docs.gradle.org/8.12/userguide/declaring_dependencies_basics.html#sec:type-safe-project-accessors
 
 ### Explicit buildSrc name
 
@@ -196,7 +196,7 @@ an exception into the algorithm, or treat buildSrc as a quote unquote "hidden
 subproject", whatever.
 
 [EBN-1]: ../buildSrc/settings.gradle
-[EBN-2]: https://docs.gradle.org/8.11/userguide/composite_builds.html#included_builds
+[EBN-2]: https://docs.gradle.org/8.12/userguide/composite_builds.html#included_builds
 
 ## Improvements
 
