@@ -68,7 +68,7 @@ For remaining unfixed issues and similar build commentary elsewhere, make sure
 that links to Gradle's documentation with an embedded version number in the
 path, are updated to the new version.
 
-If applicable, also update relevant text. For example, a quote changed.
+If applicable, also update relevant text. For example, a quote may have changed.
 
 This subtle detail is an implicit confirmation to the reader that the issue
 still persists and was not accidentally overlooked.
