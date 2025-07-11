@@ -98,13 +98,16 @@ Execute (just once is enough):
 ./gradlew updateDaemonJvm --jvm-version=X --jvm-vendor=adoptium
 ```
 
-Before committing the updated [`./gradle/gradle-daemon-jvm.properties`][UJ-1]
-file, make sure that the project still builds.
+This updates the file [`./gradle/gradle-daemon-jvm.properties`][UJ-1].
 
-It's a bit of a pain to learn what JDKs are available via the resolver. For now,
-one will have do trial and error.
+One must manually update the reference in [`./README.md`][UJ-2] which declares
+the minimum required Java version (same as X above).
 
-See this [GitHub issue][UJ-2].
+Make sure that the project still builds, then commit.
+
+💡 It's a bit of a pain to learn what JDKs are available via the resolver. For
+now, one will have do trial and error. See this [GitHub issue][UJ-3].
 
 [UJ-1]: ../gradle/gradle-daemon-jvm.properties
-[UJ-2]: https://github.com/gradle/FOOJAY-toolchains/issues/50
+[UJ-2]: ../README.md
+[UJ-3]: https://github.com/gradle/FOOJAY-toolchains/issues/50
