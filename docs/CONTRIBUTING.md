@@ -41,7 +41,7 @@ the distribution type suffix in `gradle-wrapper.properties` to the default
 Thus, for a complete update and a consistent one, please re-execute the same
 command with the same arguments as shown 🤯
 
-[ETC-1]: https://docs.gradle.org/8.12/userguide/gradle_wrapper.html#sec:upgrading_wrapper
+[ETC-1]: https://docs.gradle.org/8.13/userguide/gradle_wrapper.html#sec:upgrading_wrapper
 
 ### Fix failing build issues, commit
 

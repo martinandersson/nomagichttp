@@ -25,27 +25,27 @@ dependencies {
 reporting {
     reports {
         testResult(AggregateTestReport) { 
-            testType = TestSuiteType.UNIT_TEST
+            testSuiteName = 'test'
         }
         
         testCoverage(JacocoCoverageReport) { 
-            testType = TestSuiteType.UNIT_TEST
+            testSuiteName = 'test'
         }
         
         mediumTestResult(AggregateTestReport) { 
-            testType = 'medium-test'
+            testSuiteName = 'mediumTest'
         }
         
         mediumTestCoverage(JacocoCoverageReport) { 
-            testType = 'medium-test'
+            testSuiteName = 'mediumTest'
         }
         
         largeTestResult(AggregateTestReport) { 
-            testType = 'large-test'
+            testSuiteName = 'largeTest'
         }
         
         largeTestCoverage(JacocoCoverageReport) { 
-            testType = 'large-test'
+            testSuiteName = 'largeTest'
         }
     }
 }
