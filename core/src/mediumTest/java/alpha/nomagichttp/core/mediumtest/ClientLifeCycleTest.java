@@ -49,7 +49,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
         {
             server().add("/", GET().apply(req -> noContent()));
             
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 String rsp = client().writeReadTextUntilNewlines(
                     "GET / HTTP/1.0"         + CRLF +
                     "Connection: keep-alive" + CRLF + CRLF); // <-- does not matter
@@ -77,7 +77,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                 return noContent();
             }));
             
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 var rsp = client()
                       .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
                 assertThat(rsp)
@@ -165,7 +165,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                 }
                 throw new AssertionError();
             }));
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 client().write(
                     "GET / HTTP/1.1"    + CRLF +
                     "Content-Length: 2" + CRLF + CRLF +
@@ -194,7 +194,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
             // albeit not on Linux nor macOS.
             assumeTrue(Environment.isWindows());
             server();
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 assertThatThrownBy(() ->
                     client().interruptReadAfter(1, MILLISECONDS)
                             .writeReadTextUntilEOS("X"))
@@ -236,7 +236,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                 send.acquire();
                 return noContent();
             }));
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 client().write(addConnCloseHeader ?
                                get("Connection: close") : get())
                         .shutdownOutput();
@@ -262,7 +262,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                 received.add(req.body().toText());
                 return null;
             }));
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 client().write(
                     "POST / HTTP/1.1"   + CRLF +
                     "Content-Length: 5" + CRLF);
@@ -298,7 +298,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                 received.add(req.body().toText());
                 return null;
             }));
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 // Until EOS!
                 assertThat(client().writeReadTextUntilEOS(
                         "POST / HTTP/1.1"         + CRLF +

@@ -39,7 +39,7 @@ final class AfterActionTest extends AbstractRealTest
                    .map(id -> rsp.toBuilder().setHeader(X_CORRELATION_ID, id).build())
                    .orElse(rsp));
         
-        try (var conn = client().openConnection()) {
+        try (var _ = client().openConnection()) {
             // Start processing the first request can take a long time on:
             if (isLinux()) {
                 client().interruptReadAfter(1.5);

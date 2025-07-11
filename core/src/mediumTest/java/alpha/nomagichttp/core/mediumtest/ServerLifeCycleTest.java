@@ -84,7 +84,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                     text(req.body().toText())));
             
             Future<Void> fut;
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 String rsp1 = client().writeReadTextUntilNewlines(
                     "POST / HTTP/1.1"                        + CRLF +
                     "Content-Length: 3"                      + CRLF +
@@ -128,7 +128,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
         @Test
         void inactiveExchangeAborts() throws IOException, InterruptedException {
             server();
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 // Wait for the server to confirm,
                 // otherwise one can not deterministically test the log of "idling children"
                 assertAwaitChildAccept();
@@ -151,7 +151,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 SECONDS.sleep(STOP_GRACEFUL_SECONDS + 1);
                 throw new AssertionError("Thread supposed to be interrupted");
             }));
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 client().write(get());
                 stopServer.acquire();
                 Instant before = now();
@@ -172,7 +172,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 req.body().bytes();
                 throw new AssertionError("The body is never sent");
             }));
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 client().write(
                     "POST / HTTP/1.1"     + CRLF +
                     "Content-Length: 999" + CRLF + CRLF);

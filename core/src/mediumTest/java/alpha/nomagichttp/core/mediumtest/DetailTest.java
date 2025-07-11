@@ -68,7 +68,7 @@ final class DetailTest extends AbstractRealTest
                 "Content-Type: text/plain; charset=utf-8" + CRLF +
                 "Content-Length: 3"                       + CRLF + CRLF;
             
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 var res1 = client().writeReadTextUntil(post("ABC"), "ABC");
                 assertThat(res1).isEqualTo(resHead + "ABC");
                 
@@ -102,7 +102,7 @@ final class DetailTest extends AbstractRealTest
                 My-Trailer: $4
                 
                 """;
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 var req1 = template.replace("$1", "/discard-body")
                                    .replace("$2", "My-Dummy: dummy")
                                    .replace("$3", "dummy")
@@ -147,7 +147,7 @@ final class DetailTest extends AbstractRealTest
                     "false");
             };
             
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 exchange.run();
                 // Body auto-discarded. This is using the same connection:
                 exchange.run();
@@ -182,7 +182,7 @@ final class DetailTest extends AbstractRealTest
                     "Content-Length: 0"     + CRLF + CRLF);
             };
             
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 exchange.run();
                 exchange.run();
             }
@@ -345,7 +345,7 @@ final class DetailTest extends AbstractRealTest
             final String req = "GET / HTTP/1.1",
                          rsp;
             
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 beforeReq = nanoTime();
                 client().write(req);
                 beforeRsp = nanoTime();
