@@ -89,3 +89,22 @@ still persists and was not accidentally overlooked.
 If and only if, they yield an improvement in code readability.
 
 Finally, the work branch is ready to be merged 🥳
+
+## Upgrading Java
+
+Execute (just once is enough):
+
+```bash
+./gradlew updateDaemonJvm --jvm-version=X --jvm-vendor=adoptium
+```
+
+Before committing the updated [`./gradle/gradle-daemon-jvm.properties`][UJ-1]
+file, make sure that the project still builds.
+
+It's a bit of a pain to learn what JDKs are available via the resolver. For now,
+one will have do trial and error.
+
+See this [GitHub issue][UJ-2].
+
+[UJ-1]: ../gradle/gradle-daemon-jvm.properties
+[UJ-2]: https://github.com/gradle/FOOJAY-toolchains/issues/50
