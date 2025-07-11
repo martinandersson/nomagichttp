@@ -41,13 +41,6 @@ tasks.named('jacocoTestReport') {
     enabled = false
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(libs.versions.jdk.get())
-        vendor = JvmVendorSpec.ADOPTIUM
-    }
-}
-
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.addAll(
         // Enable all warnings, minus try-with-resources
@@ -167,7 +160,7 @@ tasks.withType(Test).configureEach {
 tasks.withType(Javadoc).configureEach {
     options {
         addBooleanOption('-enable-preview', true)
-        addStringOption('-release', libs.versions.jdk.get())
+        addStringOption('-release', JavaVersion.current().toString())
     }
 }
 // -------------------------------------
