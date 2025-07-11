@@ -24,24 +24,33 @@ All work should be done on a new branch.
 ./gradlew wrapper --gradle-version X.Y --distribution-type all
 ```
 
-The first one only updates `gradle-wrapper.properties`.
+The first one allegedly updates only `gradle-wrapper.properties`.
 
 Quoting the [Gradle docs][ETC-1]:
+
+> Note that running the wrapper task once will update gradle-wrapper.properties
+> only[.]
+
+Which may be true most of the time, but updating from v8.13 to v8.14.3 changed —
+in addition to the properties file — also `gradlew` and `gradle-wrapper.jar`.
 
 > If you want all the wrapper files to be completely up-to-date, you will need
 > to run the wrapper task a second time.
 
-These other files not updated the first time, may be none, or any combination of
-`gradlew`, `gradlew.bat`, and `gradle-wrapper.jar`.
+These other files which may not have been updated the first time; may be none,
+or any combination of `gradlew`, `gradlew.bat`, and `gradle-wrapper.jar`.
 
-It was observed that running the second command without any arguments replaces
-the distribution type suffix in `gradle-wrapper.properties` to the default
-"-bin".
+The second command going from v8.13 to v8.14.3 changed all of the previously
+listed files, yes two of them for a second time with some more changes 🤯
 
-Thus, for a complete update and a consistent one, please re-execute the same
-command with the same arguments as shown 🤯
+Another observation is that running the second command without any arguments
+replaces the distribution type suffix in `gradle-wrapper.properties` to the
+default "-bin".
 
-[ETC-1]: https://docs.gradle.org/8.13/userguide/gradle_wrapper.html#sec:upgrading_wrapper
+The moral of the story is the following: for a complete and consistent
+update, please re-execute the same command twice and with the same arguments 🤐
+
+[ETC-1]: https://docs.gradle.org/8.14.3/userguide/gradle_wrapper.html#sec:upgrading_wrapper
 
 ### Fix failing build issues, commit
 
