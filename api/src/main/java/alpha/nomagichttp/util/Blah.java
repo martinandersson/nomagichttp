@@ -36,7 +36,7 @@ public final class Blah
     public static int addExactOrCap(int a, int b) {
         try {
             return addExact(a, b);
-        } catch (ArithmeticException e) {
+        } catch (ArithmeticException _) {
             return a < 0 && b < 0 ?
                 Integer.MIN_VALUE : Integer.MAX_VALUE;
         }
@@ -57,7 +57,7 @@ public final class Blah
     public static long addExactOrCap(long a, long b) {
         try {
             return addExact(a, b);
-        } catch (ArithmeticException e) {
+        } catch (ArithmeticException _) {
             return a < 0 && b < 0 ?
                 Long.MIN_VALUE : Long.MAX_VALUE;
         }
@@ -173,7 +173,7 @@ public final class Blah
     public static int toIntOrMaxValue(long v) {
         try {
             return Math.toIntExact(v);
-        } catch (ArithmeticException e) {
+        } catch (ArithmeticException _) {
             return Integer.MAX_VALUE;
         }
     }
@@ -187,7 +187,7 @@ public final class Blah
     public static long toNanosOrMaxValue(Duration d) {
         try {
             return d.toNanos();
-        } catch (ArithmeticException e) {
+        } catch (ArithmeticException _) {
             return Long.MAX_VALUE;
         }
     }

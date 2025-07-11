@@ -104,7 +104,7 @@ public final class CodeAndPhraseCache<T>
     private Variants<T> get0(int code) {
         try {
             return cache[code - MIN];
-        } catch (ArrayIndexOutOfBoundsException e) {
+        } catch (ArrayIndexOutOfBoundsException _) {
             return null;
         }
     }

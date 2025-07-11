@@ -332,7 +332,7 @@ public final class DefaultServer implements HttpServer
             try {
                 scope.joinUntil(wfc);
                 LOG.log(DEBUG, "All exchanges finished within the graceful period.");
-            } catch (TimeoutException ignored) {
+            } catch (TimeoutException _) {
                 LOG.log(DEBUG, "Graceful deadline expired; shutting down scope.");
                 // Enclosing try-with-resources > scope.close() > scope.shutdown()
             }
@@ -422,7 +422,7 @@ public final class DefaultServer implements HttpServer
                 throw notRunning();
             }
             return addr;
-        } catch (ClosedChannelException e) {
+        } catch (ClosedChannelException _) {
             throw notRunning();
         }
     }

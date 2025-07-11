@@ -96,7 +96,7 @@ final class HttpExchange
     static Optional<SkeletonRequest> skeletonRequest() {
         try {
             return SKELETON_REQUEST.get();
-        } catch (NoSuchElementException e) {
+        } catch (NoSuchElementException _) {
             return empty();
         }
     }

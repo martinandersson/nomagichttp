@@ -101,7 +101,7 @@ final class DefaultClientChannel implements ClientChannel
     private static void runSafe(Throwing.Runnable<IOException> op, String method) {
         try {
             op.run();
-        } catch (ClosedChannelException e) {
+        } catch (ClosedChannelException _) {
             // Great, job done!
         } catch (IOException e) {
             LOG.log(WARNING, () ->
