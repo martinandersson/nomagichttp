@@ -353,7 +353,7 @@ final class Tree<V>
     }
     
     V clear(Iterable<String> keySegments) {
-        return clearIf(keySegments, ignored -> true);
+        return clearIf(keySegments, _ -> true);
     }
     
     V clearIf(Iterable<String> keySegments, Predicate<V> test) {

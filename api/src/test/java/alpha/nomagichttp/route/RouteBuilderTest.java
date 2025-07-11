@@ -116,11 +116,11 @@ final class RouteBuilderTest
         of("//", "x//", "/x//", "//x", "//x/", "//x//").forEach(s -> {
             // not in Route.builder() nor in Route.Builder.append()
             assertParseExc.accept(s, this::builder);
-            assertIllegalArg.accept(s, ignored -> builder("/").append(s));
+            assertIllegalArg.accept(s, _ -> builder("/").append(s));
         });
         
         // and same exc when append() is called with just a slash
-        assertIllegalArg.accept(null, ignored -> builder("/").append("/"));
+        assertIllegalArg.accept(null, _ -> builder("/").append("/"));
     }
     
     @Test
