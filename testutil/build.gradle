@@ -9,12 +9,5 @@ dependencies {
     api(libs.mockito)
     
     // HTTP client implementations used by HttpClientFacade
-    api(libs.client.okhttp)
-    api(libs.client.apache)
-    api(libs.client.jetty)
-    api(libs.client.reactor)
-    // The above should be:
-    //     implementation(libs.bundles.clients)
-    // but the Javadoc task fails lol.
-    // TODO: Use bundles when Gradle fixes their product.
+    implementation(libs.bundles.clients)
 }

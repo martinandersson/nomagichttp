@@ -2,9 +2,6 @@ plugins {
     // Automagically download JDKs from somewhere
     // https://plugins.gradle.org/plugin/org.gradle.toolchains.foojay-resolver-convention
     id('org.gradle.toolchains.foojay-resolver-convention') version('0.7.0')
-    // TODO: Move to version catalog when the chicken and egg problem is fixed.
-    // https://docs.gradle.org/current/userguide/platforms.html#sec:plugins
-    // https://melix.github.io/blog/2021/03/version-catalogs-faq.html#_can_i_use_a_version_catalog_to_declare_plugin_versions
 }
 
 rootProject.name = 'nomagichttp'
