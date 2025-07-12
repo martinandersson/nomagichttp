@@ -3,7 +3,7 @@ package alpha.nomagichttp.route;
 import java.io.Serial;
 
 /**
- * Thrown by {@link Route.Builder#builder(String)} if a route pattern is invalid.
+ * Thrown by {@link Route#builder(String)} if a route pattern is invalid.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
