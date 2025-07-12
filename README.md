@@ -76,7 +76,7 @@ class Greeter {
 }
 ```
   
-Make sure you are using at least Java 22, then start the server:
+Make sure you are using at least Java 23, then start the server:
 
 ```console
 foo@bar:projectfolder$ gradle run

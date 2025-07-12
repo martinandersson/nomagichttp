@@ -2,10 +2,9 @@ package alpha.nomagichttp.testutil;
 
 import alpha.nomagichttp.HttpServer;
 
-import java.util.concurrent.Callable;
-
 import static alpha.nomagichttp.Config.DEFAULT;
 import static alpha.nomagichttp.util.ScopedValues.HTTP_SERVER;
+import static java.lang.ScopedValue.CallableOp;
 import static java.lang.ScopedValue.callWhere;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -34,11 +33,11 @@ public final class ScopedValues {
      * 
      * @throws NullPointerException
      *             if {@code op} is {@code null}
-     * @throws Exception
+     * @throws X
      *             if the operation completes with an exception
      */
-    public static <R> R whereServerIsBound(Callable<? extends R> op)
-            throws Exception {
+    public static <R, X extends Throwable> R
+            whereServerIsBound(CallableOp<? extends R, X> op) throws X {
         var server = mock(HttpServer.class);
         when(server.getConfig()).thenReturn(DEFAULT);
         return callWhere(HTTP_SERVER, server, op);
