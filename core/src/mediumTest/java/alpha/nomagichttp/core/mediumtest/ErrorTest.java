@@ -589,7 +589,7 @@ final class ErrorTest extends AbstractRealTest
             usingConfiguration().timeoutIdleConnection(
                 (isGitHubActions() || isJitPack()) ? ofMillis(10) : ofMillis(1));
             server();
-            try (var closeConn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 // Never send anything and expect a response
                 String rsp = client().readTextUntilNewlines();
                 assertThat(rsp).isEqualTo(

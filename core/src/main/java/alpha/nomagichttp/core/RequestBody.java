@@ -159,7 +159,7 @@ final class RequestBody implements Request.Body
             Set<? extends OpenOption> opts, FileAttribute<?>... attrs)
             throws InterruptedException, FileLockTimeoutException, IOException
     {
-        try (var lck = JvmPathLock.readLock(path, 1, SECONDS)) {
+        try (var _ = JvmPathLock.readLock(path, 1, SECONDS)) {
             return toFile0(path, opts, attrs);
         }
     }

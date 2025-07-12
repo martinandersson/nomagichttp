@@ -81,12 +81,12 @@ final class DetailTest extends AbstractRealTest
         void chunked() throws IOException {
             server()
                 .add("/discard-body", POST().apply(req -> {
-                    var discard = req.body().toText();
+                    var _ = req.body().toText();
                     return noContent();
                 }))
                 .add("/echo-trailer", POST().apply(req -> {
                     // Still must consume the body before trailers lol
-                    var discard = req.body().toText();
+                    var _ = req.body().toText();
                     var trailer = req.trailers().firstValue("My-Trailer").get();
                     return text(trailer);
                 }));

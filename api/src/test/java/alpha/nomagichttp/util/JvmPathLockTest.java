@@ -49,8 +49,8 @@ final class JvmPathLockTest
     @Test
     void manyReadLocks_oneThread()
          throws InterruptedException, FileLockTimeoutException {
-         try (var r1 = readLock();
-              var r2 = readLock()) {
+         try (var _ = readLock();
+              var _ = readLock()) {
               assertLocksHeld(2, 0);
          }
     }
@@ -58,9 +58,9 @@ final class JvmPathLockTest
     @Test
     void manyReadLocks_twoThreads()
          throws InterruptedException, FileLockTimeoutException {
-         try (var r1 = readLock()) {
+         try (var _ = readLock()) {
               var other = commonPool().submit(() -> {
-                  try (var r2 = readLock()) {
+                  try (var _ = readLock()) {
                       assertLocksHeld(1, 0);
                   }
                   return null;
@@ -73,8 +73,8 @@ final class JvmPathLockTest
     @Test
     void manyWriteLocks_oneThread_okay()
          throws InterruptedException, FileLockTimeoutException {
-         try (var w1 = writeLock();
-              var w2 = writeLock()) {
+         try (var _ = writeLock();
+              var _ = writeLock()) {
               assertLocksHeld(0, 2);
          }
     }
@@ -94,7 +94,7 @@ final class JvmPathLockTest
     private void acquireWriteLockThen(
             Throwing.Supplier<JvmPathLock, Exception> otherLock, String name)
          throws InterruptedException, FileLockTimeoutException {
-         try (var w = writeLock()) {
+         try (var _ = writeLock()) {
               var other = commonPool().submit(() -> {
                   assertThatThrownBy(otherLock::get)
                       .isExactlyInstanceOf(FileLockTimeoutException.class)
@@ -110,8 +110,8 @@ final class JvmPathLockTest
     @Test
     void lockDowngrading_okay()
          throws InterruptedException, FileLockTimeoutException {
-         try (var w = writeLock();
-              var r = readLock()) {
+         try (var _ = writeLock();
+              var _ = readLock()) {
               assertLocksHeld(1, 1);
          }
     }
@@ -152,8 +152,8 @@ final class JvmPathLockTest
     void differentPathsDifferentLocks()
          throws InterruptedException, FileLockTimeoutException {
          // Read-to-write upgrading not okay for the same path
-         try (var r = readLock();
-              var w = JvmPathLock.writeLock(Path.of("other"), 1, SECONDS)) {
+         try (var _ = readLock();
+              var _ = JvmPathLock.writeLock(Path.of("other"), 1, SECONDS)) {
               assertLocksHeld(1, 1);
          }
     }
