@@ -74,7 +74,7 @@ public final class DefaultServer implements HttpServer
     private final Map<ClientChannel, ChannelReader> children;
     private       Instant started;
     // Memory consistency not specified between
-    //     ServerSocketChannel.close() and AsynchronousCloseException
+    //     ServerSocketChannel.close() and ClosedChannelException
     private volatile Instant waitForChildren;
     
     /**

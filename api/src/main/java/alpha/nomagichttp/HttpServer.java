@@ -25,7 +25,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnixDomainSocketAddress;
-import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ServerSocketChannel;
 import java.time.Duration;
 import java.time.Instant;
@@ -394,12 +394,11 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /**
      * Listens for client connections.<p>
      * 
-     * This method may block for an unlimited period of time if the calling
-     * thread is the one to bind the server's address and run an accept-loop;
-     * aka. "listening" for client connections. The thread will only return once
-     * the server's channel and all client connections have been closed. Then,
-     * the return will only happen exceptionally, most likely with an {@link
-     * AsynchronousCloseException}.<p>
+     * The thread calling this method will bind the server's address and run an
+     * infinite accept-loop; aka. "listening" for client connections. The thread
+     * will only return once the server's channel and all client connections
+     * have been closed. Then, the return will only happen exceptionally, most
+     * likely with a {@link ClosedChannelException}.<p>
      * 
      * Any other thread invoking this method whilst the server is running will
      * receive an {@link IllegalStateException}. That is to say, this method
