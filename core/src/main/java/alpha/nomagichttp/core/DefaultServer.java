@@ -101,19 +101,19 @@ public final class DefaultServer implements HttpServer
     @Override
     public Void start(IntConsumer ofPort)
             throws IOException, InterruptedException {
-        start0(loopBackSystemPickedPort(), requireNonNull(ofPort));
-        // start0() returns exceptionally!
+        startSync(loopBackSystemPickedPort(), requireNonNull(ofPort));
+        // startSync() returns exceptionally!
         throw newDeadCode();
     }
     
     @Override
     public Void start(SocketAddress address)
             throws IOException, InterruptedException {
-        start0(requireNonNull(address), null);
+        startSync(requireNonNull(address), null);
         throw newDeadCode();
     }
     
-    private void start0(SocketAddress addr, IntConsumer ofPort)
+    private void startSync(SocketAddress addr, IntConsumer ofPort)
             throws IOException, InterruptedException
     {
         try (ServerSocketChannel ch = openOrFail(addr)) {
