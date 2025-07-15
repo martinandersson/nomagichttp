@@ -520,127 +520,117 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// running, or it is just about to stop within the blink of an eye.
     boolean isRunning();
     
-    /**
-     * {@return the event hub associated with this server}<p>
-     * 
-     * The event hub can be used to subscribe to server-related events. For
-     * example:<p>
-     * 
-     * {@snippet :
-     *   HttpServer server = ...
-     *   server.events().on(HttpServerStarted.class,
-     *           (event, when) -> System.out.println("Server started at " + when));
-     * }
-     * 
-     * The hub can also be used to emit application-specific events
-     * programmatically, even from application-code running within the
-     * server.<p>
-     * 
-     * {@snippet :
-     *   // @link substring="httpServer" target="ScopedValues#httpServer()" region
-     *   // @link substring="dispatch" target="EventHub#dispatch(Object)" region
-     *   httpServer().events().dispatch("Hello!");
-     *   // @end
-     *   // @end
-     * }
-     * 
-     * The hub is not bound to the running state of the server. The hub can be
-     * used by the application to dispatch its own events before the server has
-     * started, while the server is running and after the server has stopped.<p>
-     * 
-     * If the application runs multiple servers, a JVM-global hub can be created
-     * like so:<p>
-     * 
-     * {@snippet :
-     *   EventHub one = server1.events(),
-     *            two = server2.events(),
-     *            // @link substring="combine" target="EventHub#combine(ScatteringEventEmitter, ScatteringEventEmitter, ScatteringEventEmitter...)" :
-     *            all = EventHub.combine(one, two);
-     * }
-     * 
-     * All event objects emitted by the HttpServer is an enum instance and does
-     * not contain any event-specific information. The event metadata is passed
-     * as attachments. The following table lists the events emitted by the
-     * HttpServer.
-     * 
-     * <table class="striped">
-     *   <caption style="display:none">Events emitted</caption>
-     *   <thead>
-     *   <tr>
-     *     <th scope="col">Type</th>
-     *     <th scope="col">Attachment 1</th>
-     *     <th scope="col">Attachment 2</th>
-     *   </tr>
-     *   </thead>
-     *   <tbody>
-     *   <tr>
-     *     <th scope="row"> {@link HttpServerStarted} </th>
-     *     <td> {@link Instant} </td>
-     *     <td> {@code null} </td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link HttpServerStopped} </th>
-     *     <td> {@link Instant} </td>
-     *     <td> {@link Instant} </td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link RequestHeadReceived} </th>
-     *     <td> {@link RawRequest.Head} </td>
-     *     <td> {@link RequestHeadReceived.Stats} </td>
-     *   </tr>
-     *   <tr>
-     *     <th scope="row"> {@link ResponseSent} </th>
-     *     <td> {@link Response} </td>
-     *     <td> {@link ResponseSent.Stats} </td>
-     *   </tr>
-     *   </tbody>
-     * </table>
-     * 
-     * @see EventEmitter
-     */
+    /// {@return the event hub associated with this server}
+    /// 
+    /// The event hub can be used to subscribe to server-related events:
+    /// 
+    /// {@snippet :
+    ///    HttpServer server = ...
+    ///    // @link substring="HttpServerStarted" target="HttpServerStarted" :
+    ///    server.events().on(HttpServerStarted.class,
+    ///            (event, when) -> System.out.println("Server started at " + when));
+    ///  }
+    /// 
+    /// Here's how to emit application-specific events, from code running within
+    /// the server:
+    /// 
+    /// {@snippet :
+    ///    // @link substring="httpServer" target="ScopedValues#httpServer()" region
+    ///    // @link substring="dispatch" target="EventHub#dispatch(Object)" region
+    ///    httpServer().events().dispatch("Hello");
+    ///    // @end
+    ///    // @end
+    ///  }
+    /// 
+    /// The hub is not bound to the running state of the server: it can be used
+    /// before the server has started, while the server is running and after the
+    /// server has stopped.
+    /// 
+    /// Hubs can be combined:
+    /// 
+    /// {@snippet :
+    ///    EventHub one = server1.events(),
+    ///             two = server2.events(),
+    ///             // @link substring="combine" target="EventHub#combine(ScatteringEventEmitter, ScatteringEventEmitter, ScatteringEventEmitter...)" :
+    ///             all = EventHub.combine(one, two);
+    ///  }
+    /// 
+    /// All event objects emitted by the HttpServer is an enum instance and does
+    /// not contain event-specific information (e.g.
+    /// [HttpServerStarted#INSTANCE]).
+    /// 
+    /// The event metadata is passed as attachments:
+    /// 
+    /// <table class="striped">
+    ///   <caption style="display:none">Events emitted</caption>
+    ///   <thead>
+    ///   <tr>
+    ///     <th scope="col">Type</th>
+    ///     <th scope="col">Attachment 1</th>
+    ///     <th scope="col">Attachment 2</th>
+    ///   </tr>
+    ///   </thead>
+    ///   <tbody>
+    ///   <tr>
+    ///     <th scope="row"> {@link HttpServerStarted} </th>
+    ///     <td> {@link Instant} </td>
+    ///     <td> {@code null} </td>
+    ///   </tr>
+    ///   <tr>
+    ///     <th scope="row"> {@link HttpServerStopped} </th>
+    ///     <td> {@code Instant} </td>
+    ///     <td> {@code Instant} </td>
+    ///   </tr>
+    ///   <tr>
+    ///     <th scope="row"> {@link RequestHeadReceived} </th>
+    ///     <td> {@link RawRequest.Head} </td>
+    ///     <td> {@link RequestHeadReceived.Stats} </td>
+    ///   </tr>
+    ///   <tr>
+    ///     <th scope="row"> {@link ResponseSent} </th>
+    ///     <td> {@link Response} </td>
+    ///     <td> {@link ResponseSent.Stats} </td>
+    ///   </tr>
+    ///   </tbody>
+    /// </table>
+    /// 
+    /// @see EventEmitter
     EventHub events();
     
-    /**
-     * {@return the server's configuration}
-     */
+    /// {@return the server's configuration}
     Config getConfig();
     
-    /**
-     * {@return the socket address this server's channel's socket is bound to}
-     * 
-     * @throws IllegalStateException
-     *             if the server is not running
-     * @throws IOException
-     *             if an I/O error occurs
-     * 
-     * @see ServerSocketChannel#getLocalAddress()
-     */
+    /// {@return the socket address this server's channel's socket is bound to}
+    /// 
+    /// @throws IllegalStateException
+    ///             if the server is not running
+    /// @throws IOException
+    ///             if an I/O error occurs
+    /// @see ServerSocketChannel#getLocalAddress()
     SocketAddress getLocalAddress() throws IOException;
     
-    /**
-     * {@return the port this server is listening to}
-     * 
-     * @implSpec
-     * The default implementation is equivalent to:<p>
-     * 
-     * {@snippet :
-     *   // @link substring="InetSocketAddress" target="InetSocketAddress" region
-     *   // @link substring="getLocalAddress" target="#getLocalAddress()" region
-     *   // @link substring="getPort" target="InetSocketAddress#getPort()" region
-     *   return ((InetSocketAddress) getLocalAddress()).getPort();
-     *   // @end
-     *   // @end
-     *   // @end
-     * }
-     * 
-     * @throws IllegalStateException
-     *             if the server is not running
-     * @throws ClassCastException
-     *             if the server was created using an
-     *             {@link UnixDomainSocketAddress}
-     * @throws IOException
-     *             if an I/O error occurs
-     */
+    /// {@return the port this server is listening to}
+    /// 
+    /// @implSpec
+    /// The default implementation is:
+    /// 
+    /// {@snippet :
+    ///    // @link substring="InetSocketAddress" target="InetSocketAddress" region
+    ///    // @link substring="getLocalAddress" target="#getLocalAddress()" region
+    ///    // @link substring="getPort" target="InetSocketAddress#getPort()" region
+    ///    return ((InetSocketAddress) getLocalAddress()).getPort();
+    ///    // @end
+    ///    // @end
+    ///    // @end
+    ///  }
+    /// 
+    /// @throws IllegalStateException
+    ///             if the server is not running
+    /// @throws ClassCastException
+    ///             if the server was created using an
+    ///             [UnixDomainSocketAddress]
+    /// @throws IOException
+    ///             if an I/O error occurs
     default int getPort() throws IOException {
         return ((InetSocketAddress) getLocalAddress()).getPort();
     }
