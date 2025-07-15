@@ -27,7 +27,14 @@ import alpha.nomagichttp.util.ScopedValues;
 /// given a chain object. Whatever response an after-action returns is simply
 /// passed forward by the server to the next after-action.
 /// 
+/// @implSpec
+/// The implementation is not thread-safe.
+/// 
+/// The implementation inherits the identity-based implementations of
+/// [Object#hashCode()] and [Object#equals(Object)].
+/// 
 /// @see ScopedValues#channel()
+/// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
 @FunctionalInterface
 public interface Chain

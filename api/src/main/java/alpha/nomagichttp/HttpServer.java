@@ -136,7 +136,7 @@ import java.util.function.IntConsumer;
 /// 
 /// Code executing within the server is able to retrieve the running server
 /// instance using [ScopedValues#httpServer()]. Such entities are before- and
-/// after actions, request- and exception handlers, and event listeners.
+/// after-actions, request- and exception handlers, and event listeners.
 /// 
 /// 
 /// # Threading Model
@@ -221,6 +221,12 @@ import java.util.function.IntConsumer;
 /// `start(...)` methods return [Void] (as opposed to `void`); to enable the
 /// exception-throwing `start(...)` methods to be used as a [Callable]`<V>`
 /// expression lambda.
+/// 
+/// @implSpec
+/// The implementation is thread-safe.
+/// 
+/// The implementation inherits the identity-based implementations of
+/// [Object#hashCode()] and [Object#equals(Object)].
 /// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
 public interface HttpServer extends RouteRegistry, ActionRegistry
