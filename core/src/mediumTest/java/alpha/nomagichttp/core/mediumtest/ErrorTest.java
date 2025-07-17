@@ -10,6 +10,7 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
+import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
@@ -406,6 +407,36 @@ final class ErrorTest extends AbstractRealTest
             .hasMessage("Configured max tolerance is 1 bytes.")
             .hasNoCause()
             .hasNoSuppressedExceptions();
+    }
+    
+    @Nested
+    class MaxRequestBodySizeExc {
+        @Test
+        void RequestBody_bytesFast() throws IOException, InterruptedException {
+            usingConfiguration()
+                .maxRequestBodyBufferSize(1);
+            server()
+                .add("/", POST().apply(req -> {
+                    // This should fail
+                    req.body().bytes();
+                    return null;
+                }));
+            String rsp = client().writeReadTextUntilNewlines("""
+                POST / HTTP/1.1\r
+                Content-Length: 2\r
+                \r
+                AB
+                """);
+            assertThat(rsp).isEqualTo("""
+                HTTP/1.1 413 Entity Too Large\r
+                Connection: close\r
+                Content-Length: 0\r\n\r\n""");
+            assertAwaitHandledAndLoggedExc()
+                .isExactlyInstanceOf(MaxRequestBodyBufferSizeException.class)
+                .hasNoCause()
+                .hasNoSuppressedExceptions()
+                .hasMessage("Configured max tolerance is 1 bytes.");
+            }
     }
     
     @Test
