@@ -173,34 +173,29 @@ import java.util.function.IntConsumer;
 /// 
 /// # HTTP message semantics
 /// 
-/// Very few message variants are specified to _not_ have a body and will be
-/// rejected by the server if they do (see [IllegalRequestBodyException] and
-/// [IllegalResponseBodyException]).
+/// The server does not enforce message variants based on prevailing idioms. The
+/// server rejects a variant only if the message must be rejected because
+/// otherwise the result would have been a protocol error.
 /// 
-/// These variants must be rejected because including a body would likely have
-/// killed the protocol. For all other variants, the body is optional and the
-/// server does not reject the message based on the presence (or absence) of a
-/// body.
+/// For example, very few variants are specified to _not_ have a body and will
+/// be rejected. In this case, with an [IllegalRequestBodyException] or an
+/// [IllegalResponseBodyException].
 /// 
-/// This is mostly true for all other message variants as well; the server does
-/// not have an opinionated view unless warranted. The request handler is almost
-/// in full control over how it interprets the request and what response it
-/// returns.
+/// For all other variants, the body is optional and the server does not reject
+/// the message based on the presence or absence of a body.
 /// 
-/// For example, it might not be common but it is
-/// allowed for [GET][HttpConstants.Method#GET] requests (
-/// [RFC 7231 §4.3.1](https://tools.ietf.org/html/rfc7231#section-4.3.1)) to
-/// have a body and for [POST][HttpConstants.Method#POST] requests to not have a
-/// body ([RFC 7230 §3.3.2](https://tools.ietf.org/html/rfc7230#section-3.3.2)).
+/// It might not be common but it is allowed for
+/// [GET][HttpConstants.Method#GET] requests to have a body and for
+/// [POST][HttpConstants.Method#POST] requests to not have a body
+/// ([RFC 7231 §4.3.1](https://tools.ietf.org/html/rfc7231#section-4.3.1),
+/// [RFC 7230 §3.3.2](https://tools.ietf.org/html/rfc7230#section-3.3.2),
+/// [StackOverflow.com](https://stackoverflow.com/a/70157919/1268003)).
 /// 
 /// Similarly, the [201 (Created)][HttpConstants.StatusCode#TWO_HUNDRED_ONE]
 /// response often have a body which "typically describes and links to the
-/// resource(s) created" (
-/// [RFC 7231 §6.3.2](https://tools.ietf.org/html/rfc7231#section-6.3.2)), but
+/// resource(s) created"
+/// ([RFC 7231 §6.3.2](https://tools.ietf.org/html/rfc7231#section-6.3.2)), but
 /// it is not required to.
-/// 
-/// And so the list goes on. For more information, see
-/// [this StackOverflow answer](https://stackoverflow.com/a/70157919/1268003)).
 /// 
 /// 
 /// # Supported HTTP Versions
@@ -231,11 +226,16 @@ import java.util.function.IntConsumer;
 /// @author Martin Andersson (webmaster at martinandersson.com)
 public interface HttpServer extends RouteRegistry, ActionRegistry
 {
-    /// Creates a new `HttpServer` using [Config#DEFAULT].
+    /// Creates a new `HttpServer`.
     /// 
-    /// The given array of exception handlers will be copied as-is.
-    /// 
-    /// There is no argument validation preventing duplicates.
+    /// The implementation is equivalent to:
+    /// {@snippet :
+    ///    // @link substring="create" target="#create(Config, ExceptionHandler[])" region
+    ///    // @link substring="DEFAULT" target="Config#DEFAULT" region
+    ///    return create(Config.DEFAULT, exceptionHandlers);
+    ///    // @end
+    ///    // @end
+    ///  }
     /// 
     /// @param exceptionHandlers zero or more exception handlers
     /// 
@@ -259,7 +259,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// @return a new `HttpServer`
     /// 
     /// @throws NullPointerException
-    ///             if an argument or array element is `null`
+    ///             if any argument or array element is `null`
     static HttpServer create(Config config, ExceptionHandler... exceptionHandlers) {
         var loader = ServiceLoader.load(HttpServerFactory.class);
         var factories = loader.stream().toList();
@@ -279,7 +279,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// 
     /// Therefore, no code executing inside the consumer should rely on the
     /// server's ability to serve requests. If this is needed, use the method
-    /// [startAsync][#startAsync()] instead.
+    /// [#startAsync()] instead.
     /// 
     /// The implementation is equivalent to:
     /// {@snippet :
@@ -321,8 +321,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// address. An `IOException` from the accept-loop is relayed through
     /// the returned `Future`.
     /// 
-    /// Calling [cancel][Future#cancel(boolean)] on the returned `Future` does
-    /// nothing.
+    /// Calling [Future#cancel(boolean)] on the returned object does nothing.
     /// 
     /// @return a future that completes exceptionally
     /// 

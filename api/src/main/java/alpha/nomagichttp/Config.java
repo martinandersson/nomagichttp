@@ -11,7 +11,6 @@ import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.route.MethodNotAllowedException;
-import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.ByteBufferIterables;
 
 import java.nio.file.OpenOption;
@@ -21,95 +20,85 @@ import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Server configuration.<p>
- * 
- * The implementation is immutable and thread-safe.<p>
- * 
- * The configuration instance used by the server — if none is specified — is
- * {@link #DEFAULT}.<p>
- * 
- * Any configuration object can be turned into a builder for customization. The
- * static method {@link #configuration()} is a shortcut for {@code
- * Config.DEFAULT.toBuilder()}, and allows for fluent overrides of individual
- * values.<p>
- * 
- * {@snippet :
- *   // @link substring="minHttpVersion" target="#minHttpVersion()" region
- *   // @link substring="HTTP_1_1" target="HttpConstants.Version#HTTP_1_1" region
- *   new HttpServer(configuration()
- *           .minHttpVersion(HTTP_1_1)
- *           ...
- *           .build());
- *   // @end
- *   // @end
- * }
- * 
- * In the JDK Reference Implementation, the number of platform threads available
- * for scheduling virtual threads may be specified using the system property
- * <pre>jdk.virtualThreadScheduler.parallelism</pre> (see JavaDoc of
- * {@link Thread}).
- * 
- * @author Martin Andersson (webmaster at martinandersson.com
- */
+/// Server configuration.
+/// 
+/// [Config#toBuilder()] allows for any configuration object to be used as a
+/// template for a new instance.
+/// 
+/// The static method [#configuration()] is a shortcut for 
+/// `Config.`[#DEFAULT]`.toBuilder()`:
+/// 
+/// {@snippet :
+///    // @link substring="minHttpVersion" target="#minHttpVersion()" region
+///    // @link substring="HTTP_1_1" target="HttpConstants.Version#HTTP_1_1" region
+///    // @link substring="build" target="Builder#build()" region
+///    new HttpServer(configuration()
+///            .minHttpVersion(HTTP_1_1)
+///            ...
+///            .build());
+///    // @end
+///    // @end
+///    // @end
+///  }
+/// 
+/// @implSpec
+/// The implementation is immutable.
+/// 
+/// The implementation inherits the identity-based implementations of
+/// [Object#hashCode()] and [Object#equals(Object)].
+/// 
+/// @author Martin Andersson (webmaster at martinandersson.com)
 public interface Config
 {
-    /**
-     * This configuration instance contains the following values:<p>
-     * 
-     * Max request head size = 8 000 <br>
-     * Max request body buffer size = 20 971 520 (20 MB) <br>
-     * Max request trailers' size = 8 000 <br>
-     * Max error responses = 3 <br>
-     * Min HTTP version = 1.0 <br>
-     * Discard rejected informational = true <br>
-     * Immediately continue Expect 100 = false <br>
-     * Timeout file lock = 3 seconds <br>
-     * Timeout idle connection = 3 minutes <br>
-     * Implement missing options = true
-     */
+    /// The configuration used by [HttpServer].
+    /// 
+    /// This instance contains the following values:
+    /// 
+    /// Max request head size = 8 000  
+    /// Max request body buffer size = 20 971 520 (20 MB)  
+    /// Max request trailers' size = 8 000  
+    /// Max error responses = 3  
+    /// Min HTTP version = 1.0  
+    /// Discard rejected informational = true  
+    /// Immediately continue Expect 100 = false  
+    /// Timeout file lock = 3 seconds  
+    /// Timeout idle connection = 3 minutes  
+    /// Implement missing options = true
     Config DEFAULT = DefaultConfig.DefaultBuilder.ROOT.build();
     
-    /**
-     * {@return the max number of request head bytes to process}<p>
-     * 
-     * Once the limit has been exceeded, a {@link MaxRequestHeadSizeException}
-     * is thrown.<p>
-     * 
-     * The default implementation returns {@code 8_000}.<p>
-     * 
-     * The default value corresponds to <a
-     * href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
-     * as well as
-     * <a href="https://stackoverflow.com/a/8623061/1268003">common practice</a>.
-     */
+    /// {@return the max number of request head bytes to process}
+    /// 
+    /// When the limit has been exceeded, a [MaxRequestHeadSizeException] is
+    /// thrown.
+    /// 
+    /// The [#DEFAULT] configuration returns 8 000, which is the minimum
+    /// recommended size
+    /// ([RFC 7230 §3.1.1](https://tools.ietf.org/html/rfc7230#section-3.1.1))
+    /// and also common amongst servers
+    /// ([StackOverflow.com](https://stackoverflow.com/a/8623061/1268003)).
     int maxRequestHeadSize();
     
-    /**
-     * {@return the max number of request body bytes to internally buffer}<p>
-     * 
-     * Before (if an unacceptable length is known in advance) or when the limit
-     * has been exceeded, a {@link MaxRequestBodyBufferSizeException} is
-     * thrown.<p>
-     * 
-     * This configuration applies <i>only</i> to high-level methods that
-     * internally buffer the whole body, such as {@link Request.Body#bytes()}
-     * and {@link Request.Body#toText()}.<p>
-     * 
-     * The request body size itself has no limit (nor is there such a
-     * configuration option). The application can consume an unlimited number
-     * of bytes however it desires, by iterating the body, or use other methods
-     * that do not buffer the body, such as
-     * {@link Request.Body#toFile(Path, long, TimeUnit, Set, FileAttribute[]) Request.Body.toFile(Path, ...)}
-     * <p>
-     * 
-     * Methods provided by the library that collect bytes in the memory, must be
-     * constrained for a number of a reasons. Perhaps primarily because it would
-     * have been too easy for a bad actor to crash the server (by streaming a
-     * body straight into memory until memory runs out).<p>
-     * 
-     * The default implementation returns {@code 20_971_520} (20 MB).
-     */
+    /// {@return the max number of request body bytes to internally buffer}
+    /// 
+    /// Before (if an unacceptable length is known in advance) or when the limit
+    /// has been exceeded, a [MaxRequestBodyBufferSizeException] is thrown.
+    /// 
+    /// The [#DEFAULT] implementation returns 20 971 520 (20 MB).
+    /// 
+    /// This configuration applies to high-level methods that internally
+    /// buffer the entire body on Java's heap space. For example,
+    /// [Request.Body#bytes()] and [Request.Body#toText()].
+    /// 
+    /// Otherwise, the request body has no size limit (nor is there such a
+    /// configuration option). The application can consume an unlimited number
+    /// of bytes by iterating the body, or using another method which does not
+    /// buffer the body. For example,
+    /// [`Request.Body.toFile(...)`][Request.Body#toFile(Path, long, TimeUnit, Set, FileAttribute\[\])]
+    /// 
+    /// @apiNote
+    /// Without this configuration in place, it would have been too easy for a
+    /// bad actor to crash the server (by streaming a body straight into memory
+    /// until memory runs out).
     int maxRequestBodyBufferSize();
     
     /**

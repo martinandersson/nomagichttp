@@ -61,8 +61,8 @@ public interface ChannelWriter
     /// 
     /// @apiNote
     /// The implementation does not limit how long time it may take to write a
-    /// response, nor the number of bytes it may contain; this method will not return for as long as the response body keeps producing
-    /// data.
+    /// response, nor the number of bytes it may contain; this method will not
+    /// return for as long as the response body keeps producing data.
     /// 
     /// @param response the response to write
     /// 

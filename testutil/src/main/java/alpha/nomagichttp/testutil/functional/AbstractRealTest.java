@@ -41,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Operates a {@link #server() server} and a {@link #client() client}.<p>
  * 
- * Both the server and the client are created upom first access. The client will
+ * Both the server and the client are created upon first access. The client will
  * be configured with the server's port.<p>
  * 
  * Both the server and client APIs are easy to use on their own. The added value
