@@ -3,6 +3,17 @@
 This document is an early draft. If you wish to become a contributor, please
 reach out to; webmaster at martinandersson.com.
 
+## Build Commands
+
+Compile all code, run all tests, and build JAR archives for distribution:
+
+    ./gradlew build
+
+When working with tests and documentation, it may speed things up to rerun the
+task on file system changes:
+
+    ./gradlew javadocAll --continuous
+
 ## Upgrading Gradle Wrapper
 
 ### First prepare
