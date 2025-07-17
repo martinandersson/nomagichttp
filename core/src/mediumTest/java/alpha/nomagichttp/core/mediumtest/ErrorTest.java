@@ -411,22 +411,42 @@ final class ErrorTest extends AbstractRealTest
     
     @Nested
     class MaxRequestBodySizeExc {
+        /// A known length pre-allocates the entire buffer.
         @Test
         void RequestBody_bytesFast() throws IOException, InterruptedException {
-            usingConfiguration()
-                .maxRequestBodyBufferSize(1);
-            server()
-                .add("/", POST().apply(req -> {
-                    // This should fail
-                    req.body().bytes();
-                    return null;
-                }));
-            String rsp = client().writeReadTextUntilNewlines("""
+            runExchange("""
                 POST / HTTP/1.1\r
                 Content-Length: 2\r
                 \r
                 AB
                 """);
+        }
+        
+        /// An unknown length necessitates the use of a dynamically-sized buffer.
+        @Test
+        void RequestBody_bytesSlow() throws IOException, InterruptedException {
+            runExchange("""
+                POST / HTTP/1.1
+                Transfer-Encoding: chunked
+                
+                2
+                AB
+                0
+                
+                """);
+        }
+        
+        private void runExchange(String request)
+                throws IOException, InterruptedException {
+            usingConfiguration()
+                .maxRequestBodyBufferSize(1);
+            server()
+                .add("/", POST().apply(req -> {
+                    // Here implementation-switch happens (and each one fails)
+                    req.body().bytes();
+                    return null;
+                }));
+            String rsp = client().writeReadTextUntilNewlines(request);
             assertThat(rsp).isEqualTo("""
                 HTTP/1.1 413 Entity Too Large\r
                 Connection: close\r
@@ -436,7 +456,7 @@ final class ErrorTest extends AbstractRealTest
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
                 .hasMessage("Configured max tolerance is 1 bytes.");
-            }
+        }
     }
     
     @Test

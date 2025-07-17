@@ -48,6 +48,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 final class RequestBody implements Request.Body
 {
+    private static final int BUFFER_SIZE = 512;
+    
     /**
      * Creates a request body.
      * 
@@ -229,10 +231,8 @@ final class RequestBody implements Request.Body
     }
     
     private byte[] bytesFast(int cap) throws IOException {
-        final int max = httpServer().getConfig().maxRequestBodyBufferSize();
-        if (cap > max) {
-            throw new MaxRequestBodyBufferSizeException(max);
-        }
+        requireSizeSmallerThan(cap,
+            httpServer().getConfig().maxRequestBodyBufferSize());
         final byte[] dst = new byte[cap];
         int offset = 0;
         var it = iterator();
@@ -252,17 +252,22 @@ final class RequestBody implements Request.Body
     }
     
     private byte[] bytesSlow() throws IOException {
-        var os = new ByteArrayOutputStream();
+        var os = new ByteArrayOutputStream(BUFFER_SIZE);
         var it = iterator();
+        final int max = httpServer().getConfig().maxRequestBodyBufferSize();
+        int read = 0;
         while (it.hasNext()) {
             var buf = it.next();
             if (!buf.hasRemaining()) {
                 assert !it.hasNext() : "End-Of-Stream";
                 break;
             }
+            int rem = buf.remaining();
+            read += rem;
+            requireSizeSmallerThan(read, max);
             if (buf.hasArray()) {
                 // Transfer
-                os.write(buf.array(), buf.arrayOffset(), buf.remaining());
+                os.write(buf.array(), buf.arrayOffset(), rem);
                 // Mark consumed
                 buf.position(buf.limit());
             } else {
@@ -272,6 +277,12 @@ final class RequestBody implements Request.Body
             }
         }
         return os.toByteArray();
+    }
+    
+    private static void requireSizeSmallerThan(int size, int max) {
+        if (size > max) {
+            throw new MaxRequestBodyBufferSizeException(max);
+        }
     }
     
     private class FirstRespond100Continue implements ByteBufferIterator {
