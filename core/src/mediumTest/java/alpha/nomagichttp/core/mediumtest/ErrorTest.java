@@ -71,7 +71,7 @@ final class ErrorTest extends AbstractRealTest
             = System.getLogger(ErrorTest.class.getPackageName());
     
     private static final
-        Throwing.Function<Request, Response, Exception> NOP = request -> null;
+        Throwing.Function<Request, Response, Exception> NOP = _ -> null;
     
     private static final class OopsException extends RuntimeException {
         @Serial private static final long serialVersionUID = 1L;
