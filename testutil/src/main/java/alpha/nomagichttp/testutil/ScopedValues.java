@@ -9,33 +9,23 @@ import static java.lang.ScopedValue.callWhere;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * Utils for binding values.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- */
+/// Utils for binding values.
+/// 
+/// @author Martin Andersson (webmaster at martinandersson.com)
 public final class ScopedValues {
     private ScopedValues() {
         // Empty
     }
     
-    /**
-     * Binds {@code ScopedValues.httpServer()} to a mocked server instance.<p>
-     * 
-     * The mock will use the library's default configuration.<p>
-     * 
-     * This method should only be used by small quote unquote "cold" tests.
-     * 
-     * @param op operation to run
-     * @param <R> result type
-     * 
-     * @return the operation's result
-     * 
-     * @throws NullPointerException
-     *             if {@code op} is {@code null}
-     * @throws X
-     *             if the operation completes with an exception
-     */
+    /// Binds `ScopedValues.httpServer()` from `null` to a mock instance.
+    /// 
+    /// @param op the operation to run
+    /// @param <R> the result type
+    /// 
+    /// @return the operation's result
+    /// 
+    /// @throws NullPointerException if `op` is `null`
+    /// @throws X if the operation completes with an exception
     public static <R, X extends Throwable> R
             whereServerIsBound(CallableOp<? extends R, X> op) throws X {
         var server = mock(HttpServer.class);
