@@ -1,7 +1,6 @@
 package alpha.nomagichttp;
 
 import alpha.nomagichttp.HttpConstants.Version;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.ByteBufferIterator;
@@ -120,7 +119,7 @@ public interface Config
     
     /// {@return the max number of consecutively unsuccessful responses}
     /// 
-    /// When the limit has been reached, the client channel is closed.
+    /// After the limit has been reached, the client channel is closed.
     /// 
     /// The [#DEFAULT] implementation returns 3.
     /// 
@@ -143,35 +142,39 @@ public interface Config
     /// [HTTP/1.0][HttpConstants.Version#HTTP_1_0].
     /// 
     /// @apiNote
-    /// HTTP/1.0 does not support persistent connections and there are a number
+    /// HTTP/1.0 does not support persistent connections, and there are a number
     /// of issues related to the unofficial "keep-alive" mechanism — which the
-    /// NoMagicHTTP server does not implement. All HTTP/1.0 connections will
-    /// therefore close after each response, which is inefficient. It's
-    /// recommended to set this value to
+    /// NoMagicHTTP server does not implement. Therefore, all HTTP/1.0
+    /// connections will close after each response, which is inefficient.
+    /// 
+    /// It's recommended to set this value to
     /// [HTTP/1.1][HttpConstants.Version#HTTP_1_1].
     /// 
     /// As a library, we have to be backwards compatible and support as many
     /// applications as possible "out of the box".
     /// 
-    /// The minimum version the NoMagicHTTP implements is HTTP/1.0, and
+    /// The minimum version the NoMagicHTTP server implements is HTTP/1.0, and
     /// currently, the maximum version implemented is HTTP/1.1.
     Version minHttpVersion();
     
-    /**
-     * {@return whether to discard 1XX (Informational) responses for
-     * HTTP/1.0 clients}<p>
-     * 
-     * The default value is {@code true} and the application can safely write
-     * 1XX responses to the channel without a concern for incompatible
-     * clients.<p>
-     * 
-     * Turning this option off causes {@link ClientChannel#write(Response)} to
-     * throw a {@link ResponseRejectedException} for 1XX responses when the
-     * client is incompatible. This necessitates that the application must
-     * either handle the exception explicitly, or query the active HTTP version
-     * ({@link Request#httpVersion()}) before attempting to send such a
-     * response.
-     */
+    /// {@return whether to discard 1XX (Informational) responses for HTTP/1.0
+    /// clients}
+    /// 
+    /// Setting this option to `false` causes [ChannelWriter#write(Response)] to
+    /// throw a [ResponseRejectedException] for interim responses when the
+    /// client is incompatible, which causes the
+    /// [base exception handler][ExceptionHandler#BASE] to respond
+    /// [426 (Upgrade Required)][Responses#upgradeRequired(String)].
+    /// 
+    /// In this case, the application must either handle the exception
+    /// explicitly, or query the active HTTP version ([Request#httpVersion()])
+    /// before attempting to send such a response.
+    /// 
+    /// The [#DEFAULT] implementation returns `true` and the application can
+    /// safely write interim responses to the channel without a concern for
+    /// incompatible clients.
+    /// 
+    /// @see HttpConstants.StatusCode
     boolean discardRejectedInformational();
     
     /**
