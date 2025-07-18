@@ -21,6 +21,7 @@ public final class ScopedValues {
     /// 
     /// @param op the operation to run
     /// @param <R> the result type
+    /// @param <X> type of exception possibly thrown
     /// 
     /// @return the operation's result
     /// 
