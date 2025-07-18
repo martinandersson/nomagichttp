@@ -49,7 +49,7 @@ public final class ChannelReader implements ByteBufferIterable
             LOG = getLogger(ChannelReader.class.getPackageName());
     
     private static final int
-            /** Same as BufferedOutputStream/JEP-435 */
+            // Same as BufferedOutputStream/JEP-435
             BUFFER_SIZE = 512,
             // Sentinel; no limit has been set
             UNLIMITED = -1,
