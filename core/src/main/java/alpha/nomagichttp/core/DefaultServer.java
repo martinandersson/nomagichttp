@@ -37,8 +37,7 @@ import static alpha.nomagichttp.util.Blah.getOrClose;
 import static alpha.nomagichttp.util.Blah.runOrClose;
 import static alpha.nomagichttp.util.ScopedValues.CHANNEL;
 import static alpha.nomagichttp.util.ScopedValues.HTTP_SERVER;
-import static java.lang.ScopedValue.callWhere;
-import static java.lang.ScopedValue.runWhere;
+import static java.lang.ScopedValue.where;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
@@ -90,7 +89,7 @@ public final class DefaultServer implements HttpServer
         this.eh      = List.of(eh);
         this.events  = new DefaultEventHub(
                 () -> !HTTP_SERVER.isBound(),
-                r -> runWhere(HTTP_SERVER, this, r));
+                r -> where(HTTP_SERVER, this).run(r));
         this.parent  = new Confined<>();
         this.terminated = new CountDownLatch(1);
         this.children = new ConcurrentHashMap<>(INITIAL_CAPACITY);
@@ -119,7 +118,7 @@ public final class DefaultServer implements HttpServer
         try (ServerSocketChannel ch = openOrFail(addr)) {
             if (ofPort != null) {
                 int port = getPort();
-                runWhere(HTTP_SERVER, this, () -> ofPort.accept(port));
+                where(HTTP_SERVER, this).run(() -> ofPort.accept(port));
             }
             runAcceptLoop(ch);
         }
@@ -176,7 +175,7 @@ public final class DefaultServer implements HttpServer
             throws IOException, InterruptedException
     {
         try {
-            callWhere(HTTP_SERVER, this, () -> runAcceptLoop0(ch));
+            where(HTTP_SERVER, this).call(() -> runAcceptLoop0(ch));
         } catch (Exception e) {
             switch (e) {
                 case IOException t -> throw t;
@@ -259,7 +258,7 @@ public final class DefaultServer implements HttpServer
                 api.use(w);
                 var exch = new HttpExchange(
                         this, actions, routes, eh, api, r, w);
-                runWhere(CHANNEL, api, exch::begin);
+                where(CHANNEL, api).run(exch::begin);
                 r.dismiss();
                 w.dismiss();
                 // ResponseProcessor will set "Connection: close" if !isRunning()

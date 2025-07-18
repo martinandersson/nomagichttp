@@ -33,8 +33,8 @@ import static alpha.nomagichttp.message.Responses.continue_;
 import static alpha.nomagichttp.util.Blah.throwsNoChecked;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.addExact;
-import static java.lang.ScopedValue.callWhere;
 import static java.lang.ScopedValue.newInstance;
+import static java.lang.ScopedValue.where;
 import static java.lang.System.Logger.Level;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
@@ -249,7 +249,7 @@ final class HttpExchange
     }
     
     private void handleRequest(SkeletonRequest req) throws Exception {
-        callWhere(SKELETON_REQUEST, of(req), () -> {
+        where(SKELETON_REQUEST, of(req)).call(() -> {
           try {
               LOG.log(DEBUG, "Executing the request processing chain");
               var rsp = processRequest(req);
