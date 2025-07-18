@@ -14,7 +14,7 @@ import alpha.nomagichttp.util.ScopedValues;
 
 import java.io.IOException;
 
-/// A transmitter of data from a response to a byte channel.
+/// A transmitter of data from a response to an underlying byte channel.
 /// 
 /// The life-cycle of the implementation is bound to an active HTTP exchange.
 /// 

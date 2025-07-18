@@ -4,14 +4,17 @@ import alpha.nomagichttp.HttpConstants.Version;
 import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
+import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeException;
 import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.MethodNotAllowedException;
 import alpha.nomagichttp.util.ByteBufferIterables;
+import alpha.nomagichttp.util.Throwing;
 
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -69,7 +72,9 @@ public interface Config
     /// {@return the max number of request head bytes to process}
     /// 
     /// When the limit has been exceeded, a [MaxRequestHeadSizeException] is
-    /// thrown.
+    /// thrown, which causes the
+    /// [base exception handler][ExceptionHandler#BASE] to respond
+    /// [413 (Entity Too Large)][Responses#entityTooLarge()].
     /// 
     /// The [#DEFAULT] configuration returns 8 000, which is the minimum
     /// recommended size
@@ -81,73 +86,75 @@ public interface Config
     /// {@return the max number of request body bytes to internally buffer}
     /// 
     /// Before (if an unacceptable length is known in advance) or when the limit
-    /// has been exceeded, a [MaxRequestBodyBufferSizeException] is thrown.
+    /// has been exceeded, a [MaxRequestBodyBufferSizeException] is thrown,
+    /// which causes the [base exception handler][ExceptionHandler#BASE] to
+    /// respond [413 (Entity Too Large)][Responses#entityTooLarge()].
     /// 
     /// The [#DEFAULT] implementation returns 20 971 520 (20 MB).
     /// 
-    /// This configuration applies to high-level methods that internally
-    /// buffer the entire body on Java's heap space. For example,
+    /// This configuration applies to some high-level methods that internally
+    /// buffer the entire request body on Java's heap space. For example,
     /// [Request.Body#bytes()] and [Request.Body#toText()].
     /// 
-    /// Otherwise, the request body has no size limit (nor is there such a
-    /// configuration option). The application can consume an unlimited number
-    /// of bytes by iterating the body, or using another method which does not
-    /// buffer the body. For example,
+    /// Other than that, the body has no size limit. The application can consume
+    /// an unlimited number of bytes by iterating the body, or using any other
+    /// method which does not buffer all of it. For example,
+    /// [`Request.Body.iterator().forEachRemaining(...)`][ByteBufferIterator#forEachRemaining(Throwing.Consumer)]
+    /// and
     /// [`Request.Body.toFile(...)`][Request.Body#toFile(Path, long, TimeUnit, Set, FileAttribute\[\])]
     /// 
     /// @apiNote
-    /// Without this configuration in place, it would have been too easy for a
-    /// bad actor to crash the server (by streaming a body straight into memory
-    /// until memory runs out).
+    /// Without a limit, it would have been too easy for a bad actor to crash
+    /// the server (by streaming a body straight into memory until memory runs
+    /// out).
     int maxRequestBodyBufferSize();
     
-    /**
-     * {@return the max number of request trailer bytes to process}<p>
-     * 
-     * Once the limit has been exceeded, a
-     * {@link MaxRequestTrailersSizeException} is thrown.<p>
-     * 
-     * The default implementation returns {@code 8_000}.
-     */
+    /// {@return the max number of request trailer bytes to process}
+    /// 
+    /// When the limit has been exceeded, a [MaxRequestTrailersSizeException] is
+    /// thrown, which causes the [base exception handler][ExceptionHandler#BASE]
+    /// to respond [413 (Entity Too Large)][Responses#entityTooLarge()].
+    /// 
+    /// The [#DEFAULT] implementation returns 8 000.
     int maxRequestTrailersSize();
     
-    /**
-     * {@return the max number of consecutively unsuccessful responses}<p>
-     * 
-     * An unsuccessful response is one with a status code classified as 4XX
-     * (Client Error) or 5XX (Server Error).<p>
-     * 
-     * Once the limit has been reached, the client channel is closed.<p>
-     * 
-     * Closing the channel after repeatedly unsuccessful exchanges increases
-     * security.<p>
-     * 
-     * The default implementation returns {@code 3}.
-     */
+    /// {@return the max number of consecutively unsuccessful responses}
+    /// 
+    /// When the limit has been reached, the client channel is closed.
+    /// 
+    /// The [#DEFAULT] implementation returns 3.
+    /// 
+    /// An unsuccessful response is one with a status code classified as 4XX
+    /// (Client Error) or 5XX (Server Error).
+    /// 
+    /// @apiNote
+    /// Closing the channel after repeatedly unsuccessful exchanges increases
+    /// security.
     int maxErrorResponses();
     
-    /**
-     * {@return the minimum supported HTTP version}<p>
-     * 
-     * By default, this method returns
-     * {@link HttpConstants.Version#HTTP_1_0 HTTP/1.0}.<p>
-     * 
-     * If a client sends a request with an older HTTP version than what is
-     * configured, an {@link HttpVersionTooOldException} is thrown, which by
-     * default gets translated to a 426 (Upgrade Required) response.<p>
-     * 
-     * HTTP/1.0 does not support persistent connections and there are a number
-     * of issues related to the unofficial "keep-alive" mechanism — which the
-     * NoMagicHTTP server does not implement. All HTTP/1.0 connections will
-     * therefore close after each response, which is inefficient. It's
-     * recommended to set this value to
-     * {@link HttpConstants.Version#HTTP_1_1 HTTP/1.1}. As a library however, we
-     * have to be backwards compatible and support as many applications as
-     * possible "out of the box".<p>
-     * 
-     * The minimum version the NoMagicHTTP implements is HTTP/1.0, and the
-     * maximum version currently implemented is HTTP/1.1.
-     */
+    /// {@return the minimum supported HTTP version}
+    /// 
+    /// When a client sends a request with an older HTTP version than what is
+    /// configured, an [HttpVersionTooOldException] is thrown, which causes the
+    /// [base exception handler][ExceptionHandler#BASE] to respond
+    /// [426 (Upgrade Required)][Responses#upgradeRequired(String)].
+    /// 
+    /// The [#DEFAULT] implementation returns
+    /// [HTTP/1.0][HttpConstants.Version#HTTP_1_0].
+    /// 
+    /// @apiNote
+    /// HTTP/1.0 does not support persistent connections and there are a number
+    /// of issues related to the unofficial "keep-alive" mechanism — which the
+    /// NoMagicHTTP server does not implement. All HTTP/1.0 connections will
+    /// therefore close after each response, which is inefficient. It's
+    /// recommended to set this value to
+    /// [HTTP/1.1][HttpConstants.Version#HTTP_1_1].
+    /// 
+    /// As a library, we have to be backwards compatible and support as many
+    /// applications as possible "out of the box".
+    /// 
+    /// The minimum version the NoMagicHTTP implements is HTTP/1.0, and
+    /// currently, the maximum version implemented is HTTP/1.1.
     Version minHttpVersion();
     
     /**
