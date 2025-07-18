@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.ConnectException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
@@ -135,7 +134,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 Instant before = now();
                 stopServer();
                 // Stopping should be completed more or less instantaneously
-                assertThat(Duration.between(before, now()))
+                assertThat(before.until(now()))
                     .isLessThan(ofSeconds(1));
                 assertNewConnectionIsRejected();
                 logRecorder().assertContainsOnlyOnce(
@@ -157,7 +156,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 Instant before = now();
                 stopServer(false);
                 // Stopping completes after a 1-second graceful period
-                assertThat(Duration.between(before, now()))
+                assertThat(before.until(now()))
                     .isGreaterThanOrEqualTo(ofSeconds(1));
                 logRecorder().assertContainsOnlyOnce(
                     DEBUG, "Closing the child because thread interrupted.");
@@ -179,7 +178,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 stopServer.acquire();
                 Instant before = now();
                 stopServer(false);
-                assertThat(Duration.between(before, now()))
+                assertThat(before.until(now()))
                     .isGreaterThanOrEqualTo(ofSeconds(1));
                 // TODO: Should assertThatNoWarningOrExceptionIsLogged()
             }

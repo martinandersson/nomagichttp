@@ -7,7 +7,6 @@ import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
@@ -271,7 +270,7 @@ public final class JvmPathLock implements AutoCloseable
     
     private static long remaining(Instant start, long timeout, TimeUnit unit) {
         var deadline = start.plus(timeout, unit.toChronoUnit());
-        return toNanosOrMaxValue(Duration.between(start, deadline));
+        return toNanosOrMaxValue(start.until(deadline));
     }
     
     private final Path key;
