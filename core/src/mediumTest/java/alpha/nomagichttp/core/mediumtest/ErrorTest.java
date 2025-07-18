@@ -1,6 +1,7 @@
 package alpha.nomagichttp.core.mediumtest;
 
 import alpha.nomagichttp.IdleConnectionException;
+import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.DecoderException;
@@ -44,6 +45,7 @@ import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
@@ -588,6 +590,32 @@ final class ErrorTest extends AbstractRealTest
                 "HTTP/1.1 499 Custom Not Found!" + CRLF +
                 "Content-Length: 0"              + CRLF + CRLF);
         }
+    }
+    
+    @Test
+    void ResponseRejectedExc() throws IOException {
+        usingConfiguration()
+            .discardRejectedInformational(false);
+        server().add("/", GET().apply(_ -> {
+            channel().write(processing());
+            return null; }));
+        String rsp = client().writeReadTextUntilNewlines(
+            "GET / HTTP/1.0" + CRLF + CRLF);
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 426 Upgrade Required\r
+            Upgrade: HTTP/1.1\r
+            Connection: upgrade, close\r
+            Content-Length: 0\r\n\r\n""");
+        assertThat(pollServerExceptionNow())
+            .isExactlyInstanceOf(ResponseRejectedException.class)
+            .hasMessage("HTTP/1.0 client does not accept 1XX (Informational) responses.")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
+        logRecorder()
+            .assertNoProblem()
+            .assertRemove(DEBUG, """
+                Setting "Connection: close" because HTTP/1.0 does not \
+                support a persistent connection.""");
     }
     
     @Test
