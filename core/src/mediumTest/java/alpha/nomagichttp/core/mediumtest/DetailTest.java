@@ -191,7 +191,7 @@ final class DetailTest extends AbstractRealTest
         @Test
         void chunked() throws IOException {
             server().add("/",
-                GET().apply(req -> noContent()));
+                GET().apply(_ -> noContent()));
             var rsp = client().writeReadTextUntilEOS("""
                 GET / HTTP/1.1
                 Transfer-Encoding: chunked
@@ -219,7 +219,7 @@ final class DetailTest extends AbstractRealTest
                 .immediatelyContinueExpect100(true);
             server().add("/",
                 // Request body doesn't matter
-                GET().apply(req -> text("end")));
+                GET().apply(_ -> text("end")));
             String rsp = client().writeReadTextUntil(
                 "GET / HTTP/1.1"                          + CRLF + 
                 "Expect: 100-continue"                    + CRLF + CRLF, "end");
@@ -235,7 +235,7 @@ final class DetailTest extends AbstractRealTest
         
         @Test
         void repeatedIgnored() throws IOException {
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 // In response to a GET request without Expect header nor body
                 // (application gets what application wants)
                 var ch = channel();
@@ -273,7 +273,7 @@ final class DetailTest extends AbstractRealTest
             var empty = ByteBuffer.allocate(0);
             var items = List.of(asciiBytes("World"), empty);
             var body = ByteBufferIterables.ofSupplier(items.iterator()::next);
-            server().add("/", GET().apply(req ->
+            server().add("/", GET().apply(_ ->
                 ok(body)));
             String rsp = client().writeReadTextUntil(
                 get(), "0\r\n\r\n");
@@ -299,7 +299,7 @@ final class DetailTest extends AbstractRealTest
                     return -1;
                 }
             };
-            server().add("/", GET().apply(req ->
+            server().add("/", GET().apply(_ ->
                 ok(empty)));
             String rsp = client().writeReadTextUntilEOS(
                 get("Connection: close"));
@@ -416,7 +416,7 @@ final class DetailTest extends AbstractRealTest
     void interimResponseIgnoredForOldClient()
             throws IOException, InterruptedException
     {
-        server().add("/", GET().apply(req -> {
+        server().add("/", GET().apply(_ -> {
             channel().write(processing()); // <-- rejected
             return text("Done!");
         }));

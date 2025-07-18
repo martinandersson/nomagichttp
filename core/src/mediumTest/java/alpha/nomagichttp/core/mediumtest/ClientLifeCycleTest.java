@@ -47,7 +47,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
         void forNonPersistentHttp1_0()
                throws IOException, InterruptedException
         {
-            server().add("/", GET().apply(req -> noContent()));
+            server().add("/", GET().apply(_ -> noContent()));
             
             try (var _ = client().openConnection()) {
                 String rsp = client().writeReadTextUntilNewlines(
@@ -68,7 +68,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
         void beforeResponse(boolean streamOnly)
                throws IOException, InterruptedException
         {
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 if (streamOnly) {
                     channel().shutdownOutput();
                 } else {
@@ -232,7 +232,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                 boolean addConnCloseHeader)
                 throws IOException, InterruptedException {
             var send = new Semaphore(0);
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 send.acquire();
                 return noContent();
             }));
@@ -319,7 +319,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
         @Test
         void serverInput()
                 throws IOException, InterruptedException {
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 channel().shutdownInput();
                 assertThat(channel().isInputOpen()).isFalse();
                 return noContent();

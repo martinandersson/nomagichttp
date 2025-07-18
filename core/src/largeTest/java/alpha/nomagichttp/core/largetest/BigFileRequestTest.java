@@ -66,7 +66,7 @@ final class BigFileRequestTest extends AbstractLargeRealTest
                     .build();
         });
         // Retrieve the file
-        var get = GET().apply(req -> ok(ofFile(file)));
+        var get = GET().apply(_ -> ok(ofFile(file)));
         server().add("/file", post, get);
     }
     

@@ -333,7 +333,7 @@ final class ErrorTest extends AbstractRealTest
             throws IOException, InterruptedException
     {
         server().add("/",
-            TRACE().apply(req -> {
+            TRACE().apply(_ -> {
                 throw new AssertionError("Not invoked.");
             }));
         String rsp = client().writeReadTextUntilNewlines(
@@ -357,7 +357,7 @@ final class ErrorTest extends AbstractRealTest
         @Test
         void in1xxResponse() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(req -> Response.builder(123)
+                GET().apply(_ -> Response.builder(123)
                          .body(ofString("Body!"))
                          .build()));
             String rsp = client().writeReadTextUntilNewlines(
@@ -375,7 +375,7 @@ final class ErrorTest extends AbstractRealTest
         @Test
         void inResponseToHEAD() throws IOException, InterruptedException {
             server().add("/",
-                HEAD().apply(req -> text("Body!")));
+                HEAD().apply(_ -> text("Body!")));
             String rsp = client().writeReadTextUntilNewlines(
                 "HEAD / HTTP/1.1"                    + CRLF + CRLF);
             assertThat(rsp).isEqualTo(
@@ -480,7 +480,7 @@ final class ErrorTest extends AbstractRealTest
     
     @Test
     void MediaTypeParseExc() throws IOException, InterruptedException {
-        server().add("/", GET().apply(req -> {
+        server().add("/", GET().apply(_ -> {
             MediaType.parse("BOOM!");
             throw new AssertionError();
         }));
@@ -523,8 +523,8 @@ final class ErrorTest extends AbstractRealTest
         @Test
         void BLABLA() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(req -> internalServerError()),
-                POST().apply(req -> internalServerError()));
+                GET().apply(_ -> internalServerError()),
+                POST().apply(_ -> internalServerError()));
             String rsp = client().writeReadTextUntilNewlines(
                 "BLABLA / HTTP/1.1"               + CRLF + CRLF);
             assertThat(rsp).isEqualTo(
@@ -543,8 +543,8 @@ final class ErrorTest extends AbstractRealTest
         @Test
         void OPTIONS() throws IOException, InterruptedException {
             server().add("/",
-                    GET().apply(req -> internalServerError()),
-                    POST().apply(req -> internalServerError()));
+                    GET().apply(_ -> internalServerError()),
+                    POST().apply(_ -> internalServerError()));
             String rsp = client().writeReadTextUntilNewlines(
                     "OPTIONS / HTTP/1.1"              + CRLF + CRLF);
             assertThat(rsp).isEqualTo(
@@ -667,10 +667,10 @@ final class ErrorTest extends AbstractRealTest
     class Special {
         @Test
         void exceptionHandlerFails() throws IOException, InterruptedException {
-            usingExceptionHandler((thr, ch, req) -> {
+            usingExceptionHandler((_, _, _) -> {
                 throw new OopsException("second");
             });
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 throw new OopsException("first");
             }));
             
@@ -715,7 +715,7 @@ final class ErrorTest extends AbstractRealTest
         
         @Test
         void maxErrorResponses() throws IOException, InterruptedException {
-            server().add("/", GET().apply(req -> badRequest().toBuilder()
+            server().add("/", GET().apply(_ -> badRequest().toBuilder()
                     // This header would have caused the server to close the connection,
                     // but we want to run many "failed" responses
                     .removeHeaderValue("Connection", "close").build()));
@@ -748,7 +748,7 @@ final class ErrorTest extends AbstractRealTest
         
         @Test
         void writingTwoFinalResponses() throws IOException, InterruptedException {
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 channel().write(noContent());
                 return text("this won't work");
             }));

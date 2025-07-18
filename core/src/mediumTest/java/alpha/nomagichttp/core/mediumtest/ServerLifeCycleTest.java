@@ -146,7 +146,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
         @Test
         void graceExpires_handlerStalled() throws IOException, InterruptedException {
             var stopServer = new Semaphore(0);
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 stopServer.release();
                 SECONDS.sleep(STOP_GRACEFUL_SECONDS + 1);
                 throw new AssertionError("Thread supposed to be interrupted");

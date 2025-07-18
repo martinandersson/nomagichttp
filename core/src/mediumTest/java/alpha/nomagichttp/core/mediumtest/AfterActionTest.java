@@ -127,8 +127,8 @@ final class AfterActionTest extends AbstractRealTest
     @Test
     void crash_2() throws IOException {
         server()
-              .add("/", GET().apply(req -> noContent()))
-              .after("/", (req, rsp) -> null);
+              .add("/", GET().apply(_ -> noContent()))
+              .after("/", (_, _) -> null);
         var rsp = client()
               .writeReadTextUntilEOS("GET / HTTP/1.1" + CRLF + CRLF);
         assertThat(rsp)
