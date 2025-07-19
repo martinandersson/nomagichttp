@@ -111,7 +111,7 @@ final class ChunkedEncoder implements ResourceByteBufferIterable
                     assert !inputChunks.hasNext();
                     throw new NoSuchElementException();
                 }
-            } catch (NoSuchElementException e) {
+            } catch (NoSuchElementException _) {
                 // If upstream is done we're done
                 return fill(lastChunk(), DONE).take();
             }

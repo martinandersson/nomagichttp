@@ -8,8 +8,8 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Set;
 
-import static java.lang.ScopedValue.callWhere;
 import static java.lang.ScopedValue.newInstance;
+import static java.lang.ScopedValue.where;
 import static java.util.Collections.newSetFromMap;
 
 /**
@@ -53,7 +53,7 @@ abstract class AbstractChain<E>
             return callFinalHandler();
         } else {
             var e = entities.next();
-            return callWhere(ENTITY_RUNNING, e, () ->
+            return where(ENTITY_RUNNING, e).call(() ->
                     // Recursive
                     callIntermittentHandler(e, () -> proceed0(true)));
         }

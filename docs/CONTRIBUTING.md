@@ -3,6 +3,17 @@
 This document is an early draft. If you wish to become a contributor, please
 reach out to; webmaster at martinandersson.com.
 
+## Build Commands
+
+Compile all code, run all tests, and build JAR archives for distribution:
+
+    ./gradlew build
+
+When working with tests and documentation, it may speed things up to rerun the
+task on file system changes:
+
+    ./gradlew javadocAll --continuous
+
 ## Upgrading Gradle Wrapper
 
 ### First prepare
@@ -89,3 +100,25 @@ still persists and was not accidentally overlooked.
 If and only if, they yield an improvement in code readability.
 
 Finally, the work branch is ready to be merged 🥳
+
+## Upgrading Java
+
+Execute (just once is enough):
+
+```bash
+./gradlew updateDaemonJvm --jvm-version=X --jvm-vendor=adoptium
+```
+
+This updates the file [`./gradle/gradle-daemon-jvm.properties`][UJ-1].
+
+One must manually update the reference in [`./README.md`][UJ-2] which declares
+the minimum required Java version (same as X above).
+
+Make sure that the project still builds, then commit.
+
+💡 It's a bit of a pain to learn what JDKs are available via the resolver. For
+now, one will have do trial and error. See this [GitHub issue][UJ-3].
+
+[UJ-1]: ../gradle/gradle-daemon-jvm.properties
+[UJ-2]: ../README.md
+[UJ-3]: https://github.com/gradle/FOOJAY-toolchains/issues/50

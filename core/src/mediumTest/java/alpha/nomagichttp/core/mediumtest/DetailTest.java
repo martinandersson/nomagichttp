@@ -68,7 +68,7 @@ final class DetailTest extends AbstractRealTest
                 "Content-Type: text/plain; charset=utf-8" + CRLF +
                 "Content-Length: 3"                       + CRLF + CRLF;
             
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 var res1 = client().writeReadTextUntil(post("ABC"), "ABC");
                 assertThat(res1).isEqualTo(resHead + "ABC");
                 
@@ -81,12 +81,12 @@ final class DetailTest extends AbstractRealTest
         void chunked() throws IOException {
             server()
                 .add("/discard-body", POST().apply(req -> {
-                    var discard = req.body().toText();
+                    var _ = req.body().toText();
                     return noContent();
                 }))
                 .add("/echo-trailer", POST().apply(req -> {
                     // Still must consume the body before trailers lol
-                    var discard = req.body().toText();
+                    var _ = req.body().toText();
                     var trailer = req.trailers().firstValue("My-Trailer").get();
                     return text(trailer);
                 }));
@@ -102,7 +102,7 @@ final class DetailTest extends AbstractRealTest
                 My-Trailer: $4
                 
                 """;
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 var req1 = template.replace("$1", "/discard-body")
                                    .replace("$2", "My-Dummy: dummy")
                                    .replace("$3", "dummy")
@@ -147,7 +147,7 @@ final class DetailTest extends AbstractRealTest
                     "false");
             };
             
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 exchange.run();
                 // Body auto-discarded. This is using the same connection:
                 exchange.run();
@@ -182,7 +182,7 @@ final class DetailTest extends AbstractRealTest
                     "Content-Length: 0"     + CRLF + CRLF);
             };
             
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 exchange.run();
                 exchange.run();
             }
@@ -191,7 +191,7 @@ final class DetailTest extends AbstractRealTest
         @Test
         void chunked() throws IOException {
             server().add("/",
-                GET().apply(req -> noContent()));
+                GET().apply(_ -> noContent()));
             var rsp = client().writeReadTextUntilEOS("""
                 GET / HTTP/1.1
                 Transfer-Encoding: chunked
@@ -219,7 +219,7 @@ final class DetailTest extends AbstractRealTest
                 .immediatelyContinueExpect100(true);
             server().add("/",
                 // Request body doesn't matter
-                GET().apply(req -> text("end")));
+                GET().apply(_ -> text("end")));
             String rsp = client().writeReadTextUntil(
                 "GET / HTTP/1.1"                          + CRLF + 
                 "Expect: 100-continue"                    + CRLF + CRLF, "end");
@@ -235,7 +235,7 @@ final class DetailTest extends AbstractRealTest
         
         @Test
         void repeatedIgnored() throws IOException {
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 // In response to a GET request without Expect header nor body
                 // (application gets what application wants)
                 var ch = channel();
@@ -273,7 +273,7 @@ final class DetailTest extends AbstractRealTest
             var empty = ByteBuffer.allocate(0);
             var items = List.of(asciiBytes("World"), empty);
             var body = ByteBufferIterables.ofSupplier(items.iterator()::next);
-            server().add("/", GET().apply(req ->
+            server().add("/", GET().apply(_ ->
                 ok(body)));
             String rsp = client().writeReadTextUntil(
                 get(), "0\r\n\r\n");
@@ -299,7 +299,7 @@ final class DetailTest extends AbstractRealTest
                     return -1;
                 }
             };
-            server().add("/", GET().apply(req ->
+            server().add("/", GET().apply(_ ->
                 ok(empty)));
             String rsp = client().writeReadTextUntilEOS(
                 get("Connection: close"));
@@ -345,7 +345,7 @@ final class DetailTest extends AbstractRealTest
             final String req = "GET / HTTP/1.1",
                          rsp;
             
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 beforeReq = nanoTime();
                 client().write(req);
                 beforeRsp = nanoTime();
@@ -416,7 +416,7 @@ final class DetailTest extends AbstractRealTest
     void interimResponseIgnoredForOldClient()
             throws IOException, InterruptedException
     {
-        server().add("/", GET().apply(req -> {
+        server().add("/", GET().apply(_ -> {
             channel().write(processing()); // <-- rejected
             return text("Done!");
         }));

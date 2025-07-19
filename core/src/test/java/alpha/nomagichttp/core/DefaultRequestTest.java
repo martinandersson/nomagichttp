@@ -45,7 +45,7 @@ final class DefaultRequestTest
     
     @Test
     void body_toText_empty() throws IOException {
-        assertThat(createEmptyRequest().body().toText()).isEmpty();
+        assertThat(createRequest("").body().toText()).isEmpty();
     }
     
     @Test
@@ -86,7 +86,7 @@ final class DefaultRequestTest
         assertThat(notExists(letsHopeItDoesNotExist))
                 .isTrue();
         // Execute
-        var body = createEmptyRequest().body();
+        var body = createRequest("").body();
         assertThat(callUsingVThread(() ->
             body.toFile(letsHopeItDoesNotExist, 0, SECONDS, Set.of())))
                 .isZero();
@@ -118,9 +118,5 @@ final class DefaultRequestTest
                        // Not reading trailers
                        null);
         return requestWithoutParams(skel);
-    }
-    
-    private static Request createEmptyRequest() {
-        return createRequest("");
     }
 }

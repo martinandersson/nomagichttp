@@ -242,7 +242,7 @@ public interface Route
      *             if no handler matching "Content-Type:" media type can be found
      * 
      * @see HttpConstants.Method
-     * @see RequestHandler.Builder#builder(String) 
+     * @see RequestHandler#builder(String)
      */
     RequestHandler lookup(String method, MediaType contentType, Collection<MediaType> accepts);
     

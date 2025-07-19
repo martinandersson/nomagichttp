@@ -17,6 +17,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Operates a {@link #server() server} and a {@link #client() client}.<p>
  * 
- * Both the server and the client are created upom first access. The client will
+ * Both the server and the client are created upon first access. The client will
  * be configured with the server's port.<p>
  * 
  * Both the server and client APIs are easy to use on their own. The added value
@@ -594,11 +595,19 @@ public abstract class AbstractRealTest
     }
     
     /**
-     * Asserts that the given future completes with an
-     * {@code AsynchronousCloseException}.<p>
+     * Asserts that the given future completes with a
+     * {@code ClosedChannelException}.<p>
      * 
-     * The {@code AsynchronousCloseException} is how a {@code HttpServer.start}
+     * The {@code ClosedChannelException} is how a {@code HttpServer.start}
      * method normally returns, if the server was normally stopped.<p>
+     * 
+     * More specifically, a {@code ClosedChannelException} is thrown when the
+     * accept-loop thread enters the {@code parent.accept()} method and the
+     * server was/is closed (see DefaultServer#runAcceptLoop1).<p>
+     * 
+     * If the accept-loop thread is already blocked waiting inside the
+     * {@code accept()} method when the server is closed, the subclass
+     * {@code AsynchronousCloseException} is thrown.<p>
      * 
      * There is no defined order which method returns first;
      * {@code HttpServer.start()} or {@code stop()}. And so, this method awaits
@@ -612,9 +621,13 @@ public abstract class AbstractRealTest
         assertThatThrownBy(() -> fut.get(1, SECONDS))
             .isExactlyInstanceOf(ExecutionException.class)
             .hasNoSuppressedExceptions()
-            .hasMessage("java.nio.channels.AsynchronousCloseException")
+            .matches(e ->
+                "java.nio.channels.ClosedChannelException".equals(e.getMessage()) ||
+                "java.nio.channels.AsynchronousCloseException".equals(e.getMessage()))
             .cause()
-              .isExactlyInstanceOf(AsynchronousCloseException.class)
+              .matches(e ->
+                  e.getClass() == ClosedChannelException.class ||
+                  e.getClass() == AsynchronousCloseException.class)
               .hasNoSuppressedExceptions()
               .hasNoCause()
               .hasMessage(null);

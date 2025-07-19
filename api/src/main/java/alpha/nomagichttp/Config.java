@@ -1,18 +1,19 @@
 package alpha.nomagichttp;
 
 import alpha.nomagichttp.HttpConstants.Version;
-import alpha.nomagichttp.handler.ClientChannel;
 import alpha.nomagichttp.handler.ExceptionHandler;
 import alpha.nomagichttp.handler.ResponseRejectedException;
+import alpha.nomagichttp.message.ByteBufferIterator;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeException;
 import alpha.nomagichttp.message.MaxRequestTrailersSizeException;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
+import alpha.nomagichttp.message.Responses;
 import alpha.nomagichttp.route.MethodNotAllowedException;
-import alpha.nomagichttp.route.Route;
 import alpha.nomagichttp.util.ByteBufferIterables;
+import alpha.nomagichttp.util.Throwing;
 
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -21,161 +22,166 @@ import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Server configuration.<p>
- * 
- * The implementation is immutable and thread-safe.<p>
- * 
- * The configuration instance used by the server — if none is specified — is
- * {@link #DEFAULT}.<p>
- * 
- * Any configuration object can be turned into a builder for customization. The
- * static method {@link #configuration()} is a shortcut for {@code
- * Config.DEFAULT.toBuilder()}, and allows for fluent overrides of individual
- * values.<p>
- * 
- * {@snippet :
- *   // @link substring="minHttpVersion" target="#minHttpVersion()" region
- *   // @link substring="HTTP_1_1" target="HttpConstants.Version#HTTP_1_1" region
- *   new HttpServer(configuration()
- *           .minHttpVersion(HTTP_1_1)
- *           ...
- *           .build());
- *   // @end
- *   // @end
- * }
- * 
- * In the JDK Reference Implementation, the number of platform threads available
- * for scheduling virtual threads may be specified using the system property
- * <pre>jdk.virtualThreadScheduler.parallelism</pre> (see JavaDoc of
- * {@link Thread}).
- * 
- * @author Martin Andersson (webmaster at martinandersson.com
- */
+/// Server configuration.
+/// 
+/// [Config#toBuilder()] allows for any configuration object to be used as a
+/// template for a new instance.
+/// 
+/// The static method [#configuration()] is a shortcut for 
+/// `Config.`[#DEFAULT]`.toBuilder()`:
+/// 
+/// {@snippet :
+///    // @link substring="minHttpVersion" target="#minHttpVersion()" region
+///    // @link substring="HTTP_1_1" target="HttpConstants.Version#HTTP_1_1" region
+///    // @link substring="build" target="Builder#build()" region
+///    new HttpServer(configuration()
+///            .minHttpVersion(HTTP_1_1)
+///            ...
+///            .build());
+///    // @end
+///    // @end
+///    // @end
+///  }
+/// 
+/// @implSpec
+/// The implementation is immutable.
+/// 
+/// The implementation inherits the identity-based implementations of
+/// [Object#hashCode()] and [Object#equals(Object)].
+/// 
+/// @author Martin Andersson (webmaster at martinandersson.com)
 public interface Config
 {
-    /**
-     * This configuration instance contains the following values:<p>
-     * 
-     * Max request head size = 8 000 <br>
-     * Max request body buffer size = 20 971 520 (20 MB) <br>
-     * Max request trailers' size = 8 000 <br>
-     * Max error responses = 3 <br>
-     * Min HTTP version = 1.0 <br>
-     * Discard rejected informational = true <br>
-     * Immediately continue Expect 100 = false <br>
-     * Timeout file lock = 3 seconds <br>
-     * Timeout idle connection = 3 minutes <br>
-     * Implement missing options = true
-     */
+    /// The configuration used by [HttpServer].
+    /// 
+    /// This instance contains the following values:
+    /// 
+    /// Max request head size = 401 216 bytes (391.63 kB)  
+    /// Max request body buffer size = 20 971 520 bytes (20 MB)  
+    /// Max request trailers' size = 8 000 bytes  
+    /// Max error responses = 3  
+    /// Min HTTP version = 1.0  
+    /// Discard rejected informational = true  
+    /// Immediately continue Expect 100 = false  
+    /// Timeout file lock = 3 seconds  
+    /// Timeout idle connection = 3 minutes  
+    /// Implement missing options = true
     Config DEFAULT = DefaultConfig.DefaultBuilder.ROOT.build();
     
-    /**
-     * {@return the max number of request head bytes to process}<p>
-     * 
-     * Once the limit has been exceeded, a {@link MaxRequestHeadSizeException}
-     * is thrown.<p>
-     * 
-     * The default implementation returns {@code 8_000}.<p>
-     * 
-     * The default value corresponds to <a
-     * href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
-     * as well as
-     * <a href="https://stackoverflow.com/a/8623061/1268003">common practice</a>.
-     */
+    /// {@return the max number of request head bytes to process}
+    /// 
+    /// When the limit has been exceeded, a [MaxRequestHeadSizeException] is
+    /// thrown, which causes the
+    /// [base exception handler][ExceptionHandler#BASE] to respond
+    /// [413 (Entity Too Large)][Responses#entityTooLarge()].
+    /// 
+    /// The [#DEFAULT] configuration returns 401 216 bytes (391.63 kB).
+    /// 
+    /// @apiNote
+    /// The default value is computed as 8 000 + 393 216.
+    /// 
+    /// The former is the recommended minimum size of the request-line
+    /// ([RFC 7230 §3.1.1](https://tools.ietf.org/html/rfc7230#section-3.1.1),
+    /// [StackOverflow.com](https://stackoverflow.com/a/8623061/1268003)), the
+    /// latter is what the Oracle JDK uses for headers, which is "computed as
+    /// the cumulative size of all header names and header values plus an
+    /// overhead of 32 bytes per header name value pair"
+    /// ([Oracle.com](https://www.oracle.com/java/technologies/javase/24-relnote-issues.html#JDK-8328286)).
     int maxRequestHeadSize();
     
-    /**
-     * {@return the max number of request body bytes to internally buffer}<p>
-     * 
-     * Before (if an unacceptable length is known in advance) or when the limit
-     * has been exceeded, a {@link MaxRequestBodyBufferSizeException} is
-     * thrown.<p>
-     * 
-     * This configuration applies <i>only</i> to high-level methods that
-     * internally buffer the whole body, such as {@link Request.Body#bytes()}
-     * and {@link Request.Body#toText()}.<p>
-     * 
-     * The request body size itself has no limit (nor is there such a
-     * configuration option). The application can consume an unlimited number
-     * of bytes however it desires, by iterating the body, or use other methods
-     * that do not buffer the body, such as
-     * {@link Request.Body#toFile(Path, long, TimeUnit, Set, FileAttribute[]) Request.Body.toFile(Path, ...)}
-     * <p>
-     * 
-     * Methods provided by the library that collect bytes in the memory, must be
-     * constrained for a number of a reasons. Perhaps primarily because it would
-     * have been too easy for a bad actor to crash the server (by streaming a
-     * body straight into memory until memory runs out).<p>
-     * 
-     * The default implementation returns {@code 20_971_520} (20 MB).
-     */
+    /// {@return the max number of request body bytes to internally buffer}
+    /// 
+    /// Before (if an unacceptable length is known in advance) or when the limit
+    /// has been exceeded, a [MaxRequestBodyBufferSizeException] is thrown,
+    /// which causes the [base exception handler][ExceptionHandler#BASE] to
+    /// respond [413 (Entity Too Large)][Responses#entityTooLarge()].
+    /// 
+    /// The [#DEFAULT] implementation returns 20 971 520 bytes (20 MB).
+    /// 
+    /// This configuration applies to some high-level methods that internally
+    /// buffer the entire request body on Java's heap space. For example,
+    /// [Request.Body#bytes()] and [Request.Body#toText()].
+    /// 
+    /// Other than that, the body has no size limit. The application can consume
+    /// an unlimited number of bytes by iterating the body, or using any other
+    /// method which does not buffer all of it. For example,
+    /// [`Request.Body.iterator().forEachRemaining(...)`][ByteBufferIterator#forEachRemaining(Throwing.Consumer)]
+    /// and
+    /// [`Request.Body.toFile(...)`][Request.Body#toFile(Path, long, TimeUnit, Set, FileAttribute\[\])]
+    /// 
+    /// @apiNote
+    /// Without a limit, it would have been too easy for a bad actor to crash
+    /// the server (by streaming a body straight into memory until memory runs
+    /// out).
     int maxRequestBodyBufferSize();
     
-    /**
-     * {@return the max number of request trailer bytes to process}<p>
-     * 
-     * Once the limit has been exceeded, a
-     * {@link MaxRequestTrailersSizeException} is thrown.<p>
-     * 
-     * The default implementation returns {@code 8_000}.
-     */
+    /// {@return the max number of request trailer bytes to process}
+    /// 
+    /// When the limit has been exceeded, a [MaxRequestTrailersSizeException] is
+    /// thrown, which causes the [base exception handler][ExceptionHandler#BASE]
+    /// to respond [413 (Entity Too Large)][Responses#entityTooLarge()].
+    /// 
+    /// The [#DEFAULT] implementation returns 8 000 bytes.
     int maxRequestTrailersSize();
     
-    /**
-     * {@return the max number of consecutively unsuccessful responses}<p>
-     * 
-     * An unsuccessful response is one with a status code classified as 4XX
-     * (Client Error) or 5XX (Server Error).<p>
-     * 
-     * Once the limit has been reached, the client channel is closed.<p>
-     * 
-     * Closing the channel after repeatedly unsuccessful exchanges increases
-     * security.<p>
-     * 
-     * The default implementation returns {@code 3}.
-     */
+    /// {@return the max number of consecutively unsuccessful responses}
+    /// 
+    /// After the limit has been reached, the client channel is closed.
+    /// 
+    /// The [#DEFAULT] implementation returns 3.
+    /// 
+    /// An unsuccessful response is one with a status code classified as 4XX
+    /// (Client Error) or 5XX (Server Error).
+    /// 
+    /// @apiNote
+    /// Closing the channel after repeatedly unsuccessful exchanges increases
+    /// security.
     int maxErrorResponses();
     
-    /**
-     * {@return the minimum supported HTTP version}<p>
-     * 
-     * By default, this method returns
-     * {@link HttpConstants.Version#HTTP_1_0 HTTP/1.0}.<p>
-     * 
-     * If a client sends a request with an older HTTP version than what is
-     * configured, an {@link HttpVersionTooOldException} is thrown, which by
-     * default gets translated to a 426 (Upgrade Required) response.<p>
-     * 
-     * HTTP/1.0 does not support persistent connections and there are a number
-     * of issues related to the unofficial "keep-alive" mechanism — which the
-     * NoMagicHTTP server does not implement. All HTTP/1.0 connections will
-     * therefore close after each response, which is inefficient. It's
-     * recommended to set this value to
-     * {@link HttpConstants.Version#HTTP_1_1 HTTP/1.1}. As a library however, we
-     * have to be backwards compatible and support as many applications as
-     * possible "out of the box".<p>
-     * 
-     * The minimum version the NoMagicHTTP implements is HTTP/1.0, and the
-     * maximum version currently implemented is HTTP/1.1.
-     */
+    /// {@return the minimum supported HTTP version}
+    /// 
+    /// When a client sends a request with an older HTTP version than what is
+    /// configured, an [HttpVersionTooOldException] is thrown, which causes the
+    /// [base exception handler][ExceptionHandler#BASE] to respond
+    /// [426 (Upgrade Required)][Responses#upgradeRequired(String)].
+    /// 
+    /// The [#DEFAULT] implementation returns
+    /// [HTTP/1.0][HttpConstants.Version#HTTP_1_0].
+    /// 
+    /// @apiNote
+    /// HTTP/1.0 does not support persistent connections, and there are a number
+    /// of issues related to the unofficial "keep-alive" mechanism — which the
+    /// NoMagicHTTP server does not implement. Therefore, all HTTP/1.0
+    /// connections will close after each response, which is inefficient.
+    /// 
+    /// It's recommended to set this value to
+    /// [HTTP/1.1][HttpConstants.Version#HTTP_1_1].
+    /// 
+    /// As a library, we have to be backwards compatible and support as many
+    /// applications as possible "out of the box".
+    /// 
+    /// The minimum version the NoMagicHTTP server implements is HTTP/1.0, and
+    /// currently, the maximum version implemented is HTTP/1.1.
     Version minHttpVersion();
     
-    /**
-     * {@return whether to discard 1XX (Informational) responses for
-     * HTTP/1.0 clients}<p>
-     * 
-     * The default value is {@code true} and the application can safely write
-     * 1XX responses to the channel without a concern for incompatible
-     * clients.<p>
-     * 
-     * Turning this option off causes {@link ClientChannel#write(Response)} to
-     * throw a {@link ResponseRejectedException} for 1XX responses when the
-     * client is incompatible. This necessitates that the application must
-     * either handle the exception explicitly, or query the active HTTP version
-     * ({@link Request#httpVersion()}) before attempting to send such a
-     * response.
-     */
+    /// {@return whether to discard 1XX (Informational) responses for HTTP/1.0
+    /// clients}
+    /// 
+    /// Setting this option to `false` causes [ChannelWriter#write(Response)] to
+    /// throw a [ResponseRejectedException] for interim responses when the
+    /// client is incompatible, which causes the
+    /// [base exception handler][ExceptionHandler#BASE] to respond
+    /// [426 (Upgrade Required)][Responses#upgradeRequired(String)].
+    /// 
+    /// In this case, the application must either handle the exception
+    /// explicitly, or query the active HTTP version ([Request#httpVersion()])
+    /// before attempting to send such a response.
+    /// 
+    /// The [#DEFAULT] implementation returns `true` and the application can
+    /// safely write interim responses to the channel without a concern for
+    /// incompatible clients.
+    /// 
+    /// @see HttpConstants.StatusCode
     boolean discardRejectedInformational();
     
     /**

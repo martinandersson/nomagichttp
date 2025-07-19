@@ -66,7 +66,7 @@ final class BigFileRequestTest extends AbstractLargeRealTest
                     .build();
         });
         // Retrieve the file
-        var get = GET().apply(req -> ok(ofFile(file)));
+        var get = GET().apply(_ -> ok(ofFile(file)));
         server().add("/file", post, get);
     }
     
@@ -78,7 +78,7 @@ final class BigFileRequestTest extends AbstractLargeRealTest
         @DisplayName(TEST_CLIENT)
         void testClient() throws IOException {
             final String rsp;
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 rsp = client().write(
                       "POST /file HTTP/1.1"          + CRLF +
                       "Content-Length: " + FILE_SIZE + CRLF + CRLF)
@@ -127,7 +127,7 @@ final class BigFileRequestTest extends AbstractLargeRealTest
         void testClient() throws IOException {
             assumeTrue(saved);
             final ByteBuffer body;
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 String head = client().write(
                           "GET /file HTTP/1.1" + CRLF + CRLF)
                         .shutdownOutput()

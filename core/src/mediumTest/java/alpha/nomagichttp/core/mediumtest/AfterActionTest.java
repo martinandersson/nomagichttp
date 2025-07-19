@@ -39,7 +39,7 @@ final class AfterActionTest extends AbstractRealTest
                    .map(id -> rsp.toBuilder().setHeader(X_CORRELATION_ID, id).build())
                    .orElse(rsp));
         
-        try (var conn = client().openConnection()) {
+        try (var _ = client().openConnection()) {
             // Start processing the first request can take a long time on:
             if (isLinux()) {
                 client().interruptReadAfter(1.5);
@@ -127,8 +127,8 @@ final class AfterActionTest extends AbstractRealTest
     @Test
     void crash_2() throws IOException {
         server()
-              .add("/", GET().apply(req -> noContent()))
-              .after("/", (req, rsp) -> null);
+              .add("/", GET().apply(_ -> noContent()))
+              .after("/", (_, _) -> null);
         var rsp = client()
               .writeReadTextUntilEOS("GET / HTTP/1.1" + CRLF + CRLF);
         assertThat(rsp)

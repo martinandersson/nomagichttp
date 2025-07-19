@@ -505,7 +505,7 @@ public final class ByteBufferIterables
                 assert d >= 0L : "Weird to have negative cravings";
                 try {
                     return Math.toIntExact(d);
-                } catch (ArithmeticException e) {
+                } catch (ArithmeticException _) {
                     return Integer.MAX_VALUE;
                 }
             }

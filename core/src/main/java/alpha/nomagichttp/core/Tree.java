@@ -341,7 +341,7 @@ final class Tree<V>
                 final String s;
                 try {
                     s = it.next();
-                } catch (NoSuchElementException e) {
+                } catch (NoSuchElementException _) {
                     // Node found, set val and return
                     n.setIfAbsent(v);
                     return null;
@@ -353,7 +353,7 @@ final class Tree<V>
     }
     
     V clear(Iterable<String> keySegments) {
-        return clearIf(keySegments, ignored -> true);
+        return clearIf(keySegments, _ -> true);
     }
     
     V clearIf(Iterable<String> keySegments, Predicate<V> test) {
@@ -586,7 +586,7 @@ final class Tree<V>
                     c.reserve();
                     release.get().add(c);
                     break;
-                } catch (StaleBranchException e) {
+                } catch (StaleBranchException _) {
                     // Retry
                 }
             }

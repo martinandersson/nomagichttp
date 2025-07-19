@@ -329,7 +329,7 @@ final class DefaultResponse implements Response
         private static boolean isEmpty(ResourceByteBufferIterable body) {
             try {
                 return body.isEmpty();
-            } catch (IOException ignored) {
+            } catch (IOException _) {
                 // Something caused that to happen, after all
                 return true;
             }

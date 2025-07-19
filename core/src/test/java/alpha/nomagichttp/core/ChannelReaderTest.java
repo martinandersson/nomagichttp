@@ -15,7 +15,7 @@ import static alpha.nomagichttp.testutil.ByteBufferIterables.getByteVThread;
 import static alpha.nomagichttp.testutil.ByteBufferIterables.getItemsVThread;
 import static alpha.nomagichttp.testutil.ByteBufferIterables.getStringVThread;
 import static alpha.nomagichttp.testutil.ReadableByteChannels.ofString;
-import static java.lang.ScopedValue.callWhere;
+import static java.lang.ScopedValue.where;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -180,7 +180,7 @@ final class ChannelReaderTest
           Throwing.Runnable<? extends Exception> assertions) throws Exception {
         var ch = mock(ClientChannel.class);
         when(ch.isInputOpen()).thenReturn(true);
-        callWhere(ScopedValues.CHANNEL, ch, () -> {
+        where(ScopedValues.CHANNEL, ch).call(() -> {
             assertions.run();
             return null;
         });

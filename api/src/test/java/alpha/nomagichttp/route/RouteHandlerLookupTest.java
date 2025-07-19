@@ -248,7 +248,7 @@ final class RouteHandlerLookupTest
     private RequestHandler create(MediaType consumes, MediaType produces) {
         RequestHandler h = GET().consumes(consumes)
                                 .produces(produces)
-                                .apply(req -> accepted());
+                                .apply(_ -> accepted());
         handlers.add(h);
         return h;
     }

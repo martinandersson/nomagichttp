@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.ConnectException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
@@ -84,7 +83,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                     text(req.body().toText())));
             
             Future<Void> fut;
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 String rsp1 = client().writeReadTextUntilNewlines(
                     "POST / HTTP/1.1"                        + CRLF +
                     "Content-Length: 3"                      + CRLF +
@@ -128,14 +127,14 @@ final class ServerLifeCycleTest extends AbstractRealTest
         @Test
         void inactiveExchangeAborts() throws IOException, InterruptedException {
             server();
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 // Wait for the server to confirm,
                 // otherwise one can not deterministically test the log of "idling children"
                 assertAwaitChildAccept();
                 Instant before = now();
                 stopServer();
                 // Stopping should be completed more or less instantaneously
-                assertThat(Duration.between(before, now()))
+                assertThat(before.until(now()))
                     .isLessThan(ofSeconds(1));
                 assertNewConnectionIsRejected();
                 logRecorder().assertContainsOnlyOnce(
@@ -146,18 +145,18 @@ final class ServerLifeCycleTest extends AbstractRealTest
         @Test
         void graceExpires_handlerStalled() throws IOException, InterruptedException {
             var stopServer = new Semaphore(0);
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 stopServer.release();
                 SECONDS.sleep(STOP_GRACEFUL_SECONDS + 1);
                 throw new AssertionError("Thread supposed to be interrupted");
             }));
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 client().write(get());
                 stopServer.acquire();
                 Instant before = now();
                 stopServer(false);
                 // Stopping completes after a 1-second graceful period
-                assertThat(Duration.between(before, now()))
+                assertThat(before.until(now()))
                     .isGreaterThanOrEqualTo(ofSeconds(1));
                 logRecorder().assertContainsOnlyOnce(
                     DEBUG, "Closing the child because thread interrupted.");
@@ -172,14 +171,14 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 req.body().bytes();
                 throw new AssertionError("The body is never sent");
             }));
-            try (var conn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 client().write(
                     "POST / HTTP/1.1"     + CRLF +
                     "Content-Length: 999" + CRLF + CRLF);
                 stopServer.acquire();
                 Instant before = now();
                 stopServer(false);
-                assertThat(Duration.between(before, now()))
+                assertThat(before.until(now()))
                     .isGreaterThanOrEqualTo(ofSeconds(1));
                 // TODO: Should assertThatNoWarningOrExceptionIsLogged()
             }

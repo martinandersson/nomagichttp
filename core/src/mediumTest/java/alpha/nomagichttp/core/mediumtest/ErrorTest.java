@@ -1,6 +1,7 @@
 package alpha.nomagichttp.core.mediumtest;
 
 import alpha.nomagichttp.IdleConnectionException;
+import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.DecoderException;
@@ -10,6 +11,7 @@ import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
+import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeException;
 import alpha.nomagichttp.message.MediaType;
 import alpha.nomagichttp.message.MediaTypeParseException;
@@ -43,6 +45,7 @@ import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
@@ -71,7 +74,7 @@ final class ErrorTest extends AbstractRealTest
             = System.getLogger(ErrorTest.class.getPackageName());
     
     private static final
-        Throwing.Function<Request, Response, Exception> NOP = request -> null;
+        Throwing.Function<Request, Response, Exception> NOP = _ -> null;
     
     private static final class OopsException extends RuntimeException {
         @Serial private static final long serialVersionUID = 1L;
@@ -332,7 +335,7 @@ final class ErrorTest extends AbstractRealTest
             throws IOException, InterruptedException
     {
         server().add("/",
-            TRACE().apply(req -> {
+            TRACE().apply(_ -> {
                 throw new AssertionError("Not invoked.");
             }));
         String rsp = client().writeReadTextUntilNewlines(
@@ -356,7 +359,7 @@ final class ErrorTest extends AbstractRealTest
         @Test
         void in1xxResponse() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(req -> Response.builder(123)
+                GET().apply(_ -> Response.builder(123)
                          .body(ofString("Body!"))
                          .build()));
             String rsp = client().writeReadTextUntilNewlines(
@@ -374,7 +377,7 @@ final class ErrorTest extends AbstractRealTest
         @Test
         void inResponseToHEAD() throws IOException, InterruptedException {
             server().add("/",
-                HEAD().apply(req -> text("Body!")));
+                HEAD().apply(_ -> text("Body!")));
             String rsp = client().writeReadTextUntilNewlines(
                 "HEAD / HTTP/1.1"                    + CRLF + CRLF);
             assertThat(rsp).isEqualTo(
@@ -408,6 +411,56 @@ final class ErrorTest extends AbstractRealTest
             .hasNoSuppressedExceptions();
     }
     
+    @Nested
+    class MaxRequestBodySizeExc {
+        /// A known length pre-allocates the entire buffer.
+        @Test
+        void RequestBody_bytesFast() throws IOException, InterruptedException {
+            runExchange("""
+                POST / HTTP/1.1\r
+                Content-Length: 2\r
+                \r
+                AB
+                """);
+        }
+        
+        /// An unknown length necessitates the use of a dynamically-sized buffer.
+        @Test
+        void RequestBody_bytesSlow() throws IOException, InterruptedException {
+            runExchange("""
+                POST / HTTP/1.1
+                Transfer-Encoding: chunked
+                
+                2
+                AB
+                0
+                
+                """);
+        }
+        
+        private void runExchange(String request)
+                throws IOException, InterruptedException {
+            usingConfiguration()
+                .maxRequestBodyBufferSize(1);
+            server()
+                .add("/", POST().apply(req -> {
+                    // Here implementation-switch happens (and each one fails)
+                    req.body().bytes();
+                    return null;
+                }));
+            String rsp = client().writeReadTextUntilNewlines(request);
+            assertThat(rsp).isEqualTo("""
+                HTTP/1.1 413 Entity Too Large\r
+                Connection: close\r
+                Content-Length: 0\r\n\r\n""");
+            assertAwaitHandledAndLoggedExc()
+                .isExactlyInstanceOf(MaxRequestBodyBufferSizeException.class)
+                .hasNoCause()
+                .hasNoSuppressedExceptions()
+                .hasMessage("Configured max tolerance is 1 bytes.");
+        }
+    }
+    
     @Test
     void MediaTypeNotAcceptedExc() throws IOException, InterruptedException {
         server().add("/",
@@ -429,7 +482,7 @@ final class ErrorTest extends AbstractRealTest
     
     @Test
     void MediaTypeParseExc() throws IOException, InterruptedException {
-        server().add("/", GET().apply(req -> {
+        server().add("/", GET().apply(_ -> {
             MediaType.parse("BOOM!");
             throw new AssertionError();
         }));
@@ -472,8 +525,8 @@ final class ErrorTest extends AbstractRealTest
         @Test
         void BLABLA() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(req -> internalServerError()),
-                POST().apply(req -> internalServerError()));
+                GET().apply(_ -> internalServerError()),
+                POST().apply(_ -> internalServerError()));
             String rsp = client().writeReadTextUntilNewlines(
                 "BLABLA / HTTP/1.1"               + CRLF + CRLF);
             assertThat(rsp).isEqualTo(
@@ -492,8 +545,8 @@ final class ErrorTest extends AbstractRealTest
         @Test
         void OPTIONS() throws IOException, InterruptedException {
             server().add("/",
-                    GET().apply(req -> internalServerError()),
-                    POST().apply(req -> internalServerError()));
+                    GET().apply(_ -> internalServerError()),
+                    POST().apply(_ -> internalServerError()));
             String rsp = client().writeReadTextUntilNewlines(
                     "OPTIONS / HTTP/1.1"              + CRLF + CRLF);
             assertThat(rsp).isEqualTo(
@@ -537,6 +590,32 @@ final class ErrorTest extends AbstractRealTest
                 "HTTP/1.1 499 Custom Not Found!" + CRLF +
                 "Content-Length: 0"              + CRLF + CRLF);
         }
+    }
+    
+    @Test
+    void ResponseRejectedExc() throws IOException {
+        usingConfiguration()
+            .discardRejectedInformational(false);
+        server().add("/", GET().apply(_ -> {
+            channel().write(processing());
+            return null; }));
+        String rsp = client().writeReadTextUntilNewlines(
+            "GET / HTTP/1.0" + CRLF + CRLF);
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 426 Upgrade Required\r
+            Upgrade: HTTP/1.1\r
+            Connection: upgrade, close\r
+            Content-Length: 0\r\n\r\n""");
+        assertThat(pollServerExceptionNow())
+            .isExactlyInstanceOf(ResponseRejectedException.class)
+            .hasMessage("HTTP/1.0 client does not accept 1XX (Informational) responses.")
+            .hasNoCause()
+            .hasNoSuppressedExceptions();
+        logRecorder()
+            .assertNoProblem()
+            .assertRemove(DEBUG, """
+                Setting "Connection: close" because HTTP/1.0 does not \
+                support a persistent connection.""");
     }
     
     @Test
@@ -589,7 +668,7 @@ final class ErrorTest extends AbstractRealTest
             usingConfiguration().timeoutIdleConnection(
                 (isGitHubActions() || isJitPack()) ? ofMillis(10) : ofMillis(1));
             server();
-            try (var closeConn = client().openConnection()) {
+            try (var _ = client().openConnection()) {
                 // Never send anything and expect a response
                 String rsp = client().readTextUntilNewlines();
                 assertThat(rsp).isEqualTo(
@@ -616,10 +695,10 @@ final class ErrorTest extends AbstractRealTest
     class Special {
         @Test
         void exceptionHandlerFails() throws IOException, InterruptedException {
-            usingExceptionHandler((thr, ch, req) -> {
+            usingExceptionHandler((_, _, _) -> {
                 throw new OopsException("second");
             });
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 throw new OopsException("first");
             }));
             
@@ -664,7 +743,7 @@ final class ErrorTest extends AbstractRealTest
         
         @Test
         void maxErrorResponses() throws IOException, InterruptedException {
-            server().add("/", GET().apply(req -> badRequest().toBuilder()
+            server().add("/", GET().apply(_ -> badRequest().toBuilder()
                     // This header would have caused the server to close the connection,
                     // but we want to run many "failed" responses
                     .removeHeaderValue("Connection", "close").build()));
@@ -697,7 +776,7 @@ final class ErrorTest extends AbstractRealTest
         
         @Test
         void writingTwoFinalResponses() throws IOException, InterruptedException {
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 channel().write(noContent());
                 return text("this won't work");
             }));

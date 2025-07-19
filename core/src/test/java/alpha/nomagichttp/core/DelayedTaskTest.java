@@ -29,7 +29,7 @@ final class DelayedTaskTest {
         // because we'll "fake run" the task ourselves
         final var callRunAction = ArgumentCaptor.forClass(Runnable.class);
         
-        try (var closeThisThing = mockStatic(DelayedTask.class)) {
+        try (var _ = mockStatic(DelayedTask.class)) {
              when(DelayedTask.schedule(anyLong(), callRunAction.capture()))
                .thenAnswer(warningsIfUseThenReturn -> NON_NULL);
              

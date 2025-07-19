@@ -1,6 +1,7 @@
 package alpha.nomagichttp.handler;
 
 import alpha.nomagichttp.ChannelWriter;
+import alpha.nomagichttp.Config;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.Responses;
 
@@ -17,6 +18,8 @@ import static java.util.Objects.requireNonNull;
  * for a {@link #reason()}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
+ * 
+ * @see Config#discardRejectedInformational()
  */
 public final class ResponseRejectedException
              extends RuntimeException implements HasResponse

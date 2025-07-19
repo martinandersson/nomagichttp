@@ -106,7 +106,7 @@ final class ExampleTest extends AbstractRealTest
         
         private void addRoute() throws IOException {
             server().add("/hello", GET().apply(
-                  respondHelloPlus(req -> "World")));
+                  respondHelloPlus(_ -> "World")));
         }
     }
     
@@ -359,7 +359,7 @@ final class ExampleTest extends AbstractRealTest
         }
         
         private void addRoute() throws IOException {
-            server().add("/", GET().apply(req -> {
+            server().add("/", GET().apply(_ -> {
                 var ch = channel();
                 ch.write(processing());
                 ch.write(processing());

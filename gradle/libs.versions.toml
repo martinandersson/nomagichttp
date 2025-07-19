@@ -1,16 +1,15 @@
 # Websites for the latest versions at the bottom!
 
-# Using latest versions as of 2023-10-14
+# Using latest versions as of 2025-07-11
 
 [versions]
-jdk     = '21'
-junit   = '5.10.0'
-assertj = '3.24.2'
-mockito = '5.6.0'
-okhttp  = '4.11.0'
-apache  = '5.2.1'
-jetty   = '12.0.2'
-reactor = '1.1.12'
+junit   = '5.13.3'
+assertj = '3.27.3'
+mockito = '5.18.0'
+okhttp  = '5.1.0'
+apache  = '5.5'
+jetty   = '12.0.23'
+reactor = '1.2.7'
 
 # Missing "foojay = ..."
 # See ./docs/BUILD.md
@@ -26,7 +25,6 @@ client-reactor = { module = 'io.projectreactor.netty:reactor-netty-http', versio
 [bundles]
 clients = ['client-okhttp', 'client-apache', 'client-jetty', 'client-reactor']
 
-# https://github.com/gradle/FOOJAY-toolchains/issues/50
 # https://github.com/JUNIT-team/junit5/tags
 # https://github.com/ASSERTJ/assertj/tags
 # https://github.com/MOCKITO/mockito/tags

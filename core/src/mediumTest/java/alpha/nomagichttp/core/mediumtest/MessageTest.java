@@ -146,7 +146,7 @@ final class MessageTest extends AbstractRealTest
         }
         
         private void addRouteThatRespondChunked() throws IOException {
-            server().add("/", GET().apply(req ->
+            server().add("/", GET().apply(_ ->
                     text("Hello")
                         .toBuilder()
                         .addHeaders(
@@ -229,7 +229,7 @@ final class MessageTest extends AbstractRealTest
     void responseOfFile() throws IOException {
         var file = writeTempFile(asciiBytes("Hello, World!"));;
         server().add(
-            "/", GET().apply(req -> ok(ofFile(file))));
+            "/", GET().apply(_ -> ok(ofFile(file))));
         var rsp = client().writeReadTextUntil(get(), "!");
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 200 OK\r
