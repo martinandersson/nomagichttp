@@ -106,7 +106,7 @@ final class DefaultConfig implements Config {
         static final DefaultBuilder ROOT = new DefaultBuilder();
         
         static class MutableState {
-            int      maxRequestHeadSize           = 8_000,
+            int      maxRequestHeadSize           = 401_216,
                      maxRequestBodyBufferSize     = 20_971_520,
                      maxRequestTrailersSize       = 8_000,
                      maxErrorResponses            = 3;

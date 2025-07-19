@@ -56,9 +56,9 @@ public interface Config
     /// 
     /// This instance contains the following values:
     /// 
-    /// Max request head size = 8 000  
-    /// Max request body buffer size = 20 971 520 (20 MB)  
-    /// Max request trailers' size = 8 000  
+    /// Max request head size = 401 216 bytes (391.63 kB)  
+    /// Max request body buffer size = 20 971 520 bytes (20 MB)  
+    /// Max request trailers' size = 8 000 bytes  
     /// Max error responses = 3  
     /// Min HTTP version = 1.0  
     /// Discard rejected informational = true  
@@ -75,11 +75,18 @@ public interface Config
     /// [base exception handler][ExceptionHandler#BASE] to respond
     /// [413 (Entity Too Large)][Responses#entityTooLarge()].
     /// 
-    /// The [#DEFAULT] configuration returns 8 000, which is the minimum
-    /// recommended size
-    /// ([RFC 7230 §3.1.1](https://tools.ietf.org/html/rfc7230#section-3.1.1))
-    /// and also common amongst servers
-    /// ([StackOverflow.com](https://stackoverflow.com/a/8623061/1268003)).
+    /// The [#DEFAULT] configuration returns 401 216 bytes (391.63 kB).
+    /// 
+    /// @apiNote
+    /// The default value is computed as 8 000 + 393 216.
+    /// 
+    /// The former is the recommended minimum size of the request-line
+    /// ([RFC 7230 §3.1.1](https://tools.ietf.org/html/rfc7230#section-3.1.1),
+    /// [StackOverflow.com](https://stackoverflow.com/a/8623061/1268003)), the
+    /// latter is what the Oracle JDK uses for headers, which is "computed as
+    /// the cumulative size of all header names and header values plus an
+    /// overhead of 32 bytes per header name value pair"
+    /// ([Oracle.com](https://www.oracle.com/java/technologies/javase/24-relnote-issues.html#JDK-8328286)).
     int maxRequestHeadSize();
     
     /// {@return the max number of request body bytes to internally buffer}
@@ -89,7 +96,7 @@ public interface Config
     /// which causes the [base exception handler][ExceptionHandler#BASE] to
     /// respond [413 (Entity Too Large)][Responses#entityTooLarge()].
     /// 
-    /// The [#DEFAULT] implementation returns 20 971 520 (20 MB).
+    /// The [#DEFAULT] implementation returns 20 971 520 bytes (20 MB).
     /// 
     /// This configuration applies to some high-level methods that internally
     /// buffer the entire request body on Java's heap space. For example,
@@ -114,7 +121,7 @@ public interface Config
     /// thrown, which causes the [base exception handler][ExceptionHandler#BASE]
     /// to respond [413 (Entity Too Large)][Responses#entityTooLarge()].
     /// 
-    /// The [#DEFAULT] implementation returns 8 000.
+    /// The [#DEFAULT] implementation returns 8 000 bytes.
     int maxRequestTrailersSize();
     
     /// {@return the max number of consecutively unsuccessful responses}
