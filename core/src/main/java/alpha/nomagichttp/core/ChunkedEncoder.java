@@ -145,7 +145,7 @@ final class ChunkedEncoder implements ResourceByteBufferIterable
         private static final HexFormat HF = HexFormat.of();
         private static final byte[] CRLF = {13, 10};
         
-        private ByteBuffer size(ByteBuffer buf) {
+        private static ByteBuffer size(ByteBuffer buf) {
             final int n = buf.remaining();
             // We could strip leading zeroes, but probably not worth the cost
             var bytes = HF.toHexDigits(n).getBytes(US_ASCII);
@@ -155,7 +155,7 @@ final class ChunkedEncoder implements ResourceByteBufferIterable
                     .flip();
         }
         
-        private ByteBuffer lastChunk() {
+        private static ByteBuffer lastChunk() {
             return allocate(5)
                     // "0"
                     .put((byte) 48)
