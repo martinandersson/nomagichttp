@@ -81,7 +81,7 @@ public interface Config
     /// The default value is computed as 8 000 + 393 216.
     /// 
     /// The former is the recommended minimum size of the request-line
-    /// ([RFC 7230 §3.1.1](https://tools.ietf.org/html/rfc7230#section-3.1.1),
+    /// ([RFC 9112 §3](https://datatracker.ietf.org/doc/html/rfc9112#section-3),
     /// [StackOverflow.com](https://stackoverflow.com/a/8623061/1268003)), the
     /// latter is what the Oracle JDK uses for headers, which is "computed as
     /// the cumulative size of all header names and header values plus an
@@ -216,7 +216,7 @@ public interface Config
      * Regardless of the configured value, the server never attempts to
      * send a 100 (Continue) response to an HTTP/1.0 client since HTTP/1.0 does
      * not support interim responses (
-     * <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.1.1">RFC 9110 §10.1.1</a>
      * 
      * @see HttpConstants.StatusCode#ONE_HUNDRED
      */

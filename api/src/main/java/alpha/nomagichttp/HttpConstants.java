@@ -43,31 +43,31 @@ public final class HttpConstants {
      * The method token is required and is a case-sensitive string. The value of
      * the string can be anything. The method token was originally envisioned as
      * the name of an object method in the back-end (
-     * <a href="https://tools.ietf.org/html/rfc7231#section-4.1">RFC 7231 §4.1</a>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc7231#section-4.1">RFC 7231 §4.1</a>
      * ).<p>
      * 
      * Methods have characteristics. They are defined as being safe, idempotent
      * and/or cacheable.<p>
      * 
      * If it is <strong>safe</strong> (
-     * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.1">RFC 7231 §4.2.1</a>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.2.1">RFC 9110 §9.2.1</a>
      * ), then the request is likely used only for information retrieval and
      * should not have any noticeable side effects on the server (GET, HEAD,
      * OPTIONS and TRACE).<p>
      * 
      * If a method is <strong>idempotent</strong> (
-     * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.2">RFC 7231 §4.2.2</a>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.2.2">RFC 9110 §9.2.2</a>
      * ), then the request may be repeated with no change to the intended effect
      * of the first request (GET, HEAD, PUT, DELETE, OPTIONS and TRACE).<p>
      * 
      * Responses to <strong>cacheable</strong> (
-     * <a href="https://tools.ietf.org/html/rfc7231#section-4.2.3">RFC 7231 §4.2.3</a>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.2.3">RFC 9110 §9.2.3</a>
      * ) requests may be stored for future reuse (GET, HEAD, and POST), given
      * some other conditions are true (
-     * <a href="https://tools.ietf.org/html/rfc7234#section-3">RFC 7234 §3</a>).
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9111#section-3">RFC 9111 §3</a>).
      * POST has the additional criterion that it needs explicit freshness
      * information to be cached
-     * (<a href="https://tools.ietf.org/html/rfc7231#section-4.3.3">RFC 7231 §4.3.3</a>
+     * (<a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.3">RFC 9110 §9.3.3</a>
      * ). Most caches requires explicit freshness information for all responses
      * no matter the request method. Most caches also don't cache POST at all.
      */
@@ -85,7 +85,7 @@ public final class HttpConstants {
          * Safe? Yes. Idempotent? Yes. Response cacheable? Yes.
          * 
          * @see Method
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.1">RFC 7231 §4.3.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1">RFC 9110 §9.3.1</a>
          * @see #QUERY
          */
         public static final String GET = "GET";
@@ -105,7 +105,7 @@ public final class HttpConstants {
          * Safe? Yes. Idempotent? Yes. Response cacheable? Yes.
          * 
          * @see Method
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.2">RFC 7231 §4.3.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.2">RFC 9110 §9.3.2</a>
          */
         public static final String HEAD = "HEAD";
         
@@ -150,7 +150,7 @@ public final class HttpConstants {
          * Safe? No. Idempotent? No. Response cacheable? Yes.
          * 
          * @see Method
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.3">RFC 7231 §4.3.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.3">RFC 9110 §9.3.3</a>
          */
         public static final String POST = "POST";
         
@@ -185,7 +185,7 @@ public final class HttpConstants {
          * Safe? No. Idempotent? Yes. Response cacheable? No.
          * 
          * @see Method
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.4">RFC 7231 §4.3.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.4">RFC 9110 §9.3.4</a>
          */
         public static final String PUT = "PUT";
         
@@ -203,12 +203,12 @@ public final class HttpConstants {
          * perspective be a confusing and unintended side effect.<p>
          * 
          * The PATCH method is defined in
-         * <a href="https://tools.ietf.org/html/rfc5789">RFC 5789</a> which
+         * <a href="https://datatracker.ietf.org/doc/html/rfc5789">RFC 5789</a> which
          * requires the server to execute the patch atomically, but does not
          * specify the syntax of the patch document payload, i.e. how to apply
          * the patch. Two commonly used patch documents are
-         * <a href="https://tools.ietf.org/html/rfc6902">RFC 6902 (JSON Patch)</a> and
-         * <a href="https://tools.ietf.org/html/rfc7386">RFC 7396 (JSON Merge Patch)</a>
+         * <a href="https://datatracker.ietf.org/doc/html/rfc6902">RFC 6902 (JSON Patch)</a> and
+         * <a href="https://datatracker.ietf.org/doc/html/rfc7386">RFC 7386 (JSON Merge Patch)</a>
          * . The former being more powerful with embedded operators, the latter
          * being less complex and more easily understood as well as
          * implemented.<p>
@@ -270,7 +270,7 @@ public final class HttpConstants {
          * 
          * @see Method
          * @see HeaderName#ACCEPT_PATCH
-         * @see <a href="https://tools.ietf.org/html/rfc5789">RFC 5789</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc5789">RFC 5789</a>
          */
         public static final String PATCH = "PATCH";
         
@@ -290,7 +290,7 @@ public final class HttpConstants {
          * Safe? No. Idempotent? Yes. Response cacheable? No.
          * 
          * @see Method
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.5">RFC 7231 §4.3.5</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.5">RFC 9110 §9.3.5</a>
          */
         public static final String DELETE = "DELETE";
         
@@ -306,7 +306,7 @@ public final class HttpConstants {
          * Safe? No. Idempotent? No. Response cacheable? No.
          * 
          * @see Method
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.6">RFC 7231 §4.3.6</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.6">RFC 9110 §9.3.6</a>
          */
         public static final String CONNECT = "CONNECT";
         
@@ -353,7 +353,7 @@ public final class HttpConstants {
          * Safe? Yes. Idempotent? Yes. Response cacheable? No.
          * 
          * @see Method
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.7">RFC 7231 §4.3.7</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.7">RFC 9110 §9.3.7</a>
          */
         public static final String OPTIONS = "OPTIONS";
         
@@ -380,7 +380,7 @@ public final class HttpConstants {
          * @see Method
          * @see HeaderName#MAX_FORWARDS
          * @see StatusCode#FIVE_HUNDRED_ONE
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-4.3.8">RFC 7231 §4.3.8</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.8">RFC 9110 §9.3.8</a>
          */
         public static final String TRACE = "TRACE";
         
@@ -392,7 +392,7 @@ public final class HttpConstants {
          * Safe? Yes. Idempotent? Yes. Response cacheable? Yes.
          * 
          * @see Method
-         * @see <a href="https://www.ietf.org/id/draft-ietf-httpbis-safe-method-w-body-02.html">IEFT Internet-Draft</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-safe-method-w-body-11">IETF Internet-Draft</a>
          * @see <a href="https://stackoverflow.com/a/70157919">StackOverflow</a>
          */
         public static final String QUERY = "QUERY";
@@ -431,10 +431,10 @@ public final class HttpConstants {
      * explicit freshness information whereas status codes not defined as
      * cacheable may still be cached, but requires explicit freshness
      * information. In addition, some other conditions must also be true (
-     * <a href="https://tools.ietf.org/html/rfc7234#section-3">RFC 7234 §3</a>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9111#section-3">RFC 9111 §3</a>
      * ). Codes defined by
-     * <a href="https://tools.ietf.org/html/rfc7231#section-6.1">RFC 7231 §6.1</a>
-     * as cacheable: 200, 203, 204, 206, 300, 301, 404, 405, 410, 414, and
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.1">RFC 9110 §15.1</a>
+     * as cacheable: 200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, and
      * 501. Other status codes may well also be defined as cacheable, the
      * current JavaDoc author simply gave up trying to find out.<p>
      * 
@@ -538,8 +538,7 @@ public final class HttpConstants {
          * is to also close the connection.
          * 
          * @see Config#immediatelyContinueExpect100() 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.2.1">RFC 7231 §6.2.1</a>
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3">RFC 7231 §6.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.2.1">RFC 9110 §15.2.1</a>
          */
         public static final int ONE_HUNDRED = 100;
         
@@ -573,7 +572,7 @@ public final class HttpConstants {
          * and supports only HTTP/1.0 and HTTP/1.1. Planned future work will
          * also support other protocols, such as HTTP/2.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.2.2">RFC 7231 §6.2.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.2.2">RFC 9110 §15.2.2</a>
          */
         public static final int ONE_HUNDRED_ONE = 101;
         
@@ -593,7 +592,7 @@ public final class HttpConstants {
          * reason. A request handler that lingers and who is alive, you know,
          * doing well, ought to update the client accordingly.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc2518#section-10.1">RFC 2518 §10.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc2518#section-10.1">RFC 2518 §10.1</a>
          */
         public static final int ONE_HUNDRED_TWO = 102;
         
@@ -645,7 +644,7 @@ public final class HttpConstants {
          * be immediately available.
          * 
          * @see HeaderName#LINK
-         * @see <a href="https://tools.ietf.org/html/rfc8297">RFC 8297</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc8297">RFC 8297</a>
          */
         public static final int ONE_HUNDRED_THREE = 103;
         
@@ -658,7 +657,7 @@ public final class HttpConstants {
          * Method#GET}. If the response does not contain a body, consider using
          * {@value #TWO_HUNDRED_FOUR}.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.1">RFC 7231 §6.3.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.3.1">RFC 9110 §15.3.1</a>
          */
         public static final int TWO_HUNDRED = 200;
         
@@ -672,7 +671,7 @@ public final class HttpConstants {
          * contained the entire resource.
          * 
          * @see HttpConstants.Method#POST
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.2">RFC 7231 §6.3.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.3.2">RFC 9110 §15.3.2</a>
          */
         public static final int TWO_HUNDRED_ONE = 201;
         
@@ -690,7 +689,7 @@ public final class HttpConstants {
          * status- and progress. The response body is a good candidate for
          * passing such metadata to the client.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.3">RFC 7231 §6.3.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.3.3">RFC 9110 §15.3.3</a>
          */
         public static final int TWO_HUNDRED_TWO = 202;
         
@@ -699,7 +698,7 @@ public final class HttpConstants {
          * 
          * Complicated. TODO.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.4">RFC 7231 §6.3.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.3.4">RFC 9110 §15.3.4</a>
          */
         public static final int TWO_HUNDRED_THREE = 203;
         
@@ -715,7 +714,7 @@ public final class HttpConstants {
          * 
          * @see HttpConstants.Method#PUT
          * @see HttpConstants.Method#PATCH
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.5">RFC 7231 §6.3.5</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.3.5">RFC 9110 §15.3.5</a>
          */
         public static final int TWO_HUNDRED_FOUR = 204;
         
@@ -726,7 +725,7 @@ public final class HttpConstants {
          * fulfilled the request and desires that the user agent reset the
          * 'document view', which caused the request to be sent, to its original
          * state as received from the origin server." (
-         * <a href="https://tools.ietf.org/html/rfc7231#section-6.3.6">RFC 7231 §6.3.6</a>
+         * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.3.6">RFC 9110 §15.3.6</a>
          * )
          */
         public static final int TWO_HUNDRED_FIVE = 205;
@@ -738,7 +737,7 @@ public final class HttpConstants {
          * NoMagicHTTP API currently has no first-class support for byte
          * serving. Future planned work will add this.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7233#section-4.1">RFC 7233 §4.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.3.7">RFC 9110 §15.3.7</a>
          */
         public static final int TWO_HUNDRED_SIX = 206;
         
@@ -748,7 +747,7 @@ public final class HttpConstants {
          * Can be used to respond the status for multiple resources, as embedded
          * in the XML representation.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc4918#section-13">RFC 4918 §13</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc4918#section-13">RFC 4918 §13</a>
          */
         public static final int TWO_HUNDRED_SEVEN = 207;
         
@@ -757,7 +756,7 @@ public final class HttpConstants {
          * 
          * Complicated. TODO.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc5842#section-7.1">RFC 5842 §7.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc5842#section-7.1">RFC 5842 §7.1</a>
          */
         public static final int TWO_HUNDRED_EIGHT = 208;
         
@@ -766,7 +765,7 @@ public final class HttpConstants {
          * 
          * Complicated. TODO.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.4.1">RFC 3229 §10.4.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc3229#section-10.4.1">RFC 3229 §10.4.1</a>
          */
         public static final int TWO_HUNDRED_TWENTY_SIX = 226;
         
@@ -775,7 +774,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.1">RFC 7231 §6.4.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.4.1">RFC 7231 §15.4.1</a>
          */
         public static final int THREE_HUNDRED = 300;
         
@@ -784,7 +783,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.2">RFC 7231 §6.4.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.4.2">RFC 9110 §15.4.2</a>
          */
         public static final int THREE_HUNDRED_ONE = 301;
         
@@ -793,7 +792,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.3">RFC 7231 §6.4.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.4.3">RFC 9110 §15.4.3</a>
          */
         public static final int THREE_HUNDRED_TWO = 302;
         
@@ -802,7 +801,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.4">RFC 7231 §6.4.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.4.4">RFC 9110 §15.4.4</a>
          */
         public static final int THREE_HUNDRED_THREE = 303;
         
@@ -812,7 +811,7 @@ public final class HttpConstants {
          * TODO: write something
          * 
          * @see HeaderName#IF_MODIFIED_SINCE
-         * @see <a href="https://tools.ietf.org/html/rfc7232#section-4.1">RFC 7232 §4.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.4.5">RFC 9110 §15.4.5</a>
          */
         public static final int THREE_HUNDRED_FOUR = 304;
         
@@ -821,7 +820,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.5">RFC 7231 §6.4.5</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.4.6">RFC 9110 §15.4.6</a>
          */
         public static final int THREE_HUNDRED_FIVE = 305;
         
@@ -830,7 +829,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.7">RFC 7231 §6.4.7</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.4.8">RFC 9110 §15.4.8</a>
          */
         public static final int THREE_HUNDRED_SEVEN = 307;
         
@@ -839,7 +838,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7538#section-3">RFC 7538 §3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.4.9">RFC 9110 §15.4.9</a>
          */
         public static final int THREE_HUNDRED_EIGHT = 308;
         
@@ -848,7 +847,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.1">RFC 7531 §6.5.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.1">RFC 9110 §15.5.1</a>
          */
         public static final int FOUR_HUNDRED = 400;
         
@@ -858,7 +857,7 @@ public final class HttpConstants {
          * TODO: write something
          * 
          * @see HeaderName#WWW_AUTHENTICATE
-         * @see <a href="https://tools.ietf.org/html/rfc7235#section-3.1">RFC 7235 §3.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.2">RFC 9110 §15.5.2</a>
          */
         public static final int FOUR_HUNDRED_ONE = 401;
         
@@ -867,7 +866,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.2">RFC 7231 §6.5.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.3">RFC 9110 §15.5.3</a>
          */
         public static final int FOUR_HUNDRED_TWO = 402;
         
@@ -876,7 +875,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.3">RFC 7231 §6.5.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.4">RFC 9110 §15.5.4</a>
          */
         public static final int FOUR_HUNDRED_THREE = 403;
         
@@ -885,7 +884,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.4">RFC 7231 §6.5.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.5">RFC 9110 §15.5.5</a>
          */
         public static final int FOUR_HUNDRED_FOUR = 404;
         
@@ -896,7 +895,7 @@ public final class HttpConstants {
          * but no request handler is mapped to the request-provided HTTP method.
          * 
          * @see HeaderName#ALLOW
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.5">RFC 7231 §6.5.5</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.6">RFC 9110 §15.5.6</a>
          * @see Config#implementMissingOptions()
          */
         public static final int FOUR_HUNDRED_FIVE = 405;
@@ -907,7 +906,7 @@ public final class HttpConstants {
          * This is the default fallback response when a route/resource exists,
          * but no request handler produces the requested media type.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.6">RFC 7231 §6.5.6</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.7">RFC 9110 §15.5.7</a>
          * @see MediaTypeNotAcceptedException
          */
         public static final int FOUR_HUNDRED_SIX = 406;
@@ -917,7 +916,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7235#section-3.2">RFC 7235 §3.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.8">RFC 9110 §15.5.8</a>
          */
         public static final int FOUR_HUNDRED_SEVEN = 407;
         
@@ -925,7 +924,7 @@ public final class HttpConstants {
          * {@value} {@value ReasonPhrase#REQUEST_TIMEOUT}.
          * 
          * @see Config#timeoutIdleConnection()
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.7">RFC 7231 §6.5.7</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.9">RFC 9110 §15.5.9</a>
          */
         public static final int FOUR_HUNDRED_EIGHT = 408;
         
@@ -934,7 +933,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.8">RFC 7231 §6.5.8</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.10">RFC 9110 §15.5.10</a>
          */
         public static final int FOUR_HUNDRED_NINE = 409;
         
@@ -943,7 +942,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.9">RFC 7231 §6.5.9</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.11">RFC 9110 §15.5.11</a>
          */
         public static final int FOUR_HUNDRED_TEN = 410;
         
@@ -952,7 +951,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.10">RFC 7231 §6.5.10</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.12">RFC 9110 §15.5.12</a>
          */
         public static final int FOUR_HUNDRED_ELEVEN = 411;
         
@@ -961,7 +960,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7232#section-4.2">RFC 7232 §4.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.13">RFC 9110 §15.5.13</a>
          */
         public static final int FOUR_HUNDRED_TWELVE = 412;
         
@@ -973,7 +972,7 @@ public final class HttpConstants {
          * others chose to do as to not lock-in the message body specifically as
          * being the part that broke the acceptable limit.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.11">RFC 7231 §6.5.11</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.14">RFC 9110 §15.5.14</a>
          */
         public static final int FOUR_HUNDRED_THIRTEEN = 413;
         
@@ -982,7 +981,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.12">RFC 7231 §6.5.12</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.15">RFC 9110 §15.5.15</a>
          */
         public static final int FOUR_HUNDRED_FOURTEEN = 414;
         
@@ -991,7 +990,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.13">RFC 7231 §6.5.13</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.16">RFC 9110 §15.5.16</a>
          */
         public static final int FOUR_HUNDRED_FIFTEEN = 415;
         
@@ -1000,7 +999,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7233#section-4.4">RFC 7233 §4.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.17">RFC 9110 §15.5.17</a>
          */
         public static final int FOUR_HUNDRED_SIXTEEN = 416;
         
@@ -1009,7 +1008,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.14">RFC 7231 §6.5.14</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.18">RFC 9110 §15.5.18</a>
          */
         public static final int FOUR_HUNDRED_SEVENTEEN = 417;
         
@@ -1019,6 +1018,7 @@ public final class HttpConstants {
          * TODO: write something
          * 
          * @see <a href="https://tools.ietf.org/html/rfc7168#section-2.3.3">RFC 7168 §2.3.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.19">RFC 9110 §15.5.19</a>
          */
         public static final int FOUR_HUNDRED_EIGHTEEN = 418;
         
@@ -1027,7 +1027,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7540#section-9.1.2">RFC 7540 §9.1.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.20">RFC 9110 §15.5.20</a>
          */
         public static final int FOUR_HUNDRED_TWENTY_ONE = 421;
         
@@ -1037,6 +1037,7 @@ public final class HttpConstants {
          * TODO: write something
          * 
          * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.2">RFC 4918 §11.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.21">RFC 9110 §15.5.21</a>
          */
         public static final int FOUR_HUNDRED_TWENTY_TWO = 422;
         
@@ -1072,7 +1073,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.15">RFC 7231 §6.5.15</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.22">RFC 9110 §15.5.22</a>
          */
         public static final int FOUR_HUNDRED_TWENTY_SIX = 426;
         
@@ -1117,7 +1118,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.1">RFC 7731 §6.6.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.6.1">RFC 9110 §15.6.1</a>
          */
         public static final int FIVE_HUNDRED = 500;
         
@@ -1127,7 +1128,7 @@ public final class HttpConstants {
          * Should be the response when a requested HTTP method has been banned
          * by the server, such as {@link Method#TRACE}.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.2">RFC 7731 §6.6.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.6.2">RFC 9110 §15.6.2</a>
          */
         public static final int FIVE_HUNDRED_ONE = 501;
         
@@ -1136,7 +1137,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.3">RFC 7731 §6.6.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.6.3">RFC 9110 §15.6.3</a>
          */
         public static final int FIVE_HUNDRED_TWO = 502;
         
@@ -1144,7 +1145,7 @@ public final class HttpConstants {
          * {@value} {@value ReasonPhrase#SERVICE_UNAVAILABLE}.
          * 
          * @see IdleConnectionException
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.4">RFC 7731 §6.6.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.6.4">RFC 9110 §15.6.4</a>
          */
         public static final int FIVE_HUNDRED_THREE = 503;
         
@@ -1153,7 +1154,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.5">RFC 7731 §6.6.5</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.6.5">RFC 9110 §15.6.5</a>
          */
         public static final int FIVE_HUNDRED_FOUR = 504;
         
@@ -1162,7 +1163,7 @@ public final class HttpConstants {
          *
          * TODO: write something
          *
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.6">RFC 7731 §6.6.6</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.6.6">RFC 7731 §15.6.6</a>
          */
         public static final int FIVE_HUNDRED_FIVE = 505;
         
@@ -1171,7 +1172,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc2295#section-8.1">RFC 2295 §8.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc2295#section-8.1">RFC 2295 §8.1</a>
          */
         public static final int FIVE_HUNDRED_SIX = 506;
         
@@ -1180,7 +1181,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.5">RFC 4918 §11.5</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc4918#section-11.5">RFC 4918 §11.5</a>
          */
         public static final int FIVE_HUNDRED_SEVEN = 507;
         
@@ -1189,7 +1190,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc5842#section-7.2">RFC 5842 §7.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc5842#section-7.2">RFC 5842 §7.2</a>
          */
         public static final int FIVE_HUNDRED_EIGHT = 508;
         
@@ -1198,7 +1199,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc2774#section-7">RFC 2774 §7</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc2774#section-7">RFC 2774 §7</a>
          */
         public static final int FIVE_HUNDRED_TEN = 510;
         
@@ -1207,7 +1208,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc6585#section-6">RFC 6585 §6</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc6585#section-6">RFC 6585 §6</a>
          */
         public static final int FIVE_HUNDRED_ELEVEN = 511;
         
@@ -1287,9 +1288,13 @@ public final class HttpConstants {
      * "The reason-phrase element exists for the sole purpose of providing a
      * textual description associated with the numeric status code, mostly out
      * of deference to earlier Internet application protocols that were more
-     * frequently used with interactive text clients.  A client SHOULD ignore
-     * the reason-phrase content." (
-     * <a href="https://tools.ietf.org/html/rfc7230#section-3.1.2">RFC 7230 §3.1.2</a>
+     * frequently used with interactive text clients.
+     * [...]
+     * A client SHOULD ignore the reason-phrase content because it is not a
+     * reliable channel for information (it might be translated for a given
+     * locale, overwritten by intermediaries, or discarded when the message is
+     * forwarded via other versions of HTTP)." (
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-4">RFC 9112 §4</a>
      * )<p>
      * 
      * Most applications will not need to set a reason phrase explicitly, as it
@@ -1577,7 +1582,7 @@ public final class HttpConstants {
     /**
      * Constants for header names.
      * 
-     * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.2">RFC 7230 §3.2</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-6.3">RFC 9110 §6.3</a>
      * @see <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
      */
     public static final class HeaderName {
@@ -1594,7 +1599,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.5.3">RFC 3229 §10.5.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc3229#section-10.5.3">RFC 3229 §10.5.3</a>
          */
         public static final String A_IM = "A-IM";
         
@@ -1608,7 +1613,7 @@ public final class HttpConstants {
          * 
          * @see RequestHandler
          * @see #VARY
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.2">RFC 7231 §5.3.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-12.5.1">RFC 9110 §12.5.1</a>
          */
         public static final String ACCEPT = "Accept";
         
@@ -1624,7 +1629,7 @@ public final class HttpConstants {
          * This header name is never used by the NoMagicHTTP server.
          * 
          * @see Method#PATCH
-         * @see <a href="https://tools.ietf.org/html/rfc5789#section-3.1">RFC 5789 §3.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc5789#section-3.1">RFC 5789 §3.1</a>
          */
         public static final String ACCEPT_PATCH = "Accept-Patch";
         
@@ -1639,7 +1644,7 @@ public final class HttpConstants {
          * Example: {@code Accept-Ranges: bytes}
          * 
          * @see #RANGE
-         * @see <a href="https://tools.ietf.org/html/rfc7233#section-2.3">RFC 7233 §2.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-14.3">RFC 9110 §14.3</a>
          */
         public static final String ACCEPT_RANGES = "Accept-Ranges";
         
@@ -1654,7 +1659,7 @@ public final class HttpConstants {
          * Example: {@code Accept-Charset: utf-8}
          * 
          * @see RequestHandler
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.3">RFC 7231 §5.3.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-12.5.2">RFC 9110 §12.5.2</a>
          * @see <a href="https://stackoverflow.com/questions/7055849/accept-and-accept-charset-which-is-superior">StackOverflow</a>
          */
         public static final String ACCEPT_CHARSET = "Accept-Charset";
@@ -1668,7 +1673,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7089#section-2.1.1">RFC 7089 §2.1.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc7089#section-2.1.1">RFC 7089 §2.1.1</a>
          */
         public static final String ACCEPT_DATETIME = "Accept-Datetime";
         
@@ -1685,7 +1690,7 @@ public final class HttpConstants {
          * compression. Work is planned to add support.
          * 
          * @see #CONTENT_ENCODING
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.4">RFC 7231 §5.3.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-12.5.3">RFC 9110 §12.5.3</a>
          */
         public static final String ACCEPT_ENCODING = "Accept-Encoding";
         
@@ -1706,7 +1711,7 @@ public final class HttpConstants {
          * on the client's end by means of translation software.
          * 
          * @see RequestHandler
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.5">RFC 7231 §5.3.5</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-12.5.4">RFC 9110 §12.5.4</a>
          */
         public static final String ACCEPT_LANGUAGE = "Accept-Language";
         
@@ -1816,7 +1821,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.1">RFC 7234 §5.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9111#section-5.1">RFC 9111 §5.1</a>
          */
         public static final String AGE = "Age";
         
@@ -1833,7 +1838,7 @@ public final class HttpConstants {
          * route/resource exists, but no request handler is mapped to the
          * request-provided HTTP method.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.4.1">RFC 7231 §7.4.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.2.1">RFC 9110 §10.2.1</a>
          * @see Config#implementMissingOptions()
          */
         public static final String ALLOW = "Allow";
@@ -1851,7 +1856,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7838#section-3">RFC 7838 §3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc7838#section-3">RFC 7838 §3</a>
          */
         public static final String ALT_SVC = "Alt-Svc";
         
@@ -1867,7 +1872,7 @@ public final class HttpConstants {
          * Currently, the NoMagicHTTP server has no first-class support for
          * HTTP authentication. Work is planned to add limited support.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7235#section-4.2">RFC 7235 §4.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-11.6.2">RFC 9110 §11.6.2</a>
          */
         public static final String AUTHORIZATION = "Authorization";
         
@@ -1885,7 +1890,7 @@ public final class HttpConstants {
          * constructing {@code Cache-Control} directives. This will likely be
          * added in the near future.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.2">RFC 7234 §5.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9111#section-5.2">RFC 9111 §5.2</a>
          */
         public static final String CACHE_CONTROL = "Cache-Control";
         
@@ -1905,7 +1910,7 @@ public final class HttpConstants {
          * application should have no need to use it explicitly.
          * 
          * @see StatusCode#ONE_HUNDRED_ONE 101}
-         * @see <a href="https://tools.ietf.org/html/rfc7230#section-6.1">RFC 7230 §6.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-7.6.1">RFC 9110 §7.6.1</a>
          */
         public static final String CONNECTION = "Connection";
         
@@ -1924,8 +1929,8 @@ public final class HttpConstants {
          * Planned support for improving file serving, API extensions and body
          * decoding will make use of this header.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc6266#section-4">RFC 6266 §4</a>
-         * @see <a href="https://tools.ietf.org/html/rfc2388#section-3">RFC 2388 §3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc6266#section-4">RFC 6266 §4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc7578#section-4.2">RFC 7578 §4.2</a>
          */
         public static final String CONTENT_DISPOSITION = "Content-Disposition";
         
@@ -1943,7 +1948,7 @@ public final class HttpConstants {
          * 
          * @see #ACCEPT_ENCODING
          * @see #TRANSFER_ENCODING
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.2.2">RFC 7231 §3.1.2.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.4">RFC 9110 §8.4</a>
          */
         public static final String CONTENT_ENCODING = "Content-Encoding";
         
@@ -1959,7 +1964,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.3.2">RFC 7231 §3.1.3.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.5">RFC 9110 §8.5</a>
          */
         public static final String CONTENT_LANGUAGE = "Content-Language";
         
@@ -1975,7 +1980,7 @@ public final class HttpConstants {
          * The header is used internally by the NoMagicHTTP server and the
          * application should rarely have a need to use it explicitly.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.6">RFC 9110 §8.6</a>
          */
         public static final String CONTENT_LENGTH = "Content-Length";
         
@@ -1989,23 +1994,23 @@ public final class HttpConstants {
          * 
          * Example: {@code Content-Location: /index.html}<p>
          * 
-         * "Location and Content-Location are different. Location indicates the
-         * URL of a redirect, while Content-Location indicates the direct URL to
-         * use to access the resource, without further content negotiation in
-         * the future. Location is a header associated with the response, while
-         * Content-Location is associated with the data returned." (
-         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Location">MDN Web Docs</a>
+         * "Location and Content-Location are different. Content-Location
+         * indicates the URL to use to directly access the resource in future
+         * when content negotiation occurred. Location is associated with the
+         * response, while Content-Location is associated with the
+         * representation that was returned" (
+         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Location">MDN Web Docs</a>
          * )<p>
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
          * @see #LOCATION
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.4.2">RFC 7231 §3.1.4.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.7">RFC 9110 §8.7</a>
          */
         public static final String CONTENT_LOCATION = "Content-Location";
         
         /**
-         * "A Base64-encoded binary MD5 sum of the content" (
+         * "A Base64-encoded binary MD5 sum of the content of the request body." (
          * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
          * )<p>
          * 
@@ -2013,10 +2018,10 @@ public final class HttpConstants {
          * 
          * This header is never used by the NoMagicHTTP server, nor should you,
          * as it has been removed (
-         * <a href="https://tools.ietf.org/html/rfc7231#appendix-B">RFC 7231 Appendix B</a>
+         * <a href="https://datatracker.ietf.org/doc/html/rfc7231#appendix-B">RFC 7231 Appendix B</a>
          * ). Use {@linkplain #DIGEST Digest} instead.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc2616#section-14.15">RFC 2616 §14.15</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc2616#section-14.15">RFC 2616 §14.15</a>
          */
         public static final String CONTENT_MD5 = "Content-MD5";
         
@@ -2030,17 +2035,17 @@ public final class HttpConstants {
          * Example: {@code Content-Range: bytes 21010-47021/47022}
          * 
          * @see #RANGE
-         * @see <a href="https://tools.ietf.org/html/rfc7233#section-4.2">RFC 7233 §4.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-14.4">RFC 9110 §14.4</a>
          */
         public static final String CONTENT_RANGE = "Content-Range";
         
         /**
-         * "The HTTP Content-Security-Policy response header allows web site
+         * "The HTTP Content-Security-Policy response header allows website
          * administrators to control resources the user agent is allowed to load
          * for a given page. With a few exceptions, policies mostly involve
          * specifying server origins and script endpoints. This helps guard
-         * against cross-site scripting attacks (XSS)." (
-         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy">MDN Web Docs</a>
+         * against cross-site scripting attacks." (
+         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy">MDN Web Docs</a>
          * )<p>
          * 
          * Applies to the response, not request.<p>
@@ -2069,7 +2074,7 @@ public final class HttpConstants {
          * and encoding HTTP messages.
          * 
          * @see MediaType
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.1.5">RFC 7231 §3.1.1.5</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.3">RFC 9110 §8.3</a>
          */
         public static final String CONTENT_TYPE = "Content-Type";
         
@@ -2084,7 +2089,7 @@ public final class HttpConstants {
          * Currently, the NoMagicHTTP server has no first-class API support for
          * cookies. Work is planned to add support.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc6265#section-5.4">RFC 6265 §5.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc6265#section-5.4">RFC 6265 §5.4</a>
          */
         public static final String COOKIE = "Cookie";
         
@@ -2098,7 +2103,7 @@ public final class HttpConstants {
          * Currently, the NoMagicHTTP server has no first-class API support for
          * the {@code Date} header. Support will likely be added.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.1.1.2">RFC 7231 §7.1.1.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-6.6.1">RFC 9110 §6.6.1.2</a>
          */
         public static final String DATE = "Date";
         
@@ -2111,7 +2116,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.5.1">RFC 3229 §10.5.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc3229#section-10.5.1">RFC 3229 §10.5.1</a>
          */
         public static final String DELTA_BASE = "Delta-Base";
         
@@ -2172,7 +2177,7 @@ public final class HttpConstants {
          * for HTTP compression and an improved file serving API.
          * 
          * @see #IF_MATCH
-         * @see <a href="https://tools.ietf.org/html/rfc7232#section-2.3">RFC 7232 §2.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3">RFC 9110 §8.8.3</a>
          */
         public static final String ETAG = "ETag";
         
@@ -2187,7 +2192,7 @@ public final class HttpConstants {
          * Example: {@code Expect: 100-continue}
          * 
          * @see StatusCode#ONE_HUNDRED
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1">RFC 7231 §5.1.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.1.1">RFC 9110 §10.1.1</a>
          */
         public static final String EXPECT = "Expect";
         
@@ -2202,7 +2207,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.3">RFC 7234 §5.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9111#section-5.3">RFC 9111 §5.3</a>
          */
         public static final String EXPIRES = "Expires";
         
@@ -2221,7 +2226,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7239#section-4">RFC 7239 §4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc7239#section-4">RFC 7239 §4</a>
          */
         public static final String FORWARDED = "Forwarded";
         
@@ -2234,7 +2239,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.5.1">RFC 7231 §5.5.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.1.2">RFC 9110 §10.1.2</a>
          */
         public static final String FROM = "From";
         
@@ -2249,7 +2254,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7230#section-5.4">RFC 7230 §5.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-7.2">RFC 9110 §7.2</a>
          */
         public static final String HOST = "Host";
         
@@ -2270,7 +2275,7 @@ public final class HttpConstants {
          * is planned to add support.
          * 
          * @see StatusCode#ONE_HUNDRED_ONE
-         * @see <a href="https://tools.ietf.org/html/rfc7540#section-3.2.1">RFC 7540 §3.2.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc7540#section-3.2.1">RFC 7540 §3.2.1</a>
          */
         public static final String HTTP2_SETTINGS = "HTTP2-Settings";
         
@@ -2292,7 +2297,7 @@ public final class HttpConstants {
          * 
          * @see Method#PATCH
          * @see #ETAG
-         * @see <a href="https://tools.ietf.org/html/rfc7232#section-3.1">RFC 7232 §3.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-13.1.1">RFC 9110 §13.1.1</a>
          */
         public static final String IF_MATCH = "If-Match";
         
@@ -2302,12 +2307,12 @@ public final class HttpConstants {
          * <a href="https://en.wikipedia.org/wiki/List_of_HTTP_header_fields">Wikipedia</a>
          * )<p>
          * 
-         * Example: {@code If-Match: "737060cd8c284d8af7ad3082f209582d"}<p>
+         * Example: {@code If-Modified-Since: Sat, 29 Oct 1994 19:43:31 GMT}<p>
          * 
          * Applies to the request, not response.
          * 
          * @see #IF_MATCH
-         * @see <a href="https://tools.ietf.org/html/rfc7232#section-3.3">RFC 7232 §3.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-13.1.3">RFC 9110 §13.1.3</a>
          */
         public static final String IF_MODIFIED_SINCE = "If-Modified-Since";
         
@@ -2320,7 +2325,7 @@ public final class HttpConstants {
          * Applies to the request, not response.
          * 
          * @see #IF_MATCH
-         * @see <a href="https://tools.ietf.org/html/rfc7232#section-3.2">RFC 7232 §3.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-13.1.2">RFC 9110 §13.1.2</a>
          */
         public static final String IF_NONE_MATCH = "If-None-Match";
         
@@ -2339,7 +2344,7 @@ public final class HttpConstants {
          * future through an extended API that serves static files.
          * 
          * @see #RANGE
-         * @see <a href="https://tools.ietf.org/html/rfc7233#section-3.2">RFC 7233 §3.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-13.1.5">RFC 9110 §13.1.5</a>
          */
         public static final String IF_RANGE = "If-Range";
         
@@ -2355,7 +2360,7 @@ public final class HttpConstants {
          * 
          * @see #IF_MATCH
          * @see #LAST_MODIFIED
-         * @see <a href="https://tools.ietf.org/html/rfc7232#section-3.4">RFC 7232 §3.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-13.1.4">RFC 9110 §13.1.4</a>
          */
         public static final String IF_UNMODIFIED_SINCE = "If-Unmodified-Since";
         
@@ -2368,7 +2373,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc3229#section-10.5.2">RFC 3229 §10.5.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc3229#section-10.5.2">RFC 3229 §10.5.2</a>
          */
         public static final String IM = "IM";
         
@@ -2385,16 +2390,16 @@ public final class HttpConstants {
          * Planned work for improved file serving will make use of it.
          * 
          * @see #IF_MODIFIED_SINCE
-         * @see <a href="https://tools.ietf.org/html/rfc7232#section-2.2">RFC 7232 §2.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.2">RFC 9110 §8.8.2</a>
          */
         public static final String LAST_MODIFIED = "Last-Modified";
         
         /**
          * Provides a means for serialising one or more links in HTTP headers.
          * It is semantically equivalent to the HTML
-         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link">{@literal <}link{@literal >}</a>
+         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/link">{@literal <}link{@literal >}</a>
          * element, albeit with a slightly different
-         * <a href="https://tools.ietf.org/html/rfc8288#section-3">syntax</a>
+         * <a href="https://datatracker.ietf.org/doc/html/rfc8288#section-3">syntax</a>
          * .<p>
          * 
          * Applies to the response, not request.<p>
@@ -2420,7 +2425,7 @@ public final class HttpConstants {
          * 
          * @see Method#POST
          * @see #CONTENT_LOCATION
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.1.2">RFC 7231 §7.1.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.2.2">RFC 9110 §10.2.2</a>
          */
         public static final String LOCATION = "Location";
         
@@ -2437,7 +2442,7 @@ public final class HttpConstants {
          * Often used by client with a {@link Method#TRACE} method to limit
          * number of hops traced.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.1.2">RFC 7231 §5.1.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-7.6.2">RFC 9110 §7.6.2</a>
          */
         public static final String MAX_FORWARDS = "Max-Forwards";
         
@@ -2466,7 +2471,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.4">RFC 7234 §5.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9111#section-5.4">RFC 9111 §5.4</a>
          */
         public static final String PRAGMA = "Pragma";
         
@@ -2480,7 +2485,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7240#section-2">RFC 7240 §2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc7240#section-2">RFC 7240 §2</a>
          */
         public static final String PREFER = "Prefer";
         
@@ -2496,7 +2501,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7240#section-3">RFC 7240 §3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc7240#section-3">RFC 7240 §3</a>
          */
         public static final String PREFERENCE_APPLIED = "Preference-Applied";
         
@@ -2510,7 +2515,7 @@ public final class HttpConstants {
          * Example: {@code Proxy-Authenticate: Basic}
          * 
          * @see #AUTHORIZATION
-         * @see <a href="https://tools.ietf.org/html/rfc7235#section-4.3">RFC 7235 §4.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-11.7.1">RFC 9110 §11.7.1</a>
          */
         public static final String PROXY_AUTHENTICATE = "Proxy-Authenticate";
         
@@ -2524,7 +2529,7 @@ public final class HttpConstants {
          * Example: {@code Proxy-Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==}
          * 
          * @see #AUTHORIZATION
-         * @see <a href="https://tools.ietf.org/html/rfc7235#section-4.4">RFC 7235 §4.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-11.7.2">RFC 9110 §11.7.2</a>
          */
         public static final String PROXY_AUTHORIZATION = "Proxy-Authorization";
         
@@ -2541,7 +2546,7 @@ public final class HttpConstants {
          * byte serving. It will be added in the near future through an extended
          * API that serves static files.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7233#section-3.1">RFC 7233 §3.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-14.2">RFC 9110 §14.2</a>
          */
         public static final String RANGE = "Range";
         
@@ -2560,7 +2565,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.5.2">RFC 7231 §5.5.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.1.3">RFC 9110 §10.1.3</a>
          */
         public static final String REFERER = "Referer";
         
@@ -2592,7 +2597,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.1.3">RFC 7231 §7.1.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.2.3">RFC 9110 §10.2.3</a>
          */
         public static final String RETRY_AFTER = "Retry-After";
         
@@ -2607,7 +2612,7 @@ public final class HttpConstants {
          * future work will add this as a configuration option.
          * 
          * @see #USER_AGENT
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-7.4.2">RFC 7231 §7.4.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.2.4">RFC 9110 §10.2.4</a>
          */
         public static final String SERVER = "Server";
         
@@ -2619,15 +2624,13 @@ public final class HttpConstants {
          * Example: {@code Set-Cookie: UserID=JohnDoe; Max-Age=3600; Version=1}
          * 
          * @see #COOKIE
-         * @see <a href="https://tools.ietf.org/html/rfc6265#section-4.1">RFC 6265 §4.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc6265#section-4.1">RFC 6265 §4.1</a>
          */
         public static final String SET_COOKIE = "Set-Cookie";
         
         /**
-         * Lets a server tell clients that "it should only be accessed using
-         * HTTPS, instead of using HTTP". (
-         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security">MDN Web Docs</a>
-         * )<p>
+         * Lets a server tell clients that it should only be accessed using
+         * HTTPS, instead of using HTTP.<p>
          * 
          * Applies to the response, not request.<p>
          * 
@@ -2637,16 +2640,15 @@ public final class HttpConstants {
          * does not use this header name. Future work is planned to add this
          * support.
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc6797#section-6.1">RFC 6797 §6.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc6797#section-6.1">RFC 6797 §6.1</a>
+         * @see <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security">MDN Web Docs</a>
          */
         public static final String STRICT_TRANSPORT_SECURITY = "Strict-Transport-Security";
         
         /**
-         * Put in a request to indicate "what transfer codings, besides chunked,
-         * the client is willing to accept in response, and whether or not the
-         * client is willing to accept trailer fields in a chunked transfer
-         * coding." (
-         * <a href="https://tools.ietf.org/html/rfc7230#section-4.3">RFC 7230 §4.3</a>
+         * Put in a request to indicate "describes capabilities of the client
+         * with regard to transfer codings and trailer sections coding". (
+         * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.1.4">RFC 9110 §10.1.4</a>
          * )<p>
          * 
          * Applies to the request, not response.<p>
@@ -2658,7 +2660,6 @@ public final class HttpConstants {
          * planned to add codecs.
          * 
          * @see #TRAILER
-         * @see <a href="https://tools.ietf.org/html/rfc7230#section-4.3">RFC 7230 §4.3</a>
          */
         public static final String TE = "TE";
         
@@ -2679,10 +2680,10 @@ public final class HttpConstants {
         /**
          * This header "allows the sender to include additional fields at the
          * end of chunked messages in order to supply metadata that might be
-         * dynamically generated while the message body is sent, such as a
+         * dynamically generated while the message body is sent", such as a
          * message integrity check, digital signature, or post-processing
-         * status." (
-         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Trailer">MDN Web Docs</a>
+         * status. (
+         * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Trailer">MDN Web Docs</a>
          * )<p>
          * 
          * May be used in both request and response.<p>
@@ -2690,7 +2691,7 @@ public final class HttpConstants {
          * Example: {@code Trailer: My-Hash, And-Something-Else}
          * 
          * @see #TE
-         * @see <a href="https://tools.ietf.org/html/rfc7230#section-4.4">RFC 7230 §4.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-6.6.2">RFC 9110 §6.6.2</a>
          * @see Request#trailers() 
          */
         public static final String TRAILER = "Trailer";
@@ -2708,7 +2709,7 @@ public final class HttpConstants {
          * compression. Work is planned to add support.
          * 
          * @see #CONTENT_TYPE
-         * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3.1">RFC 7230 §3.3.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-6.1">RFC 9112 §6.1</a>
          */
         public static final String TRANSFER_ENCODING = "Transfer-Encoding";
         
@@ -2724,7 +2725,7 @@ public final class HttpConstants {
          * This header name is never used by the NoMagicHTTP server.
          * 
          * @see #SERVER
-         * @see <a href="https://tools.ietf.org/html/rfc7231#section-5.5.3">RFC 7231 §5.5.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.1.5">RFC 9110 §10.1.5</a>
          */
         public static final String USER_AGENT = "User-Agent";
         
@@ -2736,7 +2737,7 @@ public final class HttpConstants {
          * Example: {@code Upgrade: h2c, HTTPS/1.3, IRC/6.9, RTA/x11, websocket}
          * 
          * @see StatusCode#ONE_HUNDRED_ONE
-         * @see <a href="https://tools.ietf.org/html/rfc7230#section-6.7">RFC 7230 §6.7</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-7.8">RFC 9110 §7.8</a>
          * @see HttpVersionTooOldException
          */
         public static final String UPGRADE = "Upgrade";
@@ -2746,7 +2747,7 @@ public final class HttpConstants {
          * request message, aside from the method, Host header field, and
          * request target, might influence the origin server's process for
          * selecting and representing this response." (
-         * <a href="https://tools.ietf.org/html/rfc7231#section-7.1.4">RFC 7231 §7.1.4</a>
+         * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-12.5.5">RFC 9110 §12.5.5</a>
          * )<p>
          * 
          * Example: {@code Vary: accept-encoding, accept-language}<p>
@@ -2755,7 +2756,7 @@ public final class HttpConstants {
          * future work may add this support for 200 and 304 responses.
          * 
          * @see #ACCEPT
-         * @see <a href="https://www.smashingmagazine.com/2017/11/understanding-vary-header/">Smashing Magazine</a>
+         * @see <a href="https://www.smashingmagazine.com/2017/11/understanding-vary-header">Smashing Magazine</a>
          */
         public static final String VARY = "Vary";
         
@@ -2771,7 +2772,7 @@ public final class HttpConstants {
          * This header name is never used by the NoMagicHTTP server.
          * 
          * @see Method#TRACE
-         * @see <a href="https://tools.ietf.org/html/rfc7230#section-5.7.1">RFC 7230 §5.7.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-7.6.3">RFC 9110 §7.6.3</a>
          */
         public static final String VIA = "Via";
         
@@ -2794,6 +2795,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9111#section-5.5">RFC 9111 §5.5</a>
          * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.5">RFC 7234 §5.5</a>
          */
         public static final String WARNING = "Warning";
@@ -2810,7 +2812,7 @@ public final class HttpConstants {
          * 
          * @see #AUTHORIZATION
          * @see StatusCode#FOUR_HUNDRED_ONE
-         * @see <a href="https://tools.ietf.org/html/rfc7235#section-4.1">RFC 7235 §4.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-11.6.1">RFC 9110 §11.6.1</a>
          */
         public static final String WWW_AUTHENTICATE = "WWW-Authenticate";
         
@@ -2825,7 +2827,7 @@ public final class HttpConstants {
          * 
          * This header name is never used by the NoMagicHTTP server.
          * 
-         * @see <a href="https://www.stoutner.com/the-x-requested-with-header/">STOUTNER</a>
+         * @see <a href="https://www.stoutner.com/the-x-requested-with-header">STOUTNER</a>
          */
         public static final String X_REQUESTED_WITH = "X-Requested-With";
         
@@ -2872,7 +2874,7 @@ public final class HttpConstants {
     /**
      * Constants for HTTP version.
      * 
-     * @see <a href="https://tools.ietf.org/html/rfc7230#section-2.6">RFC 7230 §2.6</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-2.5">RFC 9110 §2.5</a>
      */
     public enum Version
     {
@@ -2888,29 +2890,28 @@ public final class HttpConstants {
         /**
          * HTTP/1.0
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc1945">RFC 1945</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc1945">RFC 1945</a>
          */
         HTTP_1_0 (1, of(0)),
         
         /**
          * HTTP/1.1
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7230">RFC 7230</a>
-         * @see <a href="https://tools.ietf.org/html/rfc7231">RFC 7231</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112">RFC 9112</a>
          */
         HTTP_1_1 (1, of(1)),
         
         /**
          * HTTP/2
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7540">RFC 7540</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9113">RFC 9113</a>
          */
         HTTP_2 (2, empty()),
         
         /**
          * HTTP/3
          * 
-         * @see <a href="https://quicwg.org/base-drafts/draft-ietf-quic-http.html">QUIC Draft</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9114">RFC 9114</a>
          */
         HTTP_3 (3, empty());
         
