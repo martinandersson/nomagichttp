@@ -809,9 +809,8 @@ session ID/key saved in cookie.
 
 _Status: **Delivered**_
 
-End result: Added `HttpServer.Config.timeoutIdleConnection()`,
-`RequestHeadTimeoutException`, `RequestBodyTimeoutException`, and
-`ResponseTimeoutException`.
+End result: Added `HttpServer.Config.timeoutIdleConnection()` and
+`IdleConnectionException`.
 
 ~~Most timeouts should probably result in a 408 (Request Timeout).~~
 
