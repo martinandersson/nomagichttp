@@ -946,52 +946,52 @@ and the application would have to implement the functionality itself.
 
 ## HTTP Specifications
 
-For reference.
+Applicable to all three major versions:
 
-HTTP/1.0
-
-- [RFC 1945][rfc-1945] - HTTP/1.0  
-  Not really useful other than as a historical reference.
-
-HTTP/1.1
-
-- [RFC 7230][rfc-7230] - Message Syntax and Routing  
-  Core protocol and server requirements.
-- [RFC 7231][rfc-7231] - Semantics and Content  
-  Sugar on top of the protocol; methods, status codes, this and that.
-- [RFC 5789][rfc-5789] - PATCH Method for HTTP
-- [RFC 7232][rfc-7232] - Conditional Requests
-- [RFC 2046 §5.1][rfc-2046] - Multipart Media Type
-- [RFC 7233][rfc-7233] - Range Requests
-- [RFC 7578][rfc-7578] - Returning Values from Forms
-- [RFC 6266][rfc-6266] - Content-Disposition Header Field
-- [RFC 7235][rfc-7235] - Authentication
-- [RFC 7617][rfc-7617] - The 'Basic' Authentication Scheme
-- [RFC 7616][rfc-7616] - Digest Access Authentication
-- [RFC 7615][rfc-7615] - Authentication-Info and Proxy-Authentication-Info
-- [RFC 6265][rfc-6265] - HTTP State Management Mechanism  
+- [RFC 9110][rfc-9110] — HTTP Semantics  
+  Overall architecture; routing, request methods, status codes.  
+- [RFC 9111][rfc-9111] — HTTP Caching  
+  Response caching. Defines headers `Age` and `Cache-Control` with directives.
+- [RFC 5789][rfc-5789] — PATCH Method for HTTP  
+  Partial update of a resource.
+- [RFC 7232][rfc-7232] — Conditional Requests  
+  For example request header `If-Match` and response header `ETag`.
+- [RFC 2046 §5.1][rfc-2046] — Multipart Media Type  
+  Composite messages.
+- [RFC 7533][rfc-7233] — Range Requests
+- [RFC 7578][rfc-7578] — Returning Values from Forms
+- [RFC 6266][rfc-6266] — Content-Disposition Header Field
+- [RFC 7617][rfc-7617] — The 'Basic' Authentication Scheme
+- [RFC 7616][rfc-7616] — Digest Access Authentication
+- [RFC 6265][rfc-6265] — HTTP State Management Mechanism  
   Cookies. They meant to say Cookies.
-- [RFC 7234][rfc-7234]: Caching
 
-HTTP/2
+[rfc-9110]: https://datatracker.ietf.org/doc/html/rfc9110
+[rfc-9111]: https://datatracker.ietf.org/doc/html/rfc9111
+[rfc-5789]: https://datatracker.ietf.org/doc/html/rfc5789
+[rfc-7232]: https://datatracker.ietf.org/doc/html/rfc7232
+[rfc-2046]: https://datatracker.ietf.org/doc/html/rfc2046#section-5.1
+[rfc-7233]: https://datatracker.ietf.org/doc/html/rfc7233
+[rfc-7578]: https://datatracker.ietf.org/doc/html/rfc7578
+[rfc-6266]: https://datatracker.ietf.org/doc/html/rfc6266
+[rfc-7617]: https://datatracker.ietf.org/doc/html/rfc7617
+[rfc-7616]: https://datatracker.ietf.org/doc/html/rfc7616
+[rfc-6265]: https://datatracker.ietf.org/doc/html/rfc6265
 
-- [RFC 7540][rfc-7540] - HTTP/2
+Version specific:
+
+- [RFC 1945][rfc-1945] — HTTP/1.0  
+  Not really useful other than as a historical reference.
+- [RFC-9112][rfc-9112] — HTTP/1.1  
+  Message syntax/parsing, transfer codings (chunked/compression).
+- [RFC 9113][rfc-9113] — HTTP/2
+  Multiplexing and data framing over TCP.
+- [RFC 9114][rfc-9114] — HTTP/3
+  Uses QUIC over UDP.
+
+[rfc-1945]: https://datatracker.ietf.org/doc/html/rfc1945
+[rfc-9112]: https://datatracker.ietf.org/doc/html/rfc9112
+[rfc-9113]: https://datatracker.ietf.org/doc/html/rfc9113
+[rfc-9114]: https://datatracker.ietf.org/doc/html/rfc9114
 
 HTTP/0.9 was never standardized.
-
-[rfc-1945]: https://tools.ietf.org/html/rfc1945
-[rfc-7230]: https://tools.ietf.org/html/rfc7230
-[rfc-7231]: https://tools.ietf.org/html/rfc7231
-[rfc-5789]: https://tools.ietf.org/html/rfc5789
-[rfc-7232]: https://tools.ietf.org/html/rfc7232
-[rfc-2046]: https://tools.ietf.org/html/rfc2046#section-5.1
-[rfc-7233]: https://tools.ietf.org/html/rfc7233
-[rfc-7578]: https://tools.ietf.org/html/rfc7578
-[rfc-6266]: https://tools.ietf.org/html/rfc6266
-[rfc-7235]: https://tools.ietf.org/html/rfc7235
-[rfc-7617]: https://tools.ietf.org/html/rfc7617
-[rfc-7616]: https://tools.ietf.org/html/rfc7616
-[rfc-7615]: https://tools.ietf.org/html/rfc7615
-[rfc-6265]: https://tools.ietf.org/html/rfc6265
-[rfc-7234]: https://tools.ietf.org/html/rfc7234
-[rfc-7540]: https://tools.ietf.org/html/rfc7540
