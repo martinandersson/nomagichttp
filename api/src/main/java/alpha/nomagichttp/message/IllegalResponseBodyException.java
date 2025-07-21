@@ -16,16 +16,12 @@ import static java.util.Objects.requireNonNull;
  * 
  * Is thrown from {@link Response.Builder#build()} if the response has a body,
  * but the status-code is 1XX (Informational), 204 (No Content), or 304
- * (Not Modified) (
- * <a href="https://tools.ietf.org/html/rfc7230#section-3.3.3">RFC 7230 §3.3.3</a>
- * ).<p>
+ * (Not Modified).<p>
  * 
  * The exception is also thrown from {@link ChannelWriter#write(Response)} for
  * the same reasons, but additionally in the case the response has a body and
- * the request method — to which the response is a response — has HTTP method
- * {@link HttpConstants.Method#HEAD HEAD} (
- * <a href="https://tools.ietf.org/html/rfc7231#section-4.3.2">RFC 7231 §4.3.8</a>
- * ).<p>
+ * the request method — to which the response is a response — has HTTP method.
+ * <p>
  * 
  * The former is a fail-fast mechanism. But the request's HTTP method can only
  * be checked during a live HTTP exchange.
@@ -34,6 +30,8 @@ import static java.util.Objects.requireNonNull;
  * 
  * @see HttpServer
  * @see ExceptionHandler
+ * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-6.3">RFC 9112 §6.3</a>
+ * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.2">RFC 9110 §9.3.2</a>
  */
 public final class IllegalResponseBodyException
              extends RuntimeException implements HasResponse

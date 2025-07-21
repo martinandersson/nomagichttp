@@ -187,14 +187,14 @@ import java.util.function.IntConsumer;
 /// It might not be common but it is allowed for
 /// [GET][HttpConstants.Method#GET] requests to have a body and for
 /// [POST][HttpConstants.Method#POST] requests to not have a body
-/// ([RFC 7231 §4.3.1](https://tools.ietf.org/html/rfc7231#section-4.3.1),
-/// [RFC 7230 §3.3.2](https://tools.ietf.org/html/rfc7230#section-3.3.2),
+/// ([RFC 9110 §9.3.1](https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.1),
+/// [RFC 9110 §9.3.3](https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.3),
 /// [StackOverflow.com](https://stackoverflow.com/a/70157919/1268003)).
 /// 
 /// Similarly, the [201 (Created)][HttpConstants.StatusCode#TWO_HUNDRED_ONE]
 /// response often have a body which "typically describes and links to the
 /// resource(s) created"
-/// ([RFC 7231 §6.3.2](https://tools.ietf.org/html/rfc7231#section-6.3.2)), but
+/// ([RFC 9110 §15.3.2](https://datatracker.ietf.org/doc/html/rfc9110#section-15.3.2)), but
 /// it is not required to.
 /// 
 /// 

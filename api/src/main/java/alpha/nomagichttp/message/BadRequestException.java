@@ -15,7 +15,7 @@ import static alpha.nomagichttp.message.Responses.badRequest;
  *   <li>Transfer-Encoding contains multiple "chunked" tokens.</li>
  * </ul>
  * 
- * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.3">RFC 7230 §3.3.3 paragraph 3</a>
+ * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-6.3">RFC 9112 §6.3 paragraph 3</a>
  */
 public final class BadRequestException
              extends RuntimeException implements HasResponse

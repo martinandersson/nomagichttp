@@ -83,8 +83,8 @@ import java.util.stream.Stream;
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
  * @see Route
- * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.1.1">RFC 7230 §3.1.1</a>
- * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.3">RFC 7230 §3.3</a>
+ * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-3">RFC 9112 §3</a>
+ * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-6">RFC 9112 §6</a>
  */
 public interface Request extends HasHeaders, HasAttributes
 {
@@ -168,29 +168,41 @@ public interface Request extends HasHeaders, HasAttributes
      * having the client provide metrics, such as a timestamp when the client
      * finished sending the body.<p>
      * 
-     * RFC 7230 §4.4 defines an HTTP header "Trailer" which it says clients
-     * should use to list what trailers will be sent after the body. The RFC
-     * also suggests that the server move trailers to the "existing header
-     * fields" and then remove the "Trailer" header, i.e. make it look like
-     * trailing headers are normal headers (asynchronous APIs were not so common
-     * at the time!). And to preempt the damage that may result from hoisting
-     * trailers, the RFC also lists field names that it says must not be used as
-     * a trailing header, e.g. "Host" and "Content-Length".<p>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-6.6.2">RFC 9110 §6.6.2</a>
+     * defines an HTTP header "Trailer" which clients should use to list what
+     * trailers will be sent after the body.<p>
      * 
-     * The NoMagicHTTP does none of this stuff. The "Trailer" header and all
-     * trailers will remain untouched. However, the RFC hack <i>may</i> be
-     * applied by HTTP intermediaries who buffer up and dechunk an HTTP/1.1
-     * message before forwarding it. The application can therefore not
-     * generally be sure that the "Trailer" header and trailers are received in
-     * the same manner they were sent. Unless the application has knowledge or
-     * make assumptions about the request chain, it ought to fall back and look
-     * for missing trailers amongst the ordinary HTTP headers.<p>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-7.1.2">RFC 9112 §7.1.2</a>
+     * permits the server to merge/hoist trailers into the header section, and
+     * then to discard said trailers.
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-6.5.1">RFC 9110 §6.5.1</a>
+     * implies that a total discard is permitted (without hoisting).<p>
      * 
-     * Trailing headers were first introduced in HTTP/1.1 chunked encoding (
-     * <a href="https://tools.ietf.org/html/rfc7230#section-4.1.2">RFC 7230 §4.1.2</a>)
+     * Following partial or complete hoisting of trailers, the obsolete
+     * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.1.3">RFC 7230 §4.1.3</a>
+     * suggests the server to remove the Trailer header. This
+     * removing-suggestion is not present in RFC 9112.<p>
+     * 
+     * RFC 9110 §6.6.2 implies that the Trailer header should not be removed, as
+     * even without trailers, the header "could provide a hint of what metadata
+     * was lost".<p>
+     * 
+     * The NoMagicHTTP server does not perform any form of vaguely-defined,
+     * dubious tricks: the Trailer header and all trailers remain untouched.<p>
+     * 
+     * However, the same can not be stated for other HTTP intermediaries,
+     * especially those who buffer up and dechunk an HTTP/1.1 message before
+     * forwarding it. The application can therefore not generally be sure that
+     * the Trailer header and trailers are received in the same manner they were
+     * sent. Unless the application has knowledge or make assumptions about the
+     * request chain, it ought to look for missing trailers amongst the ordinary
+     * HTTP headers.<p>
+     * 
+     * Trailing headers were first introduced in HTTP/1.1 chunked encoding
+     * (<a href="https://datatracker.ietf.org/doc/html/rfc9112#section-7.1.2">RFC 9112 §7.1.2</a>)
      * and although HTTP/2 discontinues chunked encoding in favor of its own
-     * data frames, trailing headers remain supported (
-     * <a href="https://tools.ietf.org/html/rfc7540#section-8.1">RFC 7540 §8.1</a>).
+     * data frames, trailing headers remain supported
+     * (<a href="https://datatracker.ietf.org/doc/html/rfc9113#section-8.1">RFC 9113 §8.1</a>).
      * For requests of an older HTTP version ({@literal <} 1.1), this method
      * returns an empty headers object.<p>
      * 
@@ -572,7 +584,7 @@ public interface Request extends HasHeaders, HasAttributes
          * returns "fragment".<p>
          * 
          * The fragment is "dereferenced solely by the user agent" (
-         * <a href="https://tools.ietf.org/html/rfc3986#section-3.5">RFC 3986 §3.5</a>)
+         * <a href="https://datatracker.ietf.org/doc/html/rfc3986#section-3.5">RFC 3986 §3.5</a>)
          * and so shouldn't have been sent to the HTTP server in the first
          * place.<p>
          * 

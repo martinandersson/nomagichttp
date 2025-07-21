@@ -70,8 +70,9 @@ import static java.util.stream.Collectors.joining;
  * <h2>Media type parameters</h2>
  * 
  * A media type can have "companion data" (
- * <a href="https://tools.ietf.org/html/rfc6838#section-1">RFC 6838</a>) in the
- * form of parameters. The meaning of these are specific for each media type.<p>
+ * <a href="https://datatracker.ietf.org/doc/html/rfc6838#section-1">RFC 6838 §1</a>)
+ * in the form of parameters. The meaning of these are specific for each media
+ * type.<p>
  * 
  * In application code they can be used for whatever purpose fits the
  * application's needs. For example, this String defines two parameters
@@ -98,7 +99,7 @@ import static java.util.stream.Collectors.joining;
  * 
  * 
  * @see HttpConstants.HeaderName#CONTENT_TYPE
- * @see <a href="https://tools.ietf.org/html/rfc7231#section-3.1.1">RFC 7231 §3.1.1</a>
+ * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.3.1">RFC 9110 §8.3.1</a>
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class MediaType
@@ -347,7 +348,7 @@ public class MediaType
      * The only parameter value that will be lowered is the "charset" parameter
      * for all "text/*" media types. I.e., treated case-insensitively when
      * routing a request to a handler (
-     * <a href="https://tools.ietf.org/html/rfc2046#section-4.1.2">
+     * <a href="https://datatracker.ietf.org/doc/html/rfc2046#section-4.1.2">
      * RFC 2046 §4.1.2</a>).<p>
      * 
      * All tokens extracted from the specified {@code mediaType} will be

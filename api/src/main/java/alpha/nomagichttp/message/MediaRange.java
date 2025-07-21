@@ -49,7 +49,7 @@ import java.util.Map;
  * What is known about this thing is that it is a floating point value between 0
  * and 1 with at most 3 digits after the decimal point. Further, three numerical
  * values are specified in
- * <a href="https://tools.ietf.org/html/rfc7231#section-5.3.1">RFC 7231</a>.
+ * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-12.4.2">RFC 9110 §12.4.2</a>.
  * "1" - which is the default - "is the most preferred". "0.001 is the least
  * preferred" and "0" means "not acceptable".<p>
  * 

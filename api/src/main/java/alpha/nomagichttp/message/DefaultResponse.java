@@ -280,7 +280,6 @@ final class DefaultResponse implements Response
             final Response r = build0(s, this);
             if (r.isInformational()) {
                 if (r.headers().hasConnectionClose()) {
-                    // RFC 7230 "6.1. Connection"
                     throw new IllegalStateException(
                             "\"Connection: close\" set on 1XX (Informational) response.");
                 }

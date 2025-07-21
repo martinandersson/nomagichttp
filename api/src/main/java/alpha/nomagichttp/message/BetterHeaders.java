@@ -227,8 +227,8 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      *             if {@code headerName} has leading or trailing whitespace
      * 
      * @see #allTokensKeepQuotes(String)
-     * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
-     * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6">RFC 7230 §3.2.6</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-5.3">RFC 9110 §5.3</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-5.6">RFC 9110 §5.6</a>
      */
     Stream<String> allTokens(String headerName);
     
@@ -258,8 +258,6 @@ public interface BetterHeaders extends Iterable<Map.Entry<String, List<String>>>
      * @throws IllegalArgumentException
      *             if {@code headerName} has leading or trailing whitespace
      * 
-     * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2</a>
-     * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6">RFC 7230 §3.2.6</a>
      * @see Strings#split(CharSequence, char, char) 
      */
     Stream<String> allTokensKeepQuotes(String headerName);

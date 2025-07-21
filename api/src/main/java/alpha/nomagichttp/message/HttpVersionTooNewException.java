@@ -15,9 +15,10 @@ import static java.util.Objects.requireNonNull;
  * 
  * Any HTTP version equal to or greater than HTTP/2 is too new.<p>
  * 
- * HTTP/2 requires the exchange to begin as HTTP/1.1, then upgrades to HTTP/2
- * (RFC 7540 §3 "Starting HTTP/2"), which the NoMagicHTTP server currently
- * doesn't do. And so, this exception should actually never be observed.
+ * HTTP/2 requires the client to have prior knowledge of HTTP/2 support, or
+ * negotiate HTTP/2 through the TLS ALPN mechanism
+ * (RFC 9113 §3 "Starting HTTP/2"). Or in other words, this exception should
+ * never be observed.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 

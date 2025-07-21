@@ -94,10 +94,12 @@ public interface ResourceByteBufferIterable
      * Content-Length header on an outgoing response.
      * 
      * @apiNote
-     * Although the verbiage request/response "body size" is the more common
-     * form on the internet, the NoMagicHTTP library prefers to be aligned with
-     * <a href="https://www.rfc-editor.org/rfc/rfc7230#section-3.3.3">RFC 7230</a> 
-     * and Java itself (e.g. array.length).
+     * Although the verbiage request/response "body size" is prevailing verbiage
+     * used on the internet, the NoMagicHTTP library prefers to be aligned with
+     * relevant RFCs (e.g.
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.3.3">RFC 9110</a>,
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-6.3">RFC 9112</a>),
+     * and not the least Java itself (e.g. array.length).
      * 
      * @throws IOException if an I/O error occurs
      */
