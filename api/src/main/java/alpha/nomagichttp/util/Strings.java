@@ -226,7 +226,7 @@ public final class Strings
      * @param str to unquote
      * @return an unquoted string
      * 
-     * @see <a href="https://tools.ietf.org/html/rfc7230#section-3.2.6">RFC 7230 §3.2.6</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-5.6.4">RFC 9110 §5.6.4</a>
      */
     public static String unquote(String str) {
         if (str.length() <= 2 || !(str.startsWith("\"") && str.endsWith("\""))) {

@@ -185,7 +185,7 @@ final class RouteHandlerLookupTest
     }
     
     // RFC 7231, section "5.3.2. Accept", gives this example:
-    // (https://tools.ietf.org/html/rfc7231#page-38)
+    // (https://datatracker.ietf.org/doc/html/rfc7231#section-5.3.2)
     // 
     // Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1,
     //          text/html;level=2;q=0.4, */*;q=0.5

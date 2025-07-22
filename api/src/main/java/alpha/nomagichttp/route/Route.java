@@ -11,8 +11,8 @@ import java.util.Collection;
 import java.util.stream.Stream;
 
 /**
- * Is "a target resource upon which to apply semantics" (
- * <a href="https://tools.ietf.org/html/rfc7230#section-5.1">RFC 7230 §5.1</a>
+ * Is a "target resource upon which to apply the request" (
+ * <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-3.2">RFC 9112 §3.2</a>
  * ).<p>
  * 
  * The route is associated with one or more <i>request handlers</i>. In HTTP
@@ -146,8 +146,8 @@ import java.util.stream.Stream;
  *       <a href="https://datatracker.ietf.org/doc/html/rfc3986#section-2.1">RFC 3986 §2.1</a>).</li>
  *   <li>Dot-segments (".", "..") are normalized as defined by step 1 and 2 in
  *       Javadoc of {@link URI#normalize()} (basically "." is removed and ".."
- *       removes the previous segment, also see <a href="https://tools.ietf.org/html/rfc7231#section-9.1">
- *       RFC 7231 §9.1</a>)</li>
+ *       removes the previous segment, also see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-17.3">
+ *       RFC 9110 §17.3</a>)</li>
  *   <li>Finally, all remaining segments that are not interpreted as a path
  *       parameter value must match a route's segments exactly (case-sensitive)
  *       and in order.</li>

@@ -152,8 +152,8 @@ final class DefaultChannelWriter implements ChannelWriter
      * been successfully parsed and whatever version the request may be
      * using.<p>
      * 
-     * <a href="https://datatracker.ietf.org/doc/html/rfc7230/#section-2.6">
-     * RFC 7230 §2.6</a>:
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-6.2">
+     * RFC 9110 §6.2</a>:
      * <blockquote><pre>
      *   A server SHOULD send a response version equal to the highest version to
      *   which the server is conformant that has a major version less than or
@@ -164,7 +164,8 @@ final class DefaultChannelWriter implements ChannelWriter
      * We are not "conformant" with HTTP/0.X, nor do we yet implement HTTP/2,
      * and so returning HTTP/1.1 in all cases is just fine.<p>
      * 
-     * Same section from the RFC also writes:
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-2.3">
+     * RFC 9112 §2.3</a>:
      * <blockquote><pre>
      *   When an HTTP/1.1 message is sent to an HTTP/1.0 recipient or a
      *   recipient whose version is unknown, the HTTP/1.1 message is constructed

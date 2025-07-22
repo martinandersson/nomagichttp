@@ -244,8 +244,8 @@ public final class ChannelReader implements ByteBufferIterable
      * @return a new reader of the same channel as this one
      *         (never {@code null)}
      * 
-     * @see <a href="https://www.rfc-editor.org/rfc/rfc7230#section-6.3.2">
-     *          RFC 7230 §6.3.2. Pipelining</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-9.3.2">
+     *          RFC 9112 §9.3.2. Pipelining</a>
      * 
      * @throws IllegalStateException
      *             if this reader is not dismissed

@@ -76,7 +76,7 @@ final class RequestBody implements Request.Body
             // "If this is a request message [...] then"
             //  the message body length is zero (no message body is present)."
             // (only outbound responses may be close-delimited)
-            // https://tools.ietf.org/html/rfc7230#section-3.3.3
+            // https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
             content = reader.limit(0);
         } else {
             for (var v : enc) {

@@ -14,10 +14,10 @@ import alpha.nomagichttp.message.RequestLineParseException;
  * <h2>General rules</h2>
  * 
  * Citation from
- * <a href="https://tools.ietf.org/html/rfc7230#section-3.5">RFC 7230 §3.5</a>:
+ * <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-2.2">RFC 9112 §2.2</a>:
  *
  * <blockquote>
- *     Although the line terminator for the start-line and header fields is
+ *     Although the line terminator for the start-line and fields is
  *     the sequence CRLF, a recipient MAY recognize a single LF as a line
  *     terminator and ignore any preceding CR.
  * </blockquote>
@@ -30,10 +30,10 @@ import alpha.nomagichttp.message.RequestLineParseException;
  * <h2>Request-line rules</h2>
  *
  * Citation from
- * <a href="https://tools.ietf.org/html/rfc7230#section-3.5">RFC 7230 §3.5</a>:
+ * <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-3">RFC 9112 §3</a>:
  *
  * <blockquote>
- *     Although the request-line and status-line grammar rules require that
+ *     Although the request-line grammar rule requires that
  *     each of the component elements be separated by a single SP octet,
  *     recipients MAY instead parse on whitespace-delimited word boundaries
  *     and, aside from the CRLF terminator, treat any form of whitespace as
@@ -47,7 +47,7 @@ import alpha.nomagichttp.message.RequestLineParseException;
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Document, impl, and test various forms for request-target?
-//       https://datatracker.ietf.org/doc/html/rfc7230#section-5.3
+//       https://datatracker.ietf.org/doc/html/rfc9112#section-3.2
 final class ParserOfRequestLine extends AbstractResultParser<RawRequest.Line>
 {
     private final int maxBytes;

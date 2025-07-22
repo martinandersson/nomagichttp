@@ -140,7 +140,7 @@ public interface Response extends HasHeaders
      * 
      * @apiNote
      * Although
-     * <a href="https://www.rfc-editor.org/rfc/rfc7230#section-4.4">RFC 7230 §4.4</a>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-6.6.2">RFC 9110 §6.6.2</a>
      * specifies the "Trailer" header as optional (unfortunately), the server
      * must know in advance before sending the body whether trailers will be
      * present, as the presence of trailers may require the server to apply
@@ -220,12 +220,12 @@ public interface Response extends HasHeaders
      * 
      * Leading and trailing whitespace in header names and values, is not
      * accepted (
-     * <a href="https://datatracker.ietf.org/doc/html/rfc7230/#section-3.2.4">RFC §3.2.4. Field Parsing</a>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-5.1">RFC 9112 §5.1</a>
      * ). Header names are not accepted to be empty, values may be empty. The
      * content is generally not validated. The application should only use
      * visible US ASCII characters, and never write a header name with
      * whitespace in it (
-     * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2">RFC 7230 §3.2</a>
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-5">RFC 9112 §5</a>
      * ).<p>
      * 
      * Adding values to the same header name replicates the header across
@@ -263,9 +263,12 @@ public interface Response extends HasHeaders
      *   Set-Cookie: whatever=bar
      * </pre>
      * 
-     * Although the order for different names is not significant, "it is a good
-     * practice to send header fields that contain control data first" (
-     * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.2">RFC 7230 §3.2.2. Field Order</a>
+     * Although the order for different names is not significant, "it is good
+     * practice to send header fields that contain additional control data
+     * first, such as Host on requests and Date on responses, so that
+     * implementations can decide when not to handle a message as early as
+     * possible". (
+     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-5.3">RFC 9110 §5.3 Field Order</a>
      * ). Examples of "control data" includes "Age", "Cache-Control", "Expires",
      * et cetera (
      * <a href="https://datatracker.ietf.org/doc/html/rfc7231#section-7.1">RFC 7231 §7.1. Control Data</a>
@@ -548,7 +551,7 @@ public interface Response extends HasHeaders
          * @throws IllegalStateException
          *             if status code is 1XX (Informational) and header {@code
          *             Connection: close} is set (
-         *             <a href="https://tools.ietf.org/html/rfc7230#section-6.1">RFC 7231 §6.1</a>)
+         *             <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-9.3">RFC 9112 §9.3</a>)
          * @throws IllegalResponseBodyException
          *             if the body is not knowingly
          *             {@link ResourceByteBufferIterable#isEmpty() empty},

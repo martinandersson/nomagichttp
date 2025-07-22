@@ -28,10 +28,10 @@ import static java.lang.System.Logger.Level.DEBUG;
  * <h2>Header names</h2>
  * 
  * Citation from
- * <a href="https://tools.ietf.org/html/rfc7230#section-3.2.4">RFC 7230 §3.2.4</a>:
+ * <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-5.1">RFC 9112 §5.1</a>:
  * 
  * <blockquote>
- *     No whitespace is allowed between the header field-name and colon.
+ *     No whitespace is allowed between the field name and colon.
  * </blockquote>
  * 
  * One could argue semantically that whitespace is not allowed inside the header

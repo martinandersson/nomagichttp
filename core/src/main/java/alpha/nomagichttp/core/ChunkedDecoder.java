@@ -46,7 +46,7 @@ import static java.util.HexFormat.fromHexDigitsToLong;
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  * 
- * @see <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.1">RFC 7230 §4.1</a>
+ * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-7.1">RFC 9112 §7.1</a>
  */
 public final class ChunkedDecoder implements ByteBufferIterable
 {
