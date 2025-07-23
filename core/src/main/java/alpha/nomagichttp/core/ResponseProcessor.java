@@ -223,9 +223,9 @@ final class ResponseProcessor
                 "Transfer-Encoding in response was not expected");
         }
         return r.toBuilder()
-                  .setHeader(TRANSFER_ENCODING, "chunked")
-                  .body(new ChunkedEncoder(body))
-                  .build();
+                .setHeader(TRANSFER_ENCODING, "chunked")
+                .body(new ChunkedEncoder(body))
+                .build();
     }
     
     private static boolean trackErrorResponses(Response r) {
@@ -373,15 +373,15 @@ final class ResponseProcessor
     }
     
     private static Response dealWithNoCLHasBody(Response r, long actualLen) {
-         if (r.isInformational()) {
-             throw new IllegalResponseBodyException(BODY_IN_1XX, r);
-         }
-         if (r.statusCode() == TWO_HUNDRED_FOUR) {
-             throw new IllegalResponseBodyException(BODY_IN_204, r);
-         }
-         // Would be weird if the request method is CONNECT??? (RFC 7231 §4.3.6)
+        if (r.isInformational()) {
+            throw new IllegalResponseBodyException(BODY_IN_1XX, r);
+        }
+        if (r.statusCode() == TWO_HUNDRED_FOUR) {
+            throw new IllegalResponseBodyException(BODY_IN_204, r);
+        }
+        // Would be weird if the request method is CONNECT??? (RFC 7231 §4.3.6)
         return r.toBuilder()
-            .setHeader(CONTENT_LENGTH, valueOf(actualLen))
-            .build();
+                .setHeader(CONTENT_LENGTH, valueOf(actualLen))
+                .build();
     }
 }
