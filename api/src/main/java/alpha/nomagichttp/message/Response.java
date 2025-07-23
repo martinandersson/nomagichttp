@@ -460,9 +460,10 @@ public interface Response extends HasHeaders
          * 
          * Generally, the server will copy and paste the body's
          * {@link ResourceByteBufferIterable#length() length} to the response
-         * header Content-Length, and so, the application should only set this
-         * header for exceptional cases (
-         * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2">RFC 7230 §3.3.2</a>
+         * header Content-Length, and so, the application should only explicitly
+         * set said header for exceptional cases, for example when responding to
+         * a {@link HttpConstants.Method#HEAD HEAD} request
+         * (<a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.6">RFC 9110 §8.6</a>
          * ).<p>
          * 
          * If the response is used only once, then the body does not need to be
@@ -496,7 +497,7 @@ public interface Response extends HasHeaders
          * 
          * The application should only send trailers if the client has indicated
          * that they are accepted (
-         * <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-4.3">RFC 7230 $4.3</a>
+         * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.1.4">RFC 9110 $10.1.4</a>
          * ).
          * 
          * <pre>

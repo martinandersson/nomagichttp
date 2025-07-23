@@ -774,7 +774,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.4.1">RFC 7231 §15.4.1</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.4.1">RFC 9110 §15.4.1</a>
          */
         public static final int THREE_HUNDRED = 300;
         

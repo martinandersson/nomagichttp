@@ -554,7 +554,7 @@ public final class Responses
          * The "upgrade" token is not a command. It simply marks the Upgrade
          * header as a hop-by-hop header, such that a proxy can remove or
          * replace it with his own connection options sent to his client. See
-         * RFC 7230 section "6.1. Connection" and "6.7. Upgrade".
+         * RFC 9110 section "7.6.1 Connection" and "7.8 Upgrade".
          */
     }
     
