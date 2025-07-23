@@ -210,15 +210,15 @@ final class ResponseProcessor
             return r;
         }
         // We could mark the end of a response by closing the connection.
-        // But this is an unreliable method best to avoid (RFC 7230 §3.3.3.).
+        // But this is an unreliable method best to avoid (RFC 9112 §6.3).
         LOG.log(DEBUG, """
                 Response trailers and/or unknown body length; \
                 applying chunked encoding""");
         if (r.headers().contains(TRANSFER_ENCODING)) {
             // TODO: We are going to implement various codecs,
-            //       and then we can just append "chunked"?
-            // Note; it's okay to repeat TE; RFC 7230, 3.2.2, 3.3.1.
-            // But more clean to append.
+            //       and then we can just append "chunked"? ... 
+            // Note; it's okay to repeat T-E (RFC 9110 §5.3)
+            // But more clean to append (RFC 9112 §6.1).
             throw new IllegalArgumentException(
                 "Transfer-Encoding in response was not expected");
         }
@@ -273,7 +273,7 @@ final class ResponseProcessor
                     TRANSFER_ENCODING + " header in 204 response");
         }
         // "A sender MUST NOT send a Content-Length header field in any message
-        //  that contains a Transfer-Encoding header field." (RFC 7230 §3.3.2)
+        //  that contains a Transfer-Encoding header field." (RFC 9112 §6.2)
         if (r.headers().contentLength().isPresent()) {
             throw new IllegalArgumentException(
                     "Both $1 and $2 headers are present."
@@ -285,32 +285,32 @@ final class ResponseProcessor
     }
     
     private static Response dealWithHeadRequest(Response r, long actualLen) {
-        // We don't care about the presence of Content-Length, but:
+        // "The HEAD method is identical to GET except that the server MUST NOT
+        // send content in the response."
+        // (RFC 9110 §9.3.2)
         if (actualLen != 0) {
             throw new IllegalResponseBodyException(
                     "Possibly non-empty body in response to a $1 request."
                     .replace("$1", HEAD), r);
         }
         // "A server MAY send a Content-Length header field in a response to
-        //  a HEAD request" (RFC 7230 §3.3.2)
-        // 
-        // "the response terminates at the end of the header section"
-        // (RFC 7231 §4.3.2)
+        //  a HEAD request" (RFC 9110 §8.6)
         return r;
     }
     
     private static Response dealWith304(Response r, long actualLen) {
-        // "A 304 response cannot contain a message-body" (RFC 7234 §4.1)
+        // "A 304 response is terminated by the end of the header section; it
+        //  cannot contain content" (RFC 9110 §15.4.5)
+        // 
+        // "304 (Not Modified) status code is always terminated by the first
+        // empty line after the header fields" (RFC 9112 §6.3)
         if (actualLen != 0) {
             throw new IllegalResponseBodyException(
                     "Possibly non-empty body in $1 response"
                     .replace("$1", valueOf(THREE_HUNDRED_FOUR)), r);
         }
         // "A server MAY send a Content-Length header field in a 304 (Not
-        //  Modified) response to a conditional GET request" (RFC 7230 §3.3.2)
-        // 
-        // "A 304 response [...] is always terminated by the first empty line
-        //  after the header fields." (RFC 7232 §4.1)
+        //  Modified) response to a conditional GET request" (RFC 9110 §8.6)
         return r;
     }
     
@@ -322,9 +322,9 @@ final class ResponseProcessor
             Response r, Optional<String> reqMethod,
             long cLen, long actualLen)
     {
-            // "A server MUST NOT send a Content-Length header field in any
-            //  response with a status code of 1xx (Informational) or 204
-            //  (No Content)." (RFC 7230 §3.3.2)
+            // "A server MUST NOT send a Content-Length header field
+            //  in any response with a status code of
+            //  1xx (Informational) or 204 (No Content)." (RFC 9110 §8.6)
             if (r.isInformational()) {
                 if (actualLen == 0) {
                     throw new IllegalArgumentException(
@@ -342,8 +342,8 @@ final class ResponseProcessor
                         BODY_IN_204, r);
                 }
             } else if (r.isSuccessful()) {
-                // "A server MUST NOT send a Content-Length header field in
-                //  any 2xx (Successful) response to a CONNECT request"
+                // "A server MUST NOT send a Content-Length header field in any
+                //  2xx (Successful) response to a CONNECT request" (RFC 9110 §8.6)
                 if (CONNECT.equals(reqMethod.orElse(""))) {
                     throw new IllegalArgumentException(
                             "$1 header in response to a $2 request"
