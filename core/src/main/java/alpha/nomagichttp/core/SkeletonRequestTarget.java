@@ -39,7 +39,7 @@ final class SkeletonRequestTarget
      * </ul>
      * 
      * See sections "3.3 Path", "3.4 Query" and "3.5 Fragment" respectively in
-     * <a href="https://tools.ietf.org/html/rfc3986#section-3.3">RFC 3986</a>.
+     * <a href="https://datatracker.ietf.org/doc/html/rfc3986#section-3.3">RFC 3986</a>.
      * 
      * @param rt raw request target as read from the request-line
      * @return a complex type of the input

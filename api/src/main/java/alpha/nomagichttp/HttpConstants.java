@@ -1017,7 +1017,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7168#section-2.3.3">RFC 7168 §2.3.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc7168#section-2.3.3">RFC 7168 §2.3.3</a>
          * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.19">RFC 9110 §15.5.19</a>
          */
         public static final int FOUR_HUNDRED_EIGHTEEN = 418;
@@ -1036,7 +1036,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.2">RFC 4918 §11.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc4918#section-11.2">RFC 4918 §11.2</a>
          * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-15.5.21">RFC 9110 §15.5.21</a>
          */
         public static final int FOUR_HUNDRED_TWENTY_TWO = 422;
@@ -1046,7 +1046,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.3">RFC 4918 §11.3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc4918#section-11.3">RFC 4918 §11.3</a>
          */
         public static final int FOUR_HUNDRED_TWENTY_THREE = 423;
         
@@ -1055,7 +1055,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.4">RFC 4918 §11.4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc4918#section-11.4">RFC 4918 §11.4</a>
          */
         public static final int FOUR_HUNDRED_TWENTY_FOUR = 424;
         
@@ -1064,7 +1064,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc8470#section-5.2">RFC 8470 §5.2</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc8470#section-5.2">RFC 8470 §5.2</a>
          */
         public static final int FOUR_HUNDRED_TWENTY_FIVE = 425;
         
@@ -1082,7 +1082,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc6585#section-3">RFC 6585 §3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc6585#section-3">RFC 6585 §3</a>
          */
         public static final int FOUR_HUNDRED_TWENTY_EIGHT = 428;
         
@@ -1091,7 +1091,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc6585#section-4">RFC 6585 §4</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc6585#section-4">RFC 6585 §4</a>
          */
         public static final int FOUR_HUNDRED_TWENTY_NINE = 429;
         
@@ -1100,7 +1100,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc6585#section-5">RFC 6585 §5</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc6585#section-5">RFC 6585 §5</a>
          */
         public static final int FOUR_HUNDRED_THIRTY_ONE = 431;
         
@@ -1109,7 +1109,7 @@ public final class HttpConstants {
          * 
          * TODO: write something
          * 
-         * @see <a href="https://tools.ietf.org/html/rfc7725#section-3">RFC 7725 §3</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc7725#section-3">RFC 7725 §3</a>
          */
         public static final int FOUR_HUNDRED_FIFTY_ONE = 451;
         
@@ -2796,7 +2796,7 @@ public final class HttpConstants {
          * This header name is never used by the NoMagicHTTP server.
          * 
          * @see <a href="https://datatracker.ietf.org/doc/html/rfc9111#section-5.5">RFC 9111 §5.5</a>
-         * @see <a href="https://tools.ietf.org/html/rfc7234#section-5.5">RFC 7234 §5.5</a>
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc7234#section-5.5">RFC 7234 §5.5</a>
          */
         public static final String WARNING = "Warning";
         
