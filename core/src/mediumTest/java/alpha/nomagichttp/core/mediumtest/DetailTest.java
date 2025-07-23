@@ -316,7 +316,7 @@ final class DetailTest extends AbstractRealTest
         // And what about testing a request body of unknown length?
         // The request must specify Content-Length, or chunked encoding.
         // Only the server's response may have unknown length terminated by
-        // connection close (RFC 7230 §3.3.3 Message Body Length; bullet item 6).
+        // connection close (RFC 9112 §6.3, bullet item 6 & 7).
     }
     
     @Nested

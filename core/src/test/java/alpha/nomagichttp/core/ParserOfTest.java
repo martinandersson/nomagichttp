@@ -38,7 +38,7 @@ final class ParserOfTest
     @Test
     void ending_missing() {
         // Each header-field is finished with CRLF, + one CRLF after the section
-        // (RFC 7230, §3, §4.1.2 and 4.1)
+        // (RFC 9112 §2.1, §7.1 and §7.1.2)
         assertThrowsParseExc("Foo: Bar\n") // <-- only one LF
             .hasToString("""
                 HeaderParseException{\
