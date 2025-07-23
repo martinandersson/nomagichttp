@@ -958,7 +958,6 @@ Applicable to all three major versions:
   For example request header `If-Match` and response header `ETag`.
 - [RFC 2046 §5.1][rfc-2046] — Multipart Media Type  
   Composite messages.
-- [RFC 7533][rfc-7233] — Range Requests
 - [RFC 7578][rfc-7578] — Returning Values from Forms
 - [RFC 6266][rfc-6266] — Content-Disposition Header Field
 - [RFC 7617][rfc-7617] — The 'Basic' Authentication Scheme
@@ -971,7 +970,6 @@ Applicable to all three major versions:
 [rfc-5789]: https://datatracker.ietf.org/doc/html/rfc5789
 [rfc-7232]: https://datatracker.ietf.org/doc/html/rfc7232
 [rfc-2046]: https://datatracker.ietf.org/doc/html/rfc2046#section-5.1
-[rfc-7233]: https://datatracker.ietf.org/doc/html/rfc7233
 [rfc-7578]: https://datatracker.ietf.org/doc/html/rfc7578
 [rfc-6266]: https://datatracker.ietf.org/doc/html/rfc6266
 [rfc-7617]: https://datatracker.ietf.org/doc/html/rfc7617
