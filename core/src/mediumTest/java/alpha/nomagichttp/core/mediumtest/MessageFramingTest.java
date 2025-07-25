@@ -297,7 +297,7 @@ class MessageFramingTest extends AbstractRealTest
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
-                .hasMessage("Both Transfer-Encoding and" +
+                .hasMessage("Both Transfer-Encoding and " +
                             "Content-Length headers are present.");
         }
         
