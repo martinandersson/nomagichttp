@@ -212,7 +212,7 @@ class MessageFramingTest extends AbstractRealTest
         }
     }
     
-    ///  Asserts that the response was built just fine.
+    ///  Asserts that the response was built just fine (not null).
     /// 
     /// I.e. the asserted problem originates from the channel-write operation.
     private static abstract class BuiltResponse {
@@ -235,6 +235,7 @@ class MessageFramingTest extends AbstractRealTest
                 sent = builder(statusCode)
                     .setHeader(TRANSFER_ENCODING, "blah")
                     .build();
+                // Can't return to HttpExchange, he'd whine about non-final response lol
                 channel().write(sent);
                 return null;
             }));
