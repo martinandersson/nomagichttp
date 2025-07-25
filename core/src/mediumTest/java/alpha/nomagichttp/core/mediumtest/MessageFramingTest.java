@@ -277,8 +277,7 @@ class MessageFramingTest extends AbstractRealTest
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
-                .hasMessage(CONTENT_LENGTH + " header in $1 response"
-                    .replace("$1", asStr));
+                .hasMessage("Content-Length header in " + asStr + " response");
         }
         
         // "A sender MUST NOT send a Content-Length header field in any message
