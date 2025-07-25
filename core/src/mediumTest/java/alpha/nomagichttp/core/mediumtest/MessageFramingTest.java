@@ -337,24 +337,19 @@ class MessageFramingTest extends AbstractRealTest
     class ResponseContentBad_FromChannel extends BuiltResponse {
         @Test
         void bodyToHEAD_knownLength() throws IOException, InterruptedException {
-            server().add("/",
-                HEAD().apply(_ -> (sent = text("Body!"))));
-            String rsp = client().writeReadTextUntilNewlines(
-                "HEAD / HTTP/1.1" + CRLF + CRLF);
-            assertThat(rsp).isEqualTo("""
-                HTTP/1.1 500 Internal Server Error\r
-                Content-Length: 0\r\n\r\n""");
-            assertAwaitHandledAndLoggedExc()
-                .isExactlyInstanceOf(IllegalResponseBodyException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage("Possibly non-empty body in response to a HEAD request.");
+            bodyToHEAD_engine(sent = text("Body!"));
         }
         
         @Test
         void bodyToHEAD_unknownLength() throws IOException, InterruptedException {
+            bodyToHEAD_engine(sent = ok(ofSupplier(() -> null)));
+        }
+        
+        private void bodyToHEAD_engine(Response bad)
+                throws IOException, InterruptedException
+        {
             server().add("/",
-                HEAD().apply(_ -> (sent = ok(ofSupplier(() -> null)))));
+                HEAD().apply(_ -> bad));
             String rsp = client().writeReadTextUntilNewlines(
                 "HEAD / HTTP/1.1" + CRLF + CRLF);
             assertThat(rsp).isEqualTo("""
