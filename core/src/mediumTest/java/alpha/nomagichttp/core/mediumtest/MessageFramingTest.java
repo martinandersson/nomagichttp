@@ -25,7 +25,6 @@ import static alpha.nomagichttp.HttpConstants.StatusCode.TWO_HUNDRED;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
-import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Response.builder;
 import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
@@ -113,19 +112,16 @@ class MessageFramingTest extends AbstractRealTest
         
         // "A client MUST NOT send content in a TRACE request."
         // — RFC 9110 §9.3.8
-        @Test
-        void TRACE_hasBody() // TODO: Test also unknown length
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "Content-Length: 1\n\nX",
+                "Transfer-Encoding: chunked\n\n1\nX\n0\n\n"})
+        void TRACE_hasBody(String headersAndBody)
                 throws IOException, InterruptedException
         {
-            server().add("/",
-                TRACE().apply(_ -> {
-                    throw new AssertionError("Not invoked.");
-                }));
-            String rsp = client().writeReadTextUntilNewlines("""
-                TRACE / HTTP/1.1\r
-                Content-Length: 1\r
-                \r
-                X""");
+            server();
+            var rsp = client().writeReadTextUntilEOS(
+                "TRACE / HTTP/1.1\n" + headersAndBody);
             assertThat(rsp).isEqualTo("""
                 HTTP/1.1 400 Bad Request\r
                 Connection: close\r
