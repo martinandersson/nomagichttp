@@ -39,9 +39,7 @@ import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
-import static alpha.nomagichttp.handler.RequestHandler.HEAD;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
-import static alpha.nomagichttp.handler.RequestHandler.TRACE;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.noContent;
@@ -51,7 +49,6 @@ import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static alpha.nomagichttp.testutil.functional.Environment.isGitHubActions;
 import static alpha.nomagichttp.testutil.functional.Environment.isJitPack;
-import static alpha.nomagichttp.util.ByteBufferIterables.ofString;
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
@@ -64,7 +61,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Tests concerning server errors.<p>
  * 
  * Tests in this class usually provoke exceptions, run asserts on exceptions
- * delivered to the exception handler, and of course, assert the response.
+ * delivered to the exception handler, and of course, assert the response.<p>
+ * 
+ * {@link BadRequestException}, {@link IllegalRequestBodyException}, and
+ * {@link IllegalResponseBodyException} are tested by
+ * {@link MessageFramingTest}.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
@@ -127,25 +128,6 @@ final class ErrorTest extends AbstractRealTest
                 .hasMessage("""
                     Can not parse "BOOM!". \
                     Expected exactly one forward slash in <type/subtype>.""");
-    }
-    
-    @Test
-    void BadRequestExc() throws IOException, InterruptedException {
-        server();
-        String rsp = client().writeReadTextUntilEOS("""
-            GET / HTTP/1.1\r
-            Transfer-Encoding: chunked\r
-            Content-Length: 123\r\n\r
-            """);
-        assertThat(rsp).isEqualTo("""
-            HTTP/1.1 400 Bad Request\r
-            Connection: close\r
-            Content-Length: 0\r\n\r\n""");
-        assertThat(pollServerException())
-            .isExactlyInstanceOf(BadRequestException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Content-Length and Transfer-Encoding are both present.");
     }
     
     @Nested
@@ -327,67 +309,6 @@ final class ErrorTest extends AbstractRealTest
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
                 .hasMessage(null);
-        }
-    }
-    
-    @Test
-    void IllegalRequestBodyExc()
-            throws IOException, InterruptedException
-    {
-        server().add("/",
-            TRACE().apply(_ -> {
-                throw new AssertionError("Not invoked.");
-            }));
-        String rsp = client().writeReadTextUntilNewlines(
-            "TRACE / HTTP/1.1"         + CRLF +
-            "Content-Length: 1"        + CRLF + CRLF +
-            
-            "X");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 400 Bad Request" + CRLF +
-            "Connection: close"        + CRLF +
-            "Content-Length: 0"        + CRLF + CRLF);
-        assertThat(pollServerException())
-            .isExactlyInstanceOf(IllegalRequestBodyException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Body in a TRACE request.");
-    }
-    
-    @Nested
-    class IllegalResponseBodyExc {
-        @Test
-        void in1xxResponse() throws IOException, InterruptedException {
-            server().add("/",
-                GET().apply(_ -> Response.builder(123)
-                         .body(ofString("Body!"))
-                         .build()));
-            String rsp = client().writeReadTextUntilNewlines(
-                "GET / HTTP/1.1"                     + CRLF + CRLF);
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                "Content-Length: 0"                  + CRLF + CRLF);
-            assertAwaitHandledAndLoggedExc()
-                .isExactlyInstanceOf(IllegalResponseBodyException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage("Presumably a body in a 123 (Unknown) response.");
-        }
-        
-        @Test
-        void inResponseToHEAD() throws IOException, InterruptedException {
-            server().add("/",
-                HEAD().apply(_ -> text("Body!")));
-            String rsp = client().writeReadTextUntilNewlines(
-                "HEAD / HTTP/1.1"                    + CRLF + CRLF);
-            assertThat(rsp).isEqualTo(
-                // No Content-Length (see ResponseProcessor.dealWithHeadRequest)
-                "HTTP/1.1 500 Internal Server Error" + CRLF + CRLF);
-            assertAwaitHandledAndLoggedExc()
-                .isExactlyInstanceOf(IllegalResponseBodyException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage("Possibly non-empty body in response to a HEAD request.");
         }
     }
     

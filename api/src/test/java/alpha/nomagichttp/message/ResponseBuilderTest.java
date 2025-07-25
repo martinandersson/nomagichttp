@@ -2,11 +2,16 @@ package alpha.nomagichttp.message;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.nio.charset.CharacterCodingException;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONNECTION;
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_TYPE;
 import static alpha.nomagichttp.testutil.Assertions.assertHeaders;
 import static alpha.nomagichttp.util.ByteBufferIterables.empty;
+import static alpha.nomagichttp.util.ByteBufferIterables.ofString;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofStringUnsafe;
 import static java.util.List.of;
 import static java.util.Map.entry;
@@ -49,6 +54,18 @@ final class ResponseBuilderTest
             assertThat(b1.build().statusCode()).isEqualTo(1);
             assertThat(b2.build().statusCode()).isEqualTo(2);
             assertThat(b3.build().statusCode()).isEqualTo(3);
+        }
+        
+        @ParameterizedTest
+        @ValueSource(ints = {123, 204, 304})
+        void IllegalResponseBodyExc(int statusCode) throws CharacterCodingException {
+            var b = builder(statusCode).body(ofString("Body"));
+            assertThatThrownBy(b::build)
+                .isExactlyInstanceOf(IllegalResponseBodyException.class)
+                    .hasNoCause()
+                    .hasNoSuppressedExceptions()
+                    .hasMessage("Presumably a body in a $1 (Unknown) response."
+                        .replace("$1", Integer.toString(statusCode)));
         }
     }
     

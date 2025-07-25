@@ -11,7 +11,6 @@ import alpha.nomagichttp.util.FileLockTimeoutException;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Optional;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.HeaderName.TRAILER;
@@ -241,144 +240,117 @@ final class ResponseProcessor
         return false;
     }
     
+    private static final String ASSERT_NO_BODY
+            = "Response.Builder.build() should have thrown" +
+              IllegalResponseBodyException.class.getSimpleName();
+    
+    //  For relevant RFC rules, see MessageFramingTest.
     private static Response ensureCorrectFraming(Response r, long len) {
-        if (r.headers().contains(TRANSFER_ENCODING)) {
-            return dealWithTransferEncoding(r);
+        final String method = skeletonRequest()
+                .map(req -> req.head().line().method()).orElse(null);
+        if (HEAD.equals(method)) {
+            validateHeadRequest(r, len);
         }
-        assert len >= 0 : "If <= -1, transfer encoding chunked was applied";
-        final var reqMethod = skeletonRequest()
-                .map(req -> req.head().line().method());
-        if (reqMethod.filter(HEAD::equals).isPresent()) {
-            return dealWithHeadRequest(r, len);
+        if (r.headers().contains(TRANSFER_ENCODING)) {
+            validateTransferEncoding(r, method);
+            // With transfer-encoding, framing is done
+            return r;
         }
         if (r.statusCode() == THREE_HUNDRED_FOUR) {
-            return dealWith304(r, len);
+            assert len == 0 : ASSERT_NO_BODY;
+            return r;
         }
+        assert len >= 0 : "If <= -1, transfer encoding chunked was applied";
         final var cLen = r.headers().contentLength();
         if (cLen.isPresent()) {
-            return dealWithCL(r, reqMethod, cLen.getAsLong(), len);
+            validateCL(r, method, cLen.getAsLong(), len);
+            // Use the given content-length
+            return r;
         } else if (len == 0) {
-            return dealWithNoCLNoBody(r, reqMethod);
+            return dealWithNoCLNoBody(r, method);
         } else {
             return dealWithNoCLHasBody(r, len);
         }
     }
     
-    private static Response dealWithTransferEncoding(Response r) {
+    private static void validateHeadRequest(Response r, long actualLen) {
+        if (actualLen != 0) {
+            throw new IllegalResponseBodyException(
+                    "Possibly non-empty body in response to a $1 request."
+                    .replace("$1", HEAD), r);
+        }
+    }
+    
+    private static void validateTransferEncoding(
+            Response r, String method) 
+    {
         if (r.isInformational()) {
             throw new IllegalArgumentException(
                     TRANSFER_ENCODING + " header in 1xx response");
         } else if (r.statusCode() == TWO_HUNDRED_FOUR) {
             throw new IllegalArgumentException(
                     TRANSFER_ENCODING + " header in 204 response");
+        } else if (r.isSuccessful() && CONNECT.equals(method)) {
+            throw new IllegalArgumentException(
+                    "$1 header in 2xx response to a $2 request"
+                        .replace("$1", TRANSFER_ENCODING)
+                        .replace("$2", CONNECT));
         }
-        // "A sender MUST NOT send a Content-Length header field in any message
-        //  that contains a Transfer-Encoding header field." (RFC 9112 §6.2)
         if (r.headers().contentLength().isPresent()) {
             throw new IllegalArgumentException(
                     "Both $1 and $2 headers are present."
                     .replace("$1", TRANSFER_ENCODING)
-                    .replace("$1", CONTENT_LENGTH));
+                    .replace("$2", CONTENT_LENGTH));
         }
-        // With transfer-encoding, framing is done
-        return r;
     }
     
-    private static Response dealWithHeadRequest(Response r, long actualLen) {
-        // "The HEAD method is identical to GET except that the server MUST NOT
-        // send content in the response."
-        // (RFC 9110 §9.3.2)
-        if (actualLen != 0) {
-            throw new IllegalResponseBodyException(
-                    "Possibly non-empty body in response to a $1 request."
-                    .replace("$1", HEAD), r);
-        }
-        // "A server MAY send a Content-Length header field in a response to
-        //  a HEAD request" (RFC 9110 §8.6)
-        return r;
-    }
-    
-    private static Response dealWith304(Response r, long actualLen) {
-        // "A 304 response is terminated by the end of the header section; it
-        //  cannot contain content" (RFC 9110 §15.4.5)
-        // 
-        // "304 (Not Modified) status code is always terminated by the first
-        // empty line after the header fields" (RFC 9112 §6.3)
-        if (actualLen != 0) {
-            throw new IllegalResponseBodyException(
-                    "Possibly non-empty body in $1 response"
-                    .replace("$1", valueOf(THREE_HUNDRED_FOUR)), r);
-        }
-        // "A server MAY send a Content-Length header field in a 304 (Not
-        //  Modified) response to a conditional GET request" (RFC 9110 §8.6)
-        return r;
-    }
-    
-    private static final String
-            BODY_IN_1XX = "Body in 1xx response",
-            BODY_IN_204 = "Body in 204 response";
-    
-    private static Response dealWithCL(
-            Response r, Optional<String> reqMethod,
-            long cLen, long actualLen)
+    private static void validateCL(
+            Response r, String method, long cLen, long actualLen)
     {
-            // "A server MUST NOT send a Content-Length header field
-            //  in any response with a status code of
-            //  1xx (Informational) or 204 (No Content)." (RFC 9110 §8.6)
             if (r.isInformational()) {
                 if (actualLen == 0) {
                     throw new IllegalArgumentException(
                             CONTENT_LENGTH + " header in 1xx response");
                 } else {
-                    throw new IllegalResponseBodyException(
-                            BODY_IN_1XX, r);
+                    throw new AssertionError(ASSERT_NO_BODY);
                 }
             } else if (r.statusCode() == TWO_HUNDRED_FOUR) {
                 if (actualLen == 0) {
                     throw new IllegalArgumentException(
                         CONTENT_LENGTH + " header in 204 response");
                 } else {
-                    throw new IllegalResponseBodyException(
-                        BODY_IN_204, r);
+                    throw new AssertionError(ASSERT_NO_BODY);
                 }
             } else if (r.isSuccessful()) {
-                // "A server MUST NOT send a Content-Length header field in any
-                //  2xx (Successful) response to a CONNECT request" (RFC 9110 §8.6)
-                if (CONNECT.equals(reqMethod.orElse(""))) {
+                if (CONNECT.equals(method)) {
                     throw new IllegalArgumentException(
-                            "$1 header in response to a $2 request"
+                            "$1 header in 2xx response to a $2 request"
                             .replace("$1", CONTENT_LENGTH)
                             .replace("$2", CONNECT));
                 }
             }
-            if (cLen != actualLen) {
+            if (!HEAD.equals(method) && cLen != actualLen) {
                 throw new IllegalArgumentException(
                       "Discrepancy between $1=$2 and actual body length $3"
                       .replace("$1", CONTENT_LENGTH)
                       .replace("$2", valueOf(cLen))
                       .replace("$3", valueOf(actualLen)));
             }
-            // Use the given content-length
-            return r;
     }
     
     private static Response dealWithNoCLNoBody(
-            Response r, Optional<String> rMethod)
+            Response r, String method)
     {
         return r.isInformational() ||
                r.statusCode() == TWO_HUNDRED_FOUR ||
-               rMethod.filter(CONNECT::equals).isPresent() ?
+               (r.isSuccessful() && CONNECT.equals(method)) ?
                    r :
                    r.toBuilder().setHeader(CONTENT_LENGTH, "0").build();
     }
     
     private static Response dealWithNoCLHasBody(Response r, long actualLen) {
-        if (r.isInformational()) {
-            throw new IllegalResponseBodyException(BODY_IN_1XX, r);
-        }
-        if (r.statusCode() == TWO_HUNDRED_FOUR) {
-            throw new IllegalResponseBodyException(BODY_IN_204, r);
-        }
+        assert !r.isInformational() : ASSERT_NO_BODY;
+        assert r.statusCode() != TWO_HUNDRED_FOUR : ASSERT_NO_BODY;
         // Would be weird if the request method is CONNECT??? (RFC 7231 §4.3.6)
         return r.toBuilder()
                 .setHeader(CONTENT_LENGTH, valueOf(actualLen))
