@@ -107,7 +107,8 @@ class MessageFramingTest extends AbstractRealTest
                 .isExactlyInstanceOf(BadRequestException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
-                .hasMessage("Content-Length and Transfer-Encoding are both present.");
+                .hasMessage(
+                    "Content-Length and Transfer-Encoding are both present.");
         }
         
         // "A client MUST NOT send content in a TRACE request."
@@ -235,7 +236,7 @@ class MessageFramingTest extends AbstractRealTest
                 sent = builder(statusCode)
                     .setHeader(TRANSFER_ENCODING, "blah")
                     .build();
-                // Can't return to HttpExchange, he'd whine about non-final response lol
+                // Can't return non-final response to HttpExchange lol
                 channel().write(sent);
                 return null;
             }));
@@ -257,7 +258,9 @@ class MessageFramingTest extends AbstractRealTest
         //  — RFC 9110 §8.6
         @ParameterizedTest
         @CsvSource({"123,1xx", "204,204"})
-        void cLength_in1xx_204(int statusCode, String asStr) throws IOException, InterruptedException {
+        void cLength_in1xx_204(int statusCode, String asStr)
+                throws IOException, InterruptedException
+        {
             server().add("/", GET().apply(_ -> {
                 sent = builder(statusCode)
                     .setHeader(CONTENT_LENGTH, "123")
@@ -295,7 +298,8 @@ class MessageFramingTest extends AbstractRealTest
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
-                .hasMessage("Both Transfer-Encoding and Content-Length headers are present.");
+                .hasMessage("Both Transfer-Encoding and" +
+                            "Content-Length headers are present.");
         }
         
         // "A server MUST NOT send any Transfer-Encoding or Content-Length
