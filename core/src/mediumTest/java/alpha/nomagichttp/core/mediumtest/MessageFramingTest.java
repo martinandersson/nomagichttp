@@ -384,15 +384,15 @@ class MessageFramingTest extends AbstractRealTest
     
     @Nested
     class ResponseContentBad_FromBuilder {
-        Response sent;
+        Response unassigned;
         @AfterEach void check() {
-            assertNull(sent);
+            assertNull(unassigned);
         }
         
         @Test
         void bodyIn1xx_knownLength() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(_ -> (sent = Response.builder(123)
+                GET().apply(_ -> (unassigned = Response.builder(123)
                          .body(ofString("Body!"))
                          .build())));
             String rsp = client().writeReadTextUntilNewlines(
@@ -410,7 +410,7 @@ class MessageFramingTest extends AbstractRealTest
         @Test
         void bodyIn1xx_unknownLength() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(_ -> (sent = Response.builder(123)
+                GET().apply(_ -> (unassigned = Response.builder(123)
                          .body(ofSupplier(() -> null))
                          .build())));
             String rsp = client().writeReadTextUntilNewlines(
@@ -428,7 +428,7 @@ class MessageFramingTest extends AbstractRealTest
         @Test
         void bodyIn204_knownLength() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(_ -> (sent = noContent().toBuilder()
+                GET().apply(_ -> (unassigned = noContent().toBuilder()
                          .body(ofString("Body!"))
                          .build())));
             String rsp = client().writeReadTextUntilNewlines(
@@ -446,7 +446,7 @@ class MessageFramingTest extends AbstractRealTest
         @Test
         void bodyIn204_unknownLength() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(_ -> (sent = noContent().toBuilder()
+                GET().apply(_ -> (unassigned = noContent().toBuilder()
                          .body(ofSupplier(() -> null))
                          .build())));
             String rsp = client().writeReadTextUntilNewlines(
@@ -464,7 +464,7 @@ class MessageFramingTest extends AbstractRealTest
         @Test
         void bodyIn304_knownLength() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(_ -> (sent = builder(THREE_HUNDRED_FOUR, NOT_MODIFIED)
+                GET().apply(_ -> (unassigned = builder(THREE_HUNDRED_FOUR, NOT_MODIFIED)
                          .body(ofString("Body!"))
                          .build())));
             String rsp = client().writeReadTextUntilNewlines(
@@ -482,7 +482,7 @@ class MessageFramingTest extends AbstractRealTest
         @Test
         void bodyIn304_unknownLength() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(_ -> (sent = builder(THREE_HUNDRED_FOUR, NOT_MODIFIED)
+                GET().apply(_ -> (unassigned = builder(THREE_HUNDRED_FOUR, NOT_MODIFIED)
                          .body(ofSupplier(() -> null))
                          .build())));
             String rsp = client().writeReadTextUntilNewlines(
