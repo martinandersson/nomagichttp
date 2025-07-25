@@ -162,7 +162,7 @@ class MessageFramingTest extends AbstractRealTest
         // "A server MAY send a Content-Length header field in a 304 (Not
         //  Modified) response to a conditional GET request" — RFC 9110 §8.6
         // 
-        // Note: The implementation ResponseProcessor.dealWith304() is
+        // Note: The implementation ResponseProcessor.ensureCorrectFraming() is
         // indifferent to which request method is being used.
         @Test
         void cLength_in304() throws IOException {
