@@ -323,7 +323,8 @@ class MessageFramingTest extends AbstractRealTest
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
-                .hasMessage(header + " header in 2xx response to a CONNECT request");
+                .hasMessage(
+                    header + " header in 2xx response to a CONNECT request");
         }
     }
     
@@ -339,12 +340,14 @@ class MessageFramingTest extends AbstractRealTest
     @Nested
     class ResponseContentBad_FromChannel extends BuiltResponse {
         @Test
-        void bodyToHEAD_knownLength() throws IOException, InterruptedException {
+        void bodyToHEAD_knownLength()
+                throws IOException, InterruptedException {
             bodyToHEAD_engine(sent = text("Body!"));
         }
         
         @Test
-        void bodyToHEAD_unknownLength() throws IOException, InterruptedException {
+        void bodyToHEAD_unknownLength()
+                throws IOException, InterruptedException {
             bodyToHEAD_engine(sent = ok(ofSupplier(() -> null)));
         }
         
@@ -362,11 +365,14 @@ class MessageFramingTest extends AbstractRealTest
                 .isExactlyInstanceOf(IllegalResponseBodyException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
-                .hasMessage("Possibly non-empty body in response to a HEAD request.");
+                .hasMessage(
+                    "Possibly non-empty body in response to a HEAD request.");
         }
         
         @Test
-        void cLen_actual_discrepancy() throws IOException, InterruptedException {
+        void cLen_actual_discrepancy()
+                throws IOException, InterruptedException
+        {
             server().add("/",
                 GET().apply(_ -> (sent =
                     text("Body!").toBuilder()
@@ -381,7 +387,8 @@ class MessageFramingTest extends AbstractRealTest
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
-                .hasMessage("Discrepancy between Content-Length=99 and actual body length 5");
+                .hasMessage("Discrepancy between " +
+                            "Content-Length=99 and actual body length 5");
         }
     }
     
@@ -411,7 +418,9 @@ class MessageFramingTest extends AbstractRealTest
         }
         
         @Test
-        void bodyIn1xx_unknownLength() throws IOException, InterruptedException {
+        void bodyIn1xx_unknownLength()
+                throws IOException, InterruptedException
+        {
             server().add("/",
                 GET().apply(_ -> (unassigned = Response.builder(123)
                          .body(ofSupplier(() -> null))
@@ -443,11 +452,14 @@ class MessageFramingTest extends AbstractRealTest
                 .isExactlyInstanceOf(IllegalResponseBodyException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
-                .hasMessage("Presumably a body in a 204 (No Content) response.");
+                .hasMessage(
+                    "Presumably a body in a 204 (No Content) response.");
         }
         
         @Test
-        void bodyIn204_unknownLength() throws IOException, InterruptedException {
+        void bodyIn204_unknownLength()
+                throws IOException, InterruptedException
+        {
             server().add("/",
                 GET().apply(_ -> (unassigned = noContent().toBuilder()
                          .body(ofSupplier(() -> null))
@@ -461,15 +473,17 @@ class MessageFramingTest extends AbstractRealTest
                 .isExactlyInstanceOf(IllegalResponseBodyException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
-                .hasMessage("Presumably a body in a 204 (No Content) response.");
+                .hasMessage(
+                    "Presumably a body in a 204 (No Content) response.");
         }
         
         @Test
         void bodyIn304_knownLength() throws IOException, InterruptedException {
             server().add("/",
-                GET().apply(_ -> (unassigned = builder(THREE_HUNDRED_FOUR, NOT_MODIFIED)
-                         .body(ofString("Body!"))
-                         .build())));
+                GET().apply(_ -> (unassigned =
+                    builder(THREE_HUNDRED_FOUR, NOT_MODIFIED)
+                        .body(ofString("Body!"))
+                        .build())));
             String rsp = client().writeReadTextUntilNewlines(
                 "GET / HTTP/1.1"                     + CRLF + CRLF);
             assertThat(rsp).isEqualTo(
@@ -483,11 +497,14 @@ class MessageFramingTest extends AbstractRealTest
         }
         
         @Test
-        void bodyIn304_unknownLength() throws IOException, InterruptedException {
+        void bodyIn304_unknownLength()
+                throws IOException, InterruptedException
+        {
             server().add("/",
-                GET().apply(_ -> (unassigned = builder(THREE_HUNDRED_FOUR, NOT_MODIFIED)
-                         .body(ofSupplier(() -> null))
-                         .build())));
+                GET().apply(_ -> (unassigned =
+                        builder(THREE_HUNDRED_FOUR, NOT_MODIFIED)
+                            .body(ofSupplier(() -> null))
+                            .build())));
             String rsp = client().writeReadTextUntilNewlines(
                 "GET / HTTP/1.1"                     + CRLF + CRLF);
             assertThat(rsp).isEqualTo(
@@ -497,7 +514,8 @@ class MessageFramingTest extends AbstractRealTest
                 .isExactlyInstanceOf(IllegalResponseBodyException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
-                .hasMessage("Presumably a body in a 304 (Not Modified) response.");
+                .hasMessage(
+                    "Presumably a body in a 304 (Not Modified) response.");
         }
     }
 }
