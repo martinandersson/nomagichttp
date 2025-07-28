@@ -240,9 +240,7 @@ final class ResponseProcessor
         return false;
     }
     
-    private static final String ASSERT_NO_BODY
-            = "Response.Builder.build() should have thrown" +
-              IllegalResponseBodyException.class.getSimpleName();
+    private static final String INVALID_BODY = "Non-empty body in ";
     
     //  For relevant RFC rules, see MessageFramingTest.
     private static Response ensureCorrectFraming(Response r, long len) {
@@ -257,7 +255,10 @@ final class ResponseProcessor
             return r;
         }
         if (r.statusCode() == THREE_HUNDRED_FOUR) {
-            assert len == 0 : ASSERT_NO_BODY;
+            if (len != 0) {
+                throw new IllegalResponseBodyException(
+                        INVALID_BODY + THREE_HUNDRED_FOUR + " response", r);
+            }
             return r;
         }
         assert len >= 0 : "If <= -1, transfer encoding chunked was applied";
@@ -312,14 +313,16 @@ final class ResponseProcessor
                     throw new IllegalArgumentException(
                             CONTENT_LENGTH + " header in 1xx response");
                 } else {
-                    throw new AssertionError(ASSERT_NO_BODY);
+                    throw new IllegalResponseBodyException(
+                            INVALID_BODY + "1xx response", r);
                 }
             } else if (r.statusCode() == TWO_HUNDRED_FOUR) {
                 if (actualLen == 0) {
                     throw new IllegalArgumentException(
                         CONTENT_LENGTH + " header in 204 response");
                 } else {
-                    throw new AssertionError(ASSERT_NO_BODY);
+                    throw new IllegalResponseBodyException(
+                            INVALID_BODY + TWO_HUNDRED_FOUR + " response", r);
                 }
             } else if (r.isSuccessful()) {
                 if (CONNECT.equals(method)) {
@@ -349,8 +352,13 @@ final class ResponseProcessor
     }
     
     private static Response dealWithNoCLHasBody(Response r, long actualLen) {
-        assert !r.isInformational() : ASSERT_NO_BODY;
-        assert r.statusCode() != TWO_HUNDRED_FOUR : ASSERT_NO_BODY;
+        if (r.isInformational()) {
+            throw new IllegalResponseBodyException(
+                    INVALID_BODY + "1xx response", r);
+        } else if (r.statusCode() == TWO_HUNDRED_FOUR) {
+            throw new IllegalResponseBodyException(
+                    INVALID_BODY + TWO_HUNDRED_FOUR + " response", r);
+        }
         // Would be weird if the request method is CONNECT??? (RFC 7231 §4.3.6)
         return r.toBuilder()
                 .setHeader(CONTENT_LENGTH, valueOf(actualLen))
