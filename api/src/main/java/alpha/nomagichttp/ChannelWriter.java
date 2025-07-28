@@ -8,6 +8,7 @@ import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.ContentHeaders;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
+import alpha.nomagichttp.message.ResourceByteBufferIterable;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.util.FileLockTimeoutException;
 import alpha.nomagichttp.util.ScopedValues;
@@ -18,7 +19,7 @@ import java.io.IOException;
 /// 
 /// The life-cycle of the implementation is bound to an active HTTP exchange.
 /// 
-/// The implementation reference should not be cached, but rather retrieved anew
+/// A `ChannelWriter` reference should not be cached, but rather retrieved anew
 /// using [ScopedValues#channel()].
 /// 
 /// @implSpec
@@ -69,42 +70,39 @@ public interface ChannelWriter
     /// @return the number of bytes written
     /// 
     /// @throws NullPointerException
-    ///             if `response` is `null`
+    /// if `response` is `null`
     /// @throws IllegalStateException
-    ///             if the HTTP exchange to which the writer was bound, is over
+    /// if the HTTP exchange to which the writer was bound, is over
     /// @throws IllegalStateException
-    ///             if a previous response began writing
-    ///             but never finished (channel is corrupt)
+    /// if a previous response began writing but never finished
+    /// (channel is corrupt)
     /// @throws IllegalStateException
-    ///             if `response.`[isFinal()][Response#isFinal()] returns `true`
-    ///             and a final response has already been written
+    /// if `response.`[isFinal()][Response#isFinal()] returns `true`
+    /// and a final response has already been written
     /// @throws ResponseRejectedException
-    ///             for a [Reason][ResponseRejectedException.Reason]
+    /// for a [Reason][ResponseRejectedException.Reason]
     /// @throws BadHeaderException
-    ///             for the same reasons as specified in
-    ///             [ContentHeaders#contentLength()]
+    /// for the same reasons as specified in [ContentHeaders#contentLength()]
     /// @throws IllegalArgumentException
-    ///             if message framing is invalid (for example,
-    ///             a Content-Length header has been set in a 1xx response)
+    /// if message framing is invalid (for example, a Content-Length header has
+    /// been set in a 1xx response)
     /// @throws IllegalResponseBodyException
-    ///             if the status code is one of 1XX (Informational),
-    ///             204 (No Content), 304 (Not Modified) — and the response body
-    ///             is not knowingly empty
-    /// @throws IllegalResponseBodyException
-    ///             if the request — to which the response is a response — has
-    ///             HTTP method `HEAD` or `CONNECT`
+    /// if the body is not knowingly
+    /// [empty][ResourceByteBufferIterable#isEmpty()] and the status code is one
+    /// of 1XX (Informational), 204 (No Content), 304 (Not Modified)
+    /// @throws IllegalResponseBodyException if the request — to which the
+    /// response is a response — has HTTP method
+    /// [HEAD][HttpConstants.Method#HEAD]
     /// @throws InterruptedException
-    ///             if interrupted (could be from a file-backed response body)
+    /// if interrupted (could be from a file-backed response body)
     /// @throws FileLockTimeoutException
-    ///             if a file lock is not acquired within an acceptable
-    ///             time frame (could be from a file-backed response body)
+    /// if a file lock is not acquired within an acceptable time frame
+    /// (could be from a file-backed response body)
     /// @throws IOException
-    ///             if an I/O error occurs
-    ///             (could be from a file-backed response body,
-    ///              as well as from the underlying byte channel)
+    /// if an I/O error occurs (could be from a file-backed response body, as
+    /// well as from the underlying byte channel)
     /// @throws IdleConnectionException
-    ///             if a write operation on the
-    ///             underlying byte channel times out
+    /// if a write operation on the underlying byte channel times out
     long write(Response response)
             throws InterruptedException, FileLockTimeoutException, IOException;
     

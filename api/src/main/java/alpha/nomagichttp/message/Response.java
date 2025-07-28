@@ -555,7 +555,7 @@ public interface Response extends HasHeaders
          *             <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-9.3">RFC 9112 §9.3</a>)
          * @throws IllegalResponseBodyException
          *             if the body is not knowingly
-         *             {@link ResourceByteBufferIterable#isEmpty() empty},
+         *             {@link ResourceByteBufferIterable#isEmpty() empty}
          *             and the status code is one of
          *             1XX (Informational), 204 (No Content), 304 (Not Modified)
          */

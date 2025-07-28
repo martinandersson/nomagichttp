@@ -205,7 +205,7 @@ public interface Config
      * That decision will either be an explicitly sent 100 (Continue) response,
      * or one implicitly sent upon the first access of a non-empty request body
      * (all methods in {@link Request.Body} except
-     * {@link Request.Body#length() size} and
+     * {@link Request.Body#length() length} and
      * {@link Request.Body#isEmpty() isEmpty}).<p>
      * 
      * This means that the application developer does not need to be aware of

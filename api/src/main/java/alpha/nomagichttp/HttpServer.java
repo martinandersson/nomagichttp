@@ -32,7 +32,6 @@ import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.StructuredTaskScope;
 import java.util.function.IntConsumer;
 
 /// Listens on a port for HTTP connections.
@@ -165,11 +164,6 @@ import java.util.function.IntConsumer;
 /// The NoMagicHTTP API may throw a [WrongThreadException] if called by a
 /// platform thread and that call would have caused the thread to block.
 /// 
-/// TODO: Give bad example of concurrent outbound calls to dependent services
-/// using a parallel Stream on native threads.
-/// 
-/// TODO: Give good example using [StructuredTaskScope].
-/// 
 /// 
 /// # HTTP message semantics
 /// 
@@ -242,7 +236,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// @return a new `HttpServer`
     /// 
     /// @throws NullPointerException
-    ///             if `exceptionHandlers` or an element therein is `null`
+    /// if `exceptionHandlers` or an element therein is `null`
     static HttpServer create(ExceptionHandler... exceptionHandlers) {
         return create(Config.DEFAULT, exceptionHandlers);
     }
@@ -259,7 +253,7 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// @return a new `HttpServer`
     /// 
     /// @throws NullPointerException
-    ///             if any argument or array element is `null`
+    /// if any argument or array element is `null`
     static HttpServer create(Config config, ExceptionHandler... exceptionHandlers) {
         var loader = ServiceLoader.load(HttpServerFactory.class);
         var factories = loader.stream().toList();
@@ -300,13 +294,13 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// @return never normally
     /// 
     /// @throws NullPointerException
-    ///             if `ofPort` is `null`
+    /// if `ofPort` is `null`
     /// @throws IllegalStateException
-    ///             if the server is already running
+    /// if the server is already running
     /// @throws IOException
-    ///             if an I/O error occurs
+    /// if an I/O error occurs
     /// @throws InterruptedException
-    ///             if interrupted while waiting on client connections to terminate
+    /// if interrupted while waiting on client connections to terminate
     /// 
     /// @see InetAddress
     Void start(IntConsumer ofPort) throws IOException, InterruptedException;
@@ -326,9 +320,9 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// @return a future that completes exceptionally
     /// 
     /// @throws IllegalStateException
-    ///             if the server is already running
+    /// if the server is already running
     /// @throws IOException
-    ///             if an I/O error occurs while binding the address
+    /// if an I/O error occurs while binding the address
     /// 
     /// @see HttpServer
     Future<Void> startAsync() throws IOException;
@@ -355,11 +349,11 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// @return never normally
     /// 
     /// @throws IllegalStateException
-    ///             if the server is already running
+    /// if the server is already running
     /// @throws IOException
-    ///             if an I/O error occurs
+    /// if an I/O error occurs
     /// @throws InterruptedException
-    ///             if interrupted while waiting on client connections to terminate
+    /// if interrupted while waiting on client connections to terminate
     /// 
     /// @see InetAddress
     default Void start(int port) throws IOException, InterruptedException {
@@ -385,13 +379,13 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// @return never normally
     /// 
     /// @throws NullPointerException
-    ///             if `hostname` is `null`
+    /// if `hostname` is `null`
     /// @throws IllegalStateException
-    ///             if the server is already running
+    /// if the server is already running
     /// @throws IOException
-    ///             if an I/O error occurs
+    /// if an I/O error occurs
     /// @throws InterruptedException
-    ///             if interrupted while waiting on client connections to terminate
+    /// if interrupted while waiting on client connections to terminate
     default Void start(String hostname, int port) throws IOException, InterruptedException {
         return start(new InetSocketAddress(hostname, port));
     }
@@ -403,13 +397,13 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// @return never normally
     /// 
     /// @throws NullPointerException
-    ///             if `address` is `null`
+    /// if `address` is `null`
     /// @throws IllegalStateException
-    ///             if the server is already running
+    /// if the server is already running
     /// @throws IOException
-    ///             if an I/O error occurs
+    /// if an I/O error occurs
     /// @throws InterruptedException
-    ///             if interrupted while waiting on client connections to terminate
+    /// if interrupted while waiting on client connections to terminate
     /// 
     /// @see InetAddress
     Void start(SocketAddress address) throws IOException, InterruptedException;
@@ -436,9 +430,9 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// This method is NOP if the server is stopping or has already stopped.
     ///
     /// @throws IOException
-    ///             if an I/O error occurs
+    /// if an I/O error occurs
     /// @throws InterruptedException
-    ///             if interrupted while waiting on client connections to terminate
+    /// if interrupted while waiting on client connections to terminate
     void stop() throws IOException, InterruptedException;
     
     /// Closes the port listening for client connections.
@@ -456,11 +450,11 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// @param timeout when to forcibly close all client connections
     ///
     /// @throws NullPointerException
-    ///             if `timeout` is `null`
+    /// if `timeout` is `null`
     /// @throws IOException
-    ///             if an I/O error occurs
+    /// if an I/O error occurs
     /// @throws InterruptedException
-    ///             if interrupted while waiting on client connections to terminate
+    /// if interrupted while waiting on client connections to terminate
     void stop(Duration timeout) throws IOException, InterruptedException;
     
     /// Closes the port listening for client connections.
@@ -471,11 +465,11 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// @param deadline when to forcibly close all client connections
     ///
     /// @throws NullPointerException
-    ///             if `deadline` is `null`
+    /// if `deadline` is `null`
     /// @throws IOException
-    ///             if an I/O error occurs
+    /// if an I/O error occurs
     /// @throws InterruptedException
-    ///             if interrupted while waiting on client connections to terminate
+    /// if interrupted while waiting on client connections to terminate
     void stop(Instant deadline) throws IOException, InterruptedException;
     
     /// Closes the port listening for client connections.
@@ -492,9 +486,9 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// return once all client connections have closed.
     ///
     /// @throws IOException
-    ///             if an I/O error occurs
+    /// if an I/O error occurs
     /// @throws InterruptedException
-    ///             if interrupted while waiting on client connections to terminate
+    /// if interrupted while waiting on client connections to terminate
     void kill() throws IOException, InterruptedException;
     
     /// {@return {@code true} if the server is running, otherwise
@@ -608,9 +602,10 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     /// {@return the socket address this server's channel's socket is bound to}
     /// 
     /// @throws IllegalStateException
-    ///             if the server is not running
+    /// if the server is not running
     /// @throws IOException
-    ///             if an I/O error occurs
+    /// if an I/O error occurs
+    /// 
     /// @see ServerSocketChannel#getLocalAddress()
     SocketAddress getLocalAddress() throws IOException;
     
@@ -630,12 +625,11 @@ public interface HttpServer extends RouteRegistry, ActionRegistry
     ///  }
     /// 
     /// @throws IllegalStateException
-    ///             if the server is not running
+    /// if the server is not running
     /// @throws ClassCastException
-    ///             if the server was created using an
-    ///             [UnixDomainSocketAddress]
+    /// if the server was created using an [UnixDomainSocketAddress]
     /// @throws IOException
-    ///             if an I/O error occurs
+    /// if an I/O error occurs
     default int getPort() throws IOException {
         return ((InetSocketAddress) getLocalAddress()).getPort();
     }

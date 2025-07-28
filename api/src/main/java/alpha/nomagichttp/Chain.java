@@ -44,10 +44,10 @@ public interface Chain
     /// @return the response returned from the next entity
     /// 
     /// @throws UnsupportedOperationException
-    ///             if not called from within the processing chain, or
-    ///             if called more than once (by the same executing entity)
+    /// if not called from within the processing chain, or
+    /// if called more than once (by the same executing entity)
     /// @throws Exception
-    ///             as propagated from the rest of the chain
+    /// as propagated from the rest of the chain
     /// 
     /// @see Chain
     Response proceed() throws Exception;

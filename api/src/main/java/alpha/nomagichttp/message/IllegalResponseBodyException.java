@@ -11,28 +11,24 @@ import java.io.Serial;
 import static alpha.nomagichttp.message.Responses.internalServerError;
 import static java.util.Objects.requireNonNull;
 
-/**
- * A response has a body when none was expected.<p>
- * 
- * Is thrown from {@link Response.Builder#build()} if the response has a body,
- * but the status-code is 1XX (Informational), 204 (No Content), or 304
- * (Not Modified).<p>
- * 
- * The exception is also thrown from {@link ChannelWriter#write(Response)} for
- * the same reasons, but additionally in the case the response has a body and
- * the request method — to which the response is a response — has HTTP method.
- * <p>
- * 
- * The former is a fail-fast mechanism. But the request's HTTP method can only
- * be checked during a live HTTP exchange.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see HttpServer
- * @see ExceptionHandler
- * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-6.3">RFC 9112 §6.3</a>
- * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.2">RFC 9110 §9.3.2</a>
- */
+/// A response has a body when none was expected.
+/// 
+/// Is thrown by [Response.Builder#build()] if the body is not knowingly
+/// [empty][ResourceByteBufferIterable#isEmpty()] and the status code is one of
+/// 1XX (Informational), 204 (No Content), 304 (Not Modified).
+/// 
+/// The exception is also thrown by [ChannelWriter#write(Response)] for the same
+/// body-conditional status codes, but also if the request — to which the
+/// response is a response — has HTTP method [HEAD][HttpConstants.Method#HEAD].
+/// 
+/// The former is a fail-fast mechanism. But the request's HTTP method can only
+/// be checked during a live HTTP exchange.
+/// 
+/// @author Martin Andersson (webmaster at martinandersson.com)
+/// 
+/// @see HttpServer
+/// @see ExceptionHandler
+/// @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-6.3">RFC 9112 §6.3</a></a>
 public final class IllegalResponseBodyException
              extends RuntimeException implements HasResponse
 {
