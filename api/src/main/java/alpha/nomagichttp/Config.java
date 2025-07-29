@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
 ///  }
 /// 
 /// @implSpec
-/// The implementation is immutable.
+/// The implementation is thread-safe.
 /// 
 /// The implementation inherits the identity-based implementations of
 /// [Object#hashCode()] and [Object#equals(Object)].
@@ -184,42 +184,43 @@ public interface Config
     /// @see HttpConstants.StatusCode
     boolean discardRejectedInformational();
     
-    /**
-     * {@return whether to immediately reply a 100 (Continue) response}<p>
-     * 
-     * If {@code true} and the server receives a request with the
-     * {@code Expect: 100-continue} header set, an 100 (Continue) interim
-     * response will immediately be sent back, which prompts the client to
-     * continue sending the rest of the request.<p>
-     * 
-     * This is how most servers work, which is dubious, as it effectively kills
-     * the entire concept of having a client verify with the server first if it
-     * is ready to receive a large body. Probably because most servers don't
-     * support the hosted software to send interim responses to begin with
-     * (very, very sad).<p>
-     * 
-     * The NoMagicHTTP server does support interim responses, and the default
-     * value for this configuration is {@code false}, leaving it up to the
-     * application to decide.<p>
-     * 
-     * That decision will either be an explicitly sent 100 (Continue) response,
-     * or one implicitly sent upon the first access of a non-empty request body
-     * (all methods in {@link Request.Body} except
-     * {@link Request.Body#length() length} and
-     * {@link Request.Body#isEmpty() isEmpty}).<p>
-     * 
-     * This means that the application developer does not need to be aware of
-     * the {@code Expect: 100-continue} feature but will still receive the full
-     * benefit, and the developer who is aware can take control as he
-     * pleases.<p>
-     * 
-     * Regardless of the configured value, the server never attempts to
-     * send a 100 (Continue) response to an HTTP/1.0 client since HTTP/1.0 does
-     * not support interim responses (
-     * <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-10.1.1">RFC 9110 §10.1.1</a>
-     * 
-     * @see HttpConstants.StatusCode#ONE_HUNDRED
-     */
+    /// {@return whether to immediately reply a 100 (Continue) response}
+    /// 
+    /// If `true` and the server receives a request head with
+    /// a header "Expect: 100-continue", then a 100 (Continue) interim response
+    /// will immediately and unconditionally be sent back, which prompts the
+    /// client to continue sending the request body without any further delay.
+    /// 
+    /// The [#DEFAULT] implementation returns `false`, leaving it up to the
+    /// application to decide whether the client continues.
+    /// 
+    /// A decision to continue, will either be an explicitly sent 100 (Continue)
+    /// response by the application, or the server will send a 100 (Continue)
+    /// response upon the first access of a non-empty request body (all methods
+    /// in [Request.Body] except [`length()`][Request.Body#length()] and
+    /// [`isEmpty()`][Request.Body#isEmpty()]).
+    /// 
+    /// A decision _not_ to continue is implemented no differently from how any
+    /// other request would have been rejected. For example, sending a
+    /// 400 (Bad Request) response.
+    /// 
+    /// The default behavior to await an explicit or implicit accept by the
+    /// application, effectively translates to a very small — probably miniscule
+    /// — delay. Performance-critical applications that do not explicitly send
+    /// 100 (Continue) may wish to set this configuration option to `true`.
+    /// 
+    /// Regardless of the configured value, the server never attempts to
+    /// send a 100 (Continue) response to an HTTP/1.0 client since HTTP/1.0 does
+    /// not support interim responses
+    /// ([RFC 9110 §10.1.1](https://datatracker.ietf.org/doc/html/rfc9110#section-10.1.1)).
+    /// 
+    /// @apiNote
+    /// Many other HTTP servers will immediately respond 100 (Continue) and do
+    /// not expose related configuration options. This is probably because the
+    /// same server APIs have no support at all for the application to send
+    /// interim responses.
+    /// 
+    /// @see HttpConstants.StatusCode#ONE_HUNDRED
     boolean immediatelyContinueExpect100();
     
     /**
