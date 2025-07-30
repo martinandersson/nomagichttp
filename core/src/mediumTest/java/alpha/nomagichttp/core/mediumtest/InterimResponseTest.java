@@ -19,6 +19,9 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
 
+///  Tests of 1XX interim responses.
+/// 
+/// @see ExampleTest.KeepClientInformed
 final class InterimResponseTest extends AbstractRealTest
 {
     @Nested

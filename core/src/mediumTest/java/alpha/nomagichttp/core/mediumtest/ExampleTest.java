@@ -51,8 +51,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * examples, and they are compatible across different clients.
  * 
  * @author Martin Andersson (webmaster at martinandersson.com)
- * 
- * @see DetailTest
  */
 final class ExampleTest extends AbstractRealTest
 {
@@ -368,7 +366,9 @@ final class ExampleTest extends AbstractRealTest
         }
     }
     
-    // TODO: Make public
+    ///  Currently non-public examples.
+    /// 
+    /// @see MessageFramingTest.ResponseValid#cLength_toHEAD()
     @Nested
     class NonPublicExamples {
         // TODO: Will wait until after we have done improved file serving.

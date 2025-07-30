@@ -38,7 +38,7 @@ import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-///  Tests for "Transfer-Encoding: chunked".
+///  Tests of "Transfer-Encoding: chunked".
 final class ChunkedCodingTest extends AbstractRealTest
 {
     @Nested
