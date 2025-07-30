@@ -123,9 +123,7 @@ final class RoutingTest extends AbstractRealTest
     @Nested
     class NoRouteFoundExc {
         @Test
-        void handledByBase()
-                throws IOException, InterruptedException
-        {
+        void handledByBase() throws IOException, InterruptedException {
             server();
             String rsp = client().writeReadTextUntilNewlines(
                 "GET /404 HTTP/1.1"      + CRLF + CRLF);

@@ -81,9 +81,12 @@ final class ChunkedCodingTest extends AbstractRealTest
             var ch2 = "World!".getBytes(US_ASCII);
             var cli = impl.create(serverPort());
             var rsp = cli.postChunksAndReceiveText("/", ch1, ch2);
-            assertThat(rsp.statusCode()).isEqualTo(200);
-            assertThat(rsp.headers().firstValue("Transfer-Encoding")).hasValue("chunked");
-            assertThat(rsp.body()).isEqualTo("HelloWorld!");
+            assertThat(rsp.statusCode())
+                .isEqualTo(200);
+            assertThat(rsp.headers().firstValue("Transfer-Encoding"))
+                .hasValue("chunked");
+            assertThat(rsp.body())
+                .isEqualTo("HelloWorld!");
         }
         
         private void addRouteThatEchoesTheRequestBody() throws IOException {
@@ -125,7 +128,7 @@ final class ChunkedCodingTest extends AbstractRealTest
                 throws IOException, ExecutionException,
                        InterruptedException, TimeoutException
         {
-            // JDK can't even decode the body if it has trailers, throws AssertionError lol
+            // JDK can't decode the body if it has trailers (AssertionError)
             // TODO: Try again with later version
             assumeTrue(impl != JDK);
             addRouteThatRespondChunked();
