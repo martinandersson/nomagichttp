@@ -123,7 +123,7 @@ final class RoutingTest extends AbstractRealTest
     @Nested
     class NoRouteFoundExc {
         @Test
-        void standard()
+        void handledByBase()
                 throws IOException, InterruptedException
         {
             server();
@@ -140,7 +140,7 @@ final class RoutingTest extends AbstractRealTest
         }
         
         @Test
-        void custom() throws IOException {
+        void handledByApp() throws IOException {
             usingExceptionHandler((exc, chain, req) ->
                 exc instanceof NoRouteFoundException ?
                         status(499, "Custom Not Found!") :

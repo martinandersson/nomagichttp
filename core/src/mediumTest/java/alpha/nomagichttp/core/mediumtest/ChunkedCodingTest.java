@@ -184,7 +184,7 @@ final class ChunkedCodingTest extends AbstractRealTest
         }
         
         @Test
-        void handledByBaseHandler() throws IOException {
+        void handledByBase() throws IOException {
             server().add("/",
                 GET().apply(req -> {
                     req.body().toText();
