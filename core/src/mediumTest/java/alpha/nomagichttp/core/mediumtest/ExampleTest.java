@@ -378,7 +378,7 @@ final class ExampleTest extends AbstractRealTest
         
         @Test
         @DisplayName("UploadFile/TestClient")
-        void UploadFile() throws IOException, InterruptedException {
+        void uploadFile() throws IOException, InterruptedException {
             // Destination file
             Path file = Files.createTempDirectory("nomagic")
                     .resolve("some-file.txt");
@@ -415,7 +415,7 @@ final class ExampleTest extends AbstractRealTest
         
         @Test
         @DisplayName("CountRequestsByMethod/TestClient")
-        void CountRequestsByMethod() throws IOException, InterruptedException {
+        void countRequestsByMethod() throws IOException, InterruptedException {
             final var freqs = new ConcurrentHashMap<String, LongAdder>();
             
             BiConsumer<RequestHeadReceived, RawRequest.Head> incrementer = (event, head) ->
@@ -439,7 +439,7 @@ final class ExampleTest extends AbstractRealTest
          */
         @Test
         @DisplayName("RequestTrailers/TestClient")
-        void RequestTrailers() throws IOException {
+        void requestTrailers() throws IOException {
             // Echo body and append trailer value
             server().add("/", POST().apply(req ->
                     text(req.body().toText() +
