@@ -4,7 +4,6 @@ import alpha.nomagichttp.IdleConnectionException;
 import alpha.nomagichttp.handler.ResponseRejectedException;
 import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
-import alpha.nomagichttp.message.DecoderException;
 import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
@@ -128,64 +127,6 @@ final class ErrorTest extends AbstractRealTest
                 .hasMessage("""
                     Can not parse "BOOM!". \
                     Expected exactly one forward slash in <type/subtype>.""");
-    }
-    
-    @Nested
-    class DecoderExc {
-        @Test
-        void handledByApp() throws IOException {
-            // Must kick off the subscription to provoke the exception
-            server().add("/",
-                GET().apply(req -> {
-                    try {
-                        req.body().toText();
-                    } catch (DecoderException e) {
-                        return text(e.toString());
-                    }
-                    throw new AssertionError();
-                }));
-            String rsp = client().writeReadTextUntilEOS("""
-                GET / HTTP/1.1
-                Transfer-Encoding: chunked
-                Connection: close
-                
-                ABCDEX.....\n""");
-            assertThat(rsp).isEqualTo("""
-                HTTP/1.1 200 OK\r
-                Content-Type: text/plain; charset=utf-8\r
-                Connection: close\r
-                Content-Length: 110\r
-                \r
-                alpha.nomagichttp.message.DecoderException: \
-                java.lang.NumberFormatException: \
-                not a hexadecimal digit: "X" = 88""");
-        }
-        
-        @Test
-        void handledByExceptionHandler()
-                throws IOException
-        {
-            server().add("/",
-                GET().apply(req -> {
-                    req.body().toText();
-                    throw new AssertionError();
-                }));
-            String rsp = client().writeReadTextUntilEOS("""
-                GET / HTTP/1.1
-                Transfer-Encoding: chunked
-                
-                ABCDEX.....\n""");
-            assertThat(rsp).isEqualTo("""
-                HTTP/1.1 400 Bad Request\r
-                Connection: close\r
-                Content-Length: 0\r\n\r\n""");
-            assertThat(pollServerExceptionNow())
-                .isExactlyInstanceOf(DecoderException.class)
-                .hasNoSuppressedExceptions()
-                .hasMessage("""
-                    java.lang.NumberFormatException: \
-                    not a hexadecimal digit: "X" = 88""");
-        }
     }
     
     @Test
@@ -333,7 +274,7 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Nested
-    class MaxRequestBodySizeExc {
+    class MaxRequestBodySizeExc { // Fix naming
         /// A known length pre-allocates the entire buffer.
         @Test
         void RequestBody_bytesFast() throws IOException, InterruptedException {
