@@ -144,10 +144,10 @@ class MessageFramingTest extends AbstractRealTest
         // "A server MAY send a Content-Length header field in a response to
         //  a HEAD request" — RFC 9110 §8.6
         // 
-        // TODO: This is a vanilla HEAD exchange and ought to be moved to
-        //       ExampleTest, but probably enhance the API first so that we can
-        //       derive a body-less response (with all headers) from a Response
-        //       with a body.
+        // TODO: This is a vanilla HEAD exchange and ought to be made into a
+        //       public example, but probably enhance the API first so that we
+        //       can derive a body-less response (with all headers) from a
+        //       Response with a body.
         @Test
         void cLength_toHEAD() throws IOException {
             server().add("/", HEAD().apply(_ ->
