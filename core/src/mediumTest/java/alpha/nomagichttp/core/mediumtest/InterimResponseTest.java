@@ -154,9 +154,12 @@ final class InterimResponseTest extends AbstractRealTest
     // TODO: Client's body is rejected, connection must be closed.
     //       
     //       A client is allowed to give up waiting on the server's continue
-    //       message and decide on his own to continue sending the body bytes.
-    //       This data race makes it inherently impossible to guarantee correct
-    //       message framing for subsequent exchanges over the same connection.
+    //       message and decide on his own to send the body.
+    //       
+    //       But, there's a race condition, because the server may
+    //       simultaneously reject the request, making it impossible to
+    //       guarantee correct message framing for subsequent exchanges over the
+    //       same connection.
     //       
     //       Maybe that is why RFC 9110 §10.1.1 gives the server only two
     //       options, to either close the connection or accept the body:
@@ -164,4 +167,9 @@ final class InterimResponseTest extends AbstractRealTest
     //       "A server that responds with a final status code before reading the
     //        entire request content SHOULD indicate whether it intends to close
     //        the connection [...] or continue reading the request content."
+    //       
+    //       An alternative would be for the server to read and discard the
+    //       body, but then, why the client sent "Expect: 100-continue" in the
+    //       first place is because the content is "presumably large"
+    //       (RFC 9110 §10.1.1).
 }
