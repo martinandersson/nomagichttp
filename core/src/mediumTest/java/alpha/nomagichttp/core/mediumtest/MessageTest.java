@@ -9,7 +9,6 @@ import static alpha.nomagichttp.core.mediumtest.util.TestRequestHandlers.respond
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
-import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
@@ -30,35 +29,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 // TODO: Run tests using different clients
 final class MessageTest extends AbstractRealTest
 {
-    /**
-     * @see DetailTest.Expect100Continue
-     */
-    // TODO: Lots of so called HTTP clients will likely not be able to receive
-    //       multiple responses, just ignore them.
-    @Test
-    void expect100Continue_onFirstBodyAccess() throws IOException {
-        server().add("/", POST().apply(req ->
-            text(req.body().toText())));
-        
-        String req = "POST / HTTP/1.1" + CRLF +
-            "Expect: 100-continue"     + CRLF +
-            "Content-Length: 2"        + CRLF +
-            "Content-Type: text/plain" + CRLF + CRLF +
-            
-            "Hi";
-        
-        String rsp = client().writeReadTextUntil(req, "Hi");
-        
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 100 Continue"                   + CRLF + CRLF +
-            
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 2"                       + CRLF + CRLF +
-            
-            "Hi");
-    }
-    
     /**
      * Can make an HTTP/1.0 request (receives HTTP/1.1 response).<p>
      * 

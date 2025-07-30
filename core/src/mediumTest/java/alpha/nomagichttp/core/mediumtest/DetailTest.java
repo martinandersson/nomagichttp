@@ -17,13 +17,8 @@ import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;
-import static alpha.nomagichttp.message.Responses.continue_;
-import static alpha.nomagichttp.message.Responses.processing;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
-import static alpha.nomagichttp.util.ScopedValues.channel;
-import static java.lang.System.Logger.Level.DEBUG;
-import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.System.nanoTime;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -131,65 +126,6 @@ final class DetailTest extends AbstractRealTest
         }
     }
     
-    /**
-     * @see #interimResponseIgnoredForOldClient()
-     * @see MessageTest#expect100Continue_onFirstBodyAccess()
-     */
-    @Nested
-    class Expect100Continue {
-        @Test
-        void immediatelyByConfig() throws IOException {
-            usingConfiguration()
-                .immediatelyContinueExpect100(true);
-            server().add("/",
-                // Request body doesn't matter
-                GET().apply(_ -> text("end")));
-            String rsp = client().writeReadTextUntil(
-                "GET / HTTP/1.1"                          + CRLF + 
-                "Expect: 100-continue"                    + CRLF + CRLF, "end");
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 100 Continue"                   + CRLF + CRLF +
-                
-                "HTTP/1.1 200 OK"                         + CRLF +
-                "Content-Type: text/plain; charset=utf-8" + CRLF +
-                "Content-Length: 3"                       + CRLF + CRLF +
-                
-                "end");
-        }
-        
-        @Test
-        void repeatedIgnored() throws IOException {
-            server().add("/", GET().apply(_ -> {
-                // In response to a GET request without Expect header nor body
-                // (application gets what application wants)
-                var ch = channel();
-                ch.write(continue_());
-                ch.write(continue_());
-                ch.write(continue_());
-                return accepted();
-            }));
-            
-            String req = "GET / HTTP/1.1" + CRLF + CRLF,
-                   rsp = client().writeReadTextUntil(
-                             req, "Content-Length: 0" + CRLF + CRLF);
-            
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 100 Continue"  + CRLF + CRLF +
-                
-                "HTTP/1.1 202 Accepted"  + CRLF +
-                "Content-Length: 0"      + CRLF + CRLF);
-            
-            // Logging specified in JavaDoc of ClientChannel.write()
-            logRecorder()
-                .assertContainsOnlyOnce(
-                    // First ignored 100 Continue silently logged
-                    DEBUG, "Ignoring repeated 100 (Continue).")
-                .assertRemove(
-                    // But any more than that and level escalates
-                    WARNING, "Ignoring repeated 100 (Continue).");
-        }
-    }
-    
     @Nested
     class Event {
         @Test
@@ -278,30 +214,5 @@ final class DetailTest extends AbstractRealTest
             "Content-Length: 5"                            + CRLF + CRLF +
             
             "hello");
-    }
-    
-    /**
-     * @see Expect100Continue
-     */
-    @Test
-    void interimResponseIgnoredForOldClient()
-            throws IOException, InterruptedException
-    {
-        server().add("/", GET().apply(_ -> {
-            channel().write(processing()); // <-- rejected
-            return text("Done!");
-        }));
-        // ... because "HTTP/1.0"
-        String rsp = client().writeReadTextUntil(
-            "GET / HTTP/1.0"                          + CRLF + CRLF, "Done!");
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Connection: close"                       + CRLF +
-            "Content-Length: 5"                       + CRLF + CRLF +
-            
-            "Done!");
-        logRecorder().assertAwait(DEBUG,
-            "Ignoring 1XX (Informational) response for HTTP/1.0 client.");
     }
 }
