@@ -274,10 +274,10 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Nested
-    class MaxRequestBodySizeExc { // Fix naming
+    class MaxRequestBodyBufferSizeExc {
         /// A known length pre-allocates the entire buffer.
         @Test
-        void RequestBody_bytesFast() throws IOException, InterruptedException {
+        void bytesFast() throws IOException, InterruptedException {
             runExchange("""
                 POST / HTTP/1.1\r
                 Content-Length: 2\r
@@ -288,7 +288,7 @@ final class ErrorTest extends AbstractRealTest
         
         /// An unknown length necessitates the use of a dynamically-sized buffer.
         @Test
-        void RequestBody_bytesSlow() throws IOException, InterruptedException {
+        void bytesSlow() throws IOException, InterruptedException {
             runExchange("""
                 POST / HTTP/1.1
                 Transfer-Encoding: chunked
