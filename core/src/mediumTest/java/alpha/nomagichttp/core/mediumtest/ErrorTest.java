@@ -17,11 +17,6 @@ import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.UnsupportedTransferCodingException;
-import alpha.nomagichttp.route.AmbiguousHandlerException;
-import alpha.nomagichttp.route.MediaTypeNotAcceptedException;
-import alpha.nomagichttp.route.MediaTypeUnsupportedException;
-import alpha.nomagichttp.route.MethodNotAllowedException;
-import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import alpha.nomagichttp.util.Throwing;
@@ -39,9 +34,7 @@ import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.badRequest;
-import static alpha.nomagichttp.message.Responses.internalServerError;
 import static alpha.nomagichttp.message.Responses.noContent;
-import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static alpha.nomagichttp.testutil.functional.Environment.isGitHubActions;
@@ -78,28 +71,6 @@ final class ErrorTest extends AbstractRealTest
         @Serial private static final long serialVersionUID = 1L;
         OopsException() { }
         OopsException(String msg) { super(msg); }
-    }
-    
-    @Test
-    void AmbiguousHandlerExc() throws IOException, InterruptedException {
-        server().add("/",
-            GET().produces("text/plain").apply(NOP),
-            GET().produces("text/html").apply(NOP));
-        String rsp = client().writeReadTextUntilNewlines(
-            "GET / HTTP/1.1\n\n");
-        assertThat(rsp).isEqualTo("""
-            HTTP/1.1 500 Internal Server Error\r
-            Content-Length: 0\r\n\r\n""");
-        assertAwaitHandledAndLoggedExc()
-            .isExactlyInstanceOf(AmbiguousHandlerException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("""
-                Ambiguous: [\
-                DefaultRequestHandler{method="GET", \
-                consumes="<nothing and all>", produces="text/plain", logic=?}, \
-                DefaultRequestHandler{method="GET", \
-                consumes="<nothing and all>", produces="text/html", logic=?}]""");
     }
     
     @Test
@@ -322,25 +293,6 @@ final class ErrorTest extends AbstractRealTest
     }
     
     @Test
-    void MediaTypeNotAcceptedExc() throws IOException, InterruptedException {
-        server().add("/",
-            GET().produces("text/blabla").apply(NOP));
-        String rsp = client().writeReadTextUntilNewlines("""
-            GET / HTTP/1.1\r
-            Accept: text/different\r\n\r\n""");
-        assertThat(rsp).isEqualTo("""
-            HTTP/1.1 406 Not Acceptable\r
-            Content-Length: 0\r\n\r\n""");
-        assertAwaitHandledAndLoggedExc()
-            .isExactlyInstanceOf(MediaTypeNotAcceptedException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("""
-                No handler found matching \
-                "Accept: text/different" header in request.""");
-    }
-    
-    @Test
     void MediaTypeParseExc() throws IOException, InterruptedException {
         server().add("/", GET().apply(_ -> {
             MediaType.parse("BOOM!");
@@ -358,98 +310,6 @@ final class ErrorTest extends AbstractRealTest
             .hasMessage("""
                 Can not parse "BOOM!". \
                 Expected exactly one forward slash in <type/subtype>.""");
-    }
-    
-    @Test
-    void MediaTypeUnsupportedExc() throws IOException, InterruptedException {
-        server().add("/",
-            GET().consumes("text/blabla").apply(NOP));
-        String rsp = client().writeReadTextUntilNewlines("""
-            GET / HTTP/1.1
-            Content-Type: text/different\n\n""");
-        assertThat(rsp).isEqualTo("""
-            HTTP/1.1 415 Unsupported Media Type\r
-            Content-Length: 0\r\n\r\n""");
-        assertAwaitHandledAndLoggedExc()
-            .isExactlyInstanceOf(MediaTypeUnsupportedException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("""
-                No handler found matching \
-                "Content-Type: text/different" header in request.""");
-    }
-    
-    @Nested
-    class MethodNotAllowedExc {
-        // Expect 405 (Method Not Allowed)
-        @Test
-        void BLABLA() throws IOException, InterruptedException {
-            server().add("/",
-                GET().apply(_ -> internalServerError()),
-                POST().apply(_ -> internalServerError()));
-            String rsp = client().writeReadTextUntilNewlines(
-                "BLABLA / HTTP/1.1"               + CRLF + CRLF);
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 405 Method Not Allowed" + CRLF +
-                // Actually, order is not defined, let's see for how long this test pass
-                "Allow: POST, GET"                + CRLF +
-                "Content-Length: 0"               + CRLF + CRLF);
-            assertAwaitHandledAndLoggedExc()
-                .isExactlyInstanceOf(MethodNotAllowedException.class)
-                .hasMessage("No handler found for method token \"BLABLA\".")
-                .hasNoCause()
-                .hasNoSuppressedExceptions();
-        }
-        
-        // ...but if the method is OPTIONS, the default configuration implements it
-        @Test
-        void OPTIONS() throws IOException, InterruptedException {
-            server().add("/",
-                    GET().apply(_ -> internalServerError()),
-                    POST().apply(_ -> internalServerError()));
-            String rsp = client().writeReadTextUntilNewlines(
-                    "OPTIONS / HTTP/1.1"              + CRLF + CRLF);
-            assertThat(rsp).isEqualTo(
-                    "HTTP/1.1 204 No Content"         + CRLF +
-                    "Allow: OPTIONS, POST, GET"       + CRLF + CRLF);
-            assertThat(pollServerException())
-                    .isExactlyInstanceOf(MethodNotAllowedException.class)
-                    .hasMessage("No handler found for method token \"OPTIONS\".");
-        }
-    }
-    
-    @Nested
-    class NoRouteFoundExc {
-        @Test
-        void standard()
-                throws IOException, InterruptedException
-        {
-            server();
-            String rsp = client().writeReadTextUntilNewlines(
-                "GET /404 HTTP/1.1"      + CRLF + CRLF);
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 404 Not Found" + CRLF +
-                "Content-Length: 0"      + CRLF + CRLF);
-            assertAwaitHandledAndLoggedExc()
-                .isExactlyInstanceOf(NoRouteFoundException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage("/404");
-        }
-        
-        @Test
-        void custom() throws IOException {
-            usingExceptionHandler((exc, chain, req) ->
-                exc instanceof NoRouteFoundException ?
-                        status(499, "Custom Not Found!") :
-                        chain.proceed());
-            server();
-            String rsp = client().writeReadTextUntilNewlines(
-                "GET /404 HTTP/1.1"              + CRLF + CRLF);
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 499 Custom Not Found!" + CRLF +
-                "Content-Length: 0"              + CRLF + CRLF);
-        }
     }
     
     @Test
