@@ -155,6 +155,30 @@ final class ChunkedCodingTest extends AbstractRealTest
     @Nested
     class DecoderExc {
         @Test
+        void handledByBase() throws IOException {
+            server().add("/",
+                GET().apply(req -> {
+                    req.body().toText();
+                    throw new AssertionError();
+                }));
+            String rsp = client().writeReadTextUntilEOS("""
+                GET / HTTP/1.1
+                Transfer-Encoding: chunked
+                
+                ABCDEX.....\n""");
+            assertThat(rsp).isEqualTo("""
+                HTTP/1.1 400 Bad Request\r
+                Connection: close\r
+                Content-Length: 0\r\n\r\n""");
+            assertThat(pollServerExceptionNow())
+                .isExactlyInstanceOf(DecoderException.class)
+                .hasNoSuppressedExceptions()
+                .hasMessage("""
+                    java.lang.NumberFormatException: \
+                    not a hexadecimal digit: "X" = 88""");
+        }
+        
+        @Test
         void handledByApp() throws IOException {
             // Must kick off the subscription to provoke the exception
             server().add("/",
@@ -181,30 +205,6 @@ final class ChunkedCodingTest extends AbstractRealTest
                 alpha.nomagichttp.message.DecoderException: \
                 java.lang.NumberFormatException: \
                 not a hexadecimal digit: "X" = 88""");
-        }
-        
-        @Test
-        void handledByBase() throws IOException {
-            server().add("/",
-                GET().apply(req -> {
-                    req.body().toText();
-                    throw new AssertionError();
-                }));
-            String rsp = client().writeReadTextUntilEOS("""
-                GET / HTTP/1.1
-                Transfer-Encoding: chunked
-                
-                ABCDEX.....\n""");
-            assertThat(rsp).isEqualTo("""
-                HTTP/1.1 400 Bad Request\r
-                Connection: close\r
-                Content-Length: 0\r\n\r\n""");
-            assertThat(pollServerExceptionNow())
-                .isExactlyInstanceOf(DecoderException.class)
-                .hasNoSuppressedExceptions()
-                .hasMessage("""
-                    java.lang.NumberFormatException: \
-                    not a hexadecimal digit: "X" = 88""");
         }
     }
     
