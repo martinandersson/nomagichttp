@@ -107,9 +107,7 @@ final class HttpExchangeTest extends AbstractRealTest
     @Nested
     class MaxRequestSize {
         @Test
-        void head()
-                throws IOException, InterruptedException
-        {
+        void head() throws IOException, InterruptedException {
             usingConfiguration()
                 .maxRequestHeadSize(1);
             server();
