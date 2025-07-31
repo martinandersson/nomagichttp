@@ -64,7 +64,7 @@ final class HttpExchangeTest extends AbstractRealTest
         /**
          * The channel remains fully open.
          * 
-         * @see ClientLifeCycleTest.UnexpectedEndFromClient#serverReceivedPartialHead()
+         * @see ClientLifeCycleTest.UnexpectedEndFromClient#receivedPartialHead()
          */
         @Test
         void bodyConsumer() throws IOException, InterruptedException {

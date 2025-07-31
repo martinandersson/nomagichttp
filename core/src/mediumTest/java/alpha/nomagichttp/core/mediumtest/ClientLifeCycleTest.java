@@ -106,7 +106,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
     class UnexpectedEndFromClient {
         // Client immediately closes the channel; no exception handler and no warning
         @Test
-        void serverReceivedNoBytes() throws IOException, InterruptedException {
+        void receivedNoBytes() throws IOException, InterruptedException {
             server();
             client().openConnection().close();
             logRecorder().assertAwait(
@@ -124,7 +124,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
          * @see HttpExchangeTest.AppCrash#bodyConsumer()
          */
         @Test
-        void serverReceivedPartialHead()
+        void receivedPartialHead()
                 throws IOException, InterruptedException {
             server();
             client()
@@ -148,7 +148,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
          * Apart from that, the outcome is the same.
          */
         @Test
-        void serverReceivedPartialBody()
+        void receivedPartialBody()
                 throws IOException, InterruptedException {
             var consumed = new ArrayList<Byte>();
             var observed = new ArrayBlockingQueue<Throwable>(1);
