@@ -121,7 +121,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
          * downstream request-line parser, which throws a parse exception, which
          * the base handler does not log, and responds 400 (Bad Request).
          * 
-         * @see ErrorTest.Special#requestBodyConsumerFails() 
+         * @see HttpExchangeTest.AppCrash#bodyConsumer()
          */
         @Test
         void serverReceivedPartialHead()

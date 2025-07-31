@@ -1,20 +1,28 @@
 package alpha.nomagichttp.core.mediumtest;
 
+import alpha.nomagichttp.IdleConnectionException;
 import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeException;
+import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.io.Serial;
 
 import static alpha.nomagichttp.core.mediumtest.util.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
+import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
+import static alpha.nomagichttp.testutil.functional.Environment.isGitHubActions;
+import static alpha.nomagichttp.testutil.functional.Environment.isJitPack;
+import static java.lang.System.Logger.Level.DEBUG;
+import static java.time.Duration.ofMillis;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Weird tests that don't really fit anywhere else.
@@ -22,6 +30,64 @@ import static org.assertj.core.api.Assertions.assertThat;
 /// @author Martin Andersson (webmaster at martinandersson.com)
 final class HttpExchangeTest extends AbstractRealTest
 {
+    @Nested
+    class AppCrash {
+        private static final class OopsException extends RuntimeException {
+            @Serial
+            private static final long serialVersionUID = 1L;
+            OopsException() { }
+            OopsException(String msg) { super(msg); }
+        }
+        
+        @Test
+        void exceptionHandler() throws IOException, InterruptedException {
+            usingExceptionHandler((_, _, _) -> {
+                throw new OopsException("second");
+            });
+            server().add("/", GET().apply(_ -> {
+                throw new OopsException("first");
+            }));
+            
+            String rsp = client().writeReadTextUntilEOS(
+                "GET / HTTP/1.1" + CRLF + CRLF);
+            // No response
+            assertThat(rsp)
+                  .isEmpty();
+            // But the exceptions were logged
+            logRecorder().assertAwaitRemoveThrown()
+                  .isExactlyInstanceOf(OopsException.class)
+                  .hasMessage("first")
+                  .hasNoCause()
+                  .hasSuppressedException(new OopsException("second"));
+        }
+        
+        /**
+         * The channel remains fully open.
+         * 
+         * @see ClientLifeCycleTest.UnexpectedEndFromClient#serverReceivedPartialHead()
+         */
+        @Test
+        void bodyConsumer() throws IOException, InterruptedException {
+            onExceptionAssert(OopsException.class, ch ->
+                assertThat(ch.areBothStreamsOpen()).isTrue());
+            server().add("/", POST().apply(req -> {
+                // Read one byte before crash
+                req.body().iterator().next().get();
+                throw new OopsException();
+            }));
+            var rsp = client().writeReadTextUntilNewlines(post("not empty"));
+            assertThat(rsp).isEqualTo(
+                "HTTP/1.1 500 Internal Server Error" + CRLF +
+                "Content-Length: 0"                  + CRLF + CRLF);
+            assertAwaitHandledAndLoggedExc()
+                .isExactlyInstanceOf(OopsException.class)
+                .hasNoCause()
+                .hasNoSuppressedExceptions();
+            logRecorder().assertAwait(DEBUG,
+                "Closing the child because client aborted the exchange.");
+        }
+    }
+    
     @Nested
     class ConnectionReuse {
         @Test
@@ -105,6 +171,42 @@ final class HttpExchangeTest extends AbstractRealTest
     }
     
     @Nested
+    class IdleConnection {
+        @Test
+        void duringHead() throws IOException, InterruptedException {
+            // On the author's machine, ofMillis(1) was never any problem.
+            // But for GitHub's environment, such a short duration may
+            // occasionally also time out the write operation (i.e. background
+            // thread closes the write stream, and we get no response or a
+            // corrupt one)!
+            // TODO: Fix brittle and nondeterministic test
+            usingConfiguration().timeoutIdleConnection(
+                (isGitHubActions() || isJitPack()) ? ofMillis(10) : ofMillis(1));
+            server();
+            try (var _ = client().openConnection()) {
+                // Never send anything and expect a response
+                String rsp = client().readTextUntilNewlines();
+                assertThat(rsp).isEqualTo(
+                    "HTTP/1.1 408 Request Timeout" + CRLF +
+                    "Connection: close"            + CRLF +
+                    "Content-Length: 0"            + CRLF + CRLF);
+                assertThat(pollServerException())
+                    .isExactlyInstanceOf(IdleConnectionException.class)
+                    .hasMessage(null)
+                    .hasNoCause()
+                    .hasNoSuppressedExceptions();
+                // Timeout triggered by scheduler
+                logRecorder().assertContainsOnlyOnce(
+                    DEBUG, "Idle connection; shutting down read stream");
+            }
+        }
+        
+        // TODO: Add duringResponse()
+        //       Can't configure a short timeout only for the write operation,
+        //       so skipping this for now.
+    }
+    
+    @Nested
     class MaxRequestSize {
         @Test
         void head() throws IOException, InterruptedException {
@@ -172,5 +274,23 @@ final class HttpExchangeTest extends AbstractRealTest
                 .hasNoSuppressedExceptions()
                 .hasMessage("Configured max tolerance is 1 bytes.");
         }
+    }
+    
+    @Test
+    void unsupportedTransferCoding() throws IOException, InterruptedException {
+        server();
+        String rsp = client().writeReadTextUntilNewlines("""
+            GET / HTTP/1.1\r
+            Transfer-Encoding: blabla, chunked\r\n\r
+            """);
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 501 Not Implemented\r
+            Connection: close\r
+            Content-Length: 0\r\n\r\n""");
+        assertThat(pollServerException())
+            .isExactlyInstanceOf(UnsupportedTransferCodingException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Unsupported Transfer-Encoding: blabla");
     }
 }
