@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 final class RoutingTest extends AbstractRealTest
 {
     @Test
-    void ambiguousHandlerExc() throws IOException, InterruptedException {
+    void ambiguousHandler() throws IOException, InterruptedException {
         server().add("/",
             GET().produces("text/plain").apply(_ -> null),
             GET().produces("text/html").apply(_ -> null));
@@ -46,7 +46,7 @@ final class RoutingTest extends AbstractRealTest
     }
     
     @Test
-    void mediaTypeNotAcceptedExc() throws IOException, InterruptedException {
+    void mediaTypeNotAccepted() throws IOException, InterruptedException {
         server().add("/",
             GET().produces("text/blabla").apply(_ -> null));
         String rsp = client().writeReadTextUntilNewlines("""
@@ -65,7 +65,7 @@ final class RoutingTest extends AbstractRealTest
     }
     
     @Test
-    void mediaTypeUnsupportedExc() throws IOException, InterruptedException {
+    void mediaTypeUnsupported() throws IOException, InterruptedException {
         server().add("/",
             GET().consumes("text/blabla").apply(_ -> null));
         String rsp = client().writeReadTextUntilNewlines("""
@@ -84,7 +84,7 @@ final class RoutingTest extends AbstractRealTest
     }
     
     @Nested
-    class MethodNotAllowedExc {
+    class MethodNotAllowed {
         // Expect 405 (Method Not Allowed)
         @Test
         void BLABLA() throws IOException, InterruptedException {
@@ -123,7 +123,7 @@ final class RoutingTest extends AbstractRealTest
     }
     
     @Nested
-    class NoRouteFoundExc {
+    class NoRouteFound {
         @Test
         void handledByBase() throws IOException, InterruptedException {
             server();

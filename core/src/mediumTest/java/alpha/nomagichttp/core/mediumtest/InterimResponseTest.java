@@ -131,7 +131,7 @@ final class InterimResponseTest extends AbstractRealTest
     }
     
     @Test
-    void responseRejectedExc() throws IOException {
+    void responseRejected() throws IOException {
         usingConfiguration()
             .discardRejectedInformational(false);
         server().add("/", GET().apply(_ -> {
