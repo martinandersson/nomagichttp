@@ -48,26 +48,26 @@ final class ChunkedCodingTest extends AbstractRealTest
         void testClient() throws IOException {
             addRouteThatEchoesTheRequestBody();
             var rsp = client().writeReadTextUntilEOS("""
-                    POST / HTTP/1.1
-                    Transfer-Encoding: chunked
-                    
-                    5
-                    Hello
-                    6
-                    World!
-                    0
-                    
-                    """);
+                POST / HTTP/1.1
+                Transfer-Encoding: chunked
+                
+                5
+                Hello
+                6
+                World!
+                0
+                
+                """);
             // Both chunks fit into one buffer processed by ChunkedDecoder
             assertThat(rsp).isEqualTo("""
-                    HTTP/1.1 200 OK\r
-                    Content-Type: application/octet-stream\r
-                    Connection: close\r
-                    Transfer-Encoding: chunked\r
-                    \r
-                    0000000b\r
-                    HelloWorld!\r
-                    0\r\n\r\n""");
+                HTTP/1.1 200 OK\r
+                Content-Type: application/octet-stream\r
+                Connection: close\r
+                Transfer-Encoding: chunked\r
+                \r
+                0000000b\r
+                HelloWorld!\r
+                0\r\n\r\n""");
         }
         
         @ParameterizedTest(name = OTHER)
@@ -92,7 +92,7 @@ final class ChunkedCodingTest extends AbstractRealTest
         private void addRouteThatEchoesTheRequestBody() throws IOException {
             server().add("/", POST().apply(req -> {
                 assertThat(req.headers().transferEncoding().getLast())
-                        .isEqualTo("chunked");
+                    .isEqualTo("chunked");
                 return ok(ofSupplier(req.body().iterator()::next));
             }));
         }
