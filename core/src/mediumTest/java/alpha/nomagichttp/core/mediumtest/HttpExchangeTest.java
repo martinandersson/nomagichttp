@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.io.Serial;
 
 import static alpha.nomagichttp.core.mediumtest.util.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
@@ -32,20 +31,13 @@ final class HttpExchangeTest extends AbstractRealTest
 {
     @Nested
     class AppCrash {
-        private static final class OopsException extends RuntimeException {
-            @Serial
-            private static final long serialVersionUID = 1L;
-            OopsException() { }
-            OopsException(String msg) { super(msg); }
-        }
-        
         @Test
         void exceptionHandler() throws IOException, InterruptedException {
             usingExceptionHandler((_, _, _) -> {
-                throw new OopsException("second");
+                throw new RuntimeException("second");
             });
             server().add("/", GET().apply(_ -> {
-                throw new OopsException("first");
+                throw new RuntimeException("first");
             }));
             
             String rsp = client().writeReadTextUntilEOS(
@@ -55,10 +47,10 @@ final class HttpExchangeTest extends AbstractRealTest
                   .isEmpty();
             // But the exceptions were logged
             logRecorder().assertAwaitRemoveThrown()
-                  .isExactlyInstanceOf(OopsException.class)
+                  .isExactlyInstanceOf(RuntimeException.class)
                   .hasMessage("first")
                   .hasNoCause()
-                  .hasSuppressedException(new OopsException("second"));
+                  .hasSuppressedException(new RuntimeException("second"));
         }
         
         /**
@@ -68,19 +60,19 @@ final class HttpExchangeTest extends AbstractRealTest
          */
         @Test
         void bodyConsumer() throws IOException, InterruptedException {
-            onExceptionAssert(OopsException.class, ch ->
+            onExceptionAssert(RuntimeException.class, ch ->
                 assertThat(ch.areBothStreamsOpen()).isTrue());
             server().add("/", POST().apply(req -> {
                 // Read one byte before crash
                 req.body().iterator().next().get();
-                throw new OopsException();
+                throw new RuntimeException();
             }));
             var rsp = client().writeReadTextUntilNewlines(post("not empty"));
             assertThat(rsp).isEqualTo(
                 "HTTP/1.1 500 Internal Server Error" + CRLF +
                 "Content-Length: 0"                  + CRLF + CRLF);
             assertAwaitHandledAndLoggedExc()
-                .isExactlyInstanceOf(OopsException.class)
+                .isExactlyInstanceOf(RuntimeException.class)
                 .hasNoCause()
                 .hasNoSuppressedExceptions();
             logRecorder().assertAwait(DEBUG,
