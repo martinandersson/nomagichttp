@@ -366,9 +366,9 @@ final class ExampleTest extends AbstractRealTest
         }
     }
     
-    ///  Currently non-public examples.
+    /// Currently non-public examples.
     /// 
-    /// We'll make this public once we have a user guide in place.
+    /// We'll make these public once we have a user guide in place.
     /// 
     /// @see MessageFramingTest.ResponseValid#cLength_toHEAD()
     @Nested

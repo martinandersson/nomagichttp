@@ -17,6 +17,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 ///  Tests of server-emitted events.
+/// 
+/// @author Martin Andersson (webmaster at martinandersson.com)
 final class EventTest extends AbstractRealTest
 {
     @Test

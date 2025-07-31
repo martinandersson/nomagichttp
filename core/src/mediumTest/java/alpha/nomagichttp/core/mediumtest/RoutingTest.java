@@ -19,6 +19,8 @@ import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 ///  Tests of request-to-handler routing.
+/// 
+/// @author Martin Andersson (webmaster at martinandersson.com)
 final class RoutingTest extends AbstractRealTest
 {
     @Test
