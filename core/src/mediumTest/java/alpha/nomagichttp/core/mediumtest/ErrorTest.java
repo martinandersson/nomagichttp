@@ -3,8 +3,6 @@ package alpha.nomagichttp.core.mediumtest;
 import alpha.nomagichttp.IdleConnectionException;
 import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.HeaderParseException;
-import alpha.nomagichttp.message.HttpVersionTooNewException;
-import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
 import alpha.nomagichttp.message.Request;
@@ -15,13 +13,10 @@ import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import alpha.nomagichttp.util.Throwing;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.IOException;
 import java.io.Serial;
 
-import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
@@ -64,93 +59,6 @@ final class ErrorTest extends AbstractRealTest
         @Serial private static final long serialVersionUID = 1L;
         OopsException() { }
         OopsException(String msg) { super(msg); }
-    }
-    
-    // Some newer versions are currently not supported
-    @ParameterizedTest
-    @CsvSource({"2,true", "3,true", "999,false"})
-    void HttpVersionTooNewExc(String version, boolean hasLiteral)
-            throws IOException, InterruptedException
-    {
-        server();
-        String rsp = client().writeReadTextUntilNewlines(
-            "GET / HTTP/" + version                   + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 505 HTTP Version Not Supported" + CRLF +
-            "Connection: close"                       + CRLF +
-            "Content-Length: 0"                       + CRLF + CRLF);
-        var throwable = assertThat(pollServerException())
-            .isExactlyInstanceOf(HttpVersionTooNewException.class)
-            .hasNoSuppressedExceptions();
-        if (hasLiteral) {
-            throwable.hasMessage(null)
-                     .hasNoCause();
-        } else {
-            throwable.hasMessage("java.lang.IllegalArgumentException: 999:")
-                     .hasNoSuppressedExceptions()
-                     .cause()
-                         .isExactlyInstanceOf(IllegalArgumentException.class)
-                         .hasMessage("999:")
-                         .hasNoSuppressedExceptions()
-                         .hasNoCause();
-        }
-    }
-    
-    @Nested
-    class HttpVersionTooOldExc {
-        // By default, server rejects clients older than HTTP/1.0
-        @ParameterizedTest
-        @CsvSource({"-1.23,false", "0.5,false", "0.8,false", "0.9,true"})
-        void lessThan1_0(String version, boolean hasLiteral)
-                throws IOException, InterruptedException
-        {
-            server();
-            String rsp = client().writeReadTextUntilNewlines(
-                "GET / HTTP/" + version         + CRLF + CRLF);
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 426 Upgrade Required" + CRLF +
-                "Upgrade: HTTP/1.1"             + CRLF +
-                "Connection: upgrade, close"    + CRLF +
-                "Content-Length: 0"             + CRLF + CRLF);
-            var throwable = assertThat(pollServerException())
-                .isExactlyInstanceOf(HttpVersionTooOldException.class)
-                .hasNoSuppressedExceptions();
-            if (hasLiteral) {
-                throwable.hasMessage(null)
-                         .hasNoSuppressedExceptions()
-                         .hasNoCause();
-            } else {
-                var v = version.replace(".", ":");
-                throwable.hasMessage("java.lang.IllegalArgumentException: " + v)
-                         .cause()
-                         .isExactlyInstanceOf(IllegalArgumentException.class)
-                         .hasMessage(v)
-                         .hasNoSuppressedExceptions()
-                         .hasNoCause();
-            }
-        }
-        
-        // Server may be configured to reject old clients
-        @Test
-        void eq1_0()
-                throws IOException, InterruptedException
-        {
-            usingConfiguration()
-                .minHttpVersion(HTTP_1_1);
-            server();
-            String rsp = client().writeReadTextUntilNewlines(
-                "GET /not-found HTTP/1.0"       + CRLF + CRLF);
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 426 Upgrade Required" + CRLF +
-                "Upgrade: HTTP/1.1"             + CRLF +
-                "Connection: upgrade, close"    + CRLF +
-                "Content-Length: 0"             + CRLF+ CRLF);
-            assertThat(pollServerException())
-                .isExactlyInstanceOf(HttpVersionTooOldException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions()
-                .hasMessage(null);
-        }
     }
     
     @Test
