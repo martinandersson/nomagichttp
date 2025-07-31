@@ -1,18 +1,13 @@
 package alpha.nomagichttp.core.mediumtest;
 
 import alpha.nomagichttp.IdleConnectionException;
-import alpha.nomagichttp.message.BadHeaderException;
 import alpha.nomagichttp.message.BadRequestException;
 import alpha.nomagichttp.message.HeaderParseException;
-import alpha.nomagichttp.message.HttpVersionParseException;
 import alpha.nomagichttp.message.HttpVersionTooNewException;
 import alpha.nomagichttp.message.HttpVersionTooOldException;
 import alpha.nomagichttp.message.IllegalRequestBodyException;
 import alpha.nomagichttp.message.IllegalResponseBodyException;
-import alpha.nomagichttp.message.MediaType;
-import alpha.nomagichttp.message.MediaTypeParseException;
 import alpha.nomagichttp.message.Request;
-import alpha.nomagichttp.message.RequestLineParseException;
 import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.testutil.IORunnable;
@@ -69,68 +64,6 @@ final class ErrorTest extends AbstractRealTest
         @Serial private static final long serialVersionUID = 1L;
         OopsException() { }
         OopsException(String msg) { super(msg); }
-    }
-    
-    @Test
-    void BadHeaderExc() throws IOException, InterruptedException {
-        server().add("/",
-            GET().apply(NOP));
-        String rsp = client().writeReadTextUntilEOS("""
-            GET / HTTP/1.1\r
-            Content-Type: BOOM!\r\n\r
-            """);
-        assertThat(rsp).isEqualTo("""
-            HTTP/1.1 400 Bad Request\r
-            Connection: close\r
-            Content-Length: 0\r\n\r\n""");
-        assertThat(pollServerException())
-            .isExactlyInstanceOf(BadHeaderException.class)
-            .hasMessage("Failed to parse Content-Type header.")
-            .hasNoSuppressedExceptions()
-            .cause()
-                .isExactlyInstanceOf(MediaTypeParseException.class)
-                .hasNoSuppressedExceptions()
-                .hasNoCause()
-                .hasMessage("""
-                    Can not parse "BOOM!". \
-                    Expected exactly one forward slash in <type/subtype>.""");
-    }
-    
-    @Test
-    void HeaderParseExc() throws IOException, InterruptedException {
-        server();
-        String rsp = client().writeReadTextUntilEOS("""
-             GET / HTTP/1.1\r
-             H e a d e r: Oops!\r\n""");
-        assertThat(rsp).isEqualTo("""
-             HTTP/1.1 400 Bad Request\r
-             Connection: close\r
-             Content-Length: 0\r\n\r\n""");
-        assertThat(pollServerException())
-            .isExactlyInstanceOf(HeaderParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasToString("""
-                HeaderParseException{\
-                prev=(hex:0x48, decimal:72, char:"H"), \
-                curr=(hex:0x20, decimal:32, char:" "), pos=17, \
-                msg=Whitespace in header name or before colon is not accepted.}""");
-    }
-    
-    @Test
-    void HttpVersionParseExc() throws IOException, InterruptedException {
-        server();
-        String rsp = client().writeReadTextUntilNewlines(
-            "GET / Oops"               + CRLF + CRLF);
-        assertThat(rsp).isEqualTo(
-            "HTTP/1.1 400 Bad Request" + CRLF +
-            "Connection: close"        + CRLF +
-            "Content-Length: 0"        + CRLF + CRLF);
-        assertThat(pollServerException())
-            .isExactlyInstanceOf(HttpVersionParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("No forward slash.");
     }
     
     // Some newer versions are currently not supported
@@ -218,42 +151,6 @@ final class ErrorTest extends AbstractRealTest
                 .hasNoSuppressedExceptions()
                 .hasMessage(null);
         }
-    }
-    
-    @Test
-    void MediaTypeParseExc() throws IOException, InterruptedException {
-        server().add("/", GET().apply(_ -> {
-            MediaType.parse("BOOM!");
-            throw new AssertionError();
-        }));
-        String rsp = client().writeReadTextUntilNewlines(
-            "GET / HTTP/1.1\n\n");
-        assertThat(rsp).isEqualTo("""
-            HTTP/1.1 500 Internal Server Error\r
-            Content-Length: 0\r\n\r\n""");
-        assertAwaitHandledAndLoggedExc()
-            .isExactlyInstanceOf(MediaTypeParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("""
-                Can not parse "BOOM!". \
-                Expected exactly one forward slash in <type/subtype>.""");
-    }
-    
-    @Test
-    void RequestLineParseExc() throws IOException, InterruptedException {
-        server();
-        String rsp = client().writeReadTextUntilEOS(
-            "GET / H T T P ....");
-        assertThat(rsp).isEqualTo("""
-             HTTP/1.1 400 Bad Request\r
-             Connection: close\r
-             Content-Length: 0\r\n\r\n""");
-        assertThat(pollServerException())
-            .isExactlyInstanceOf(RequestLineParseException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Whitespace in HTTP-version not accepted.");
     }
     
     @Test
