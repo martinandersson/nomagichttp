@@ -138,7 +138,7 @@ final class MessageTest extends AbstractRealTest
     // TODO: Make client-compatibility tests
     @Test
     void responseOfFile() throws IOException {
-        var file = writeTempFile(asciiBytes("Hello, World!"));;
+        var file = writeTempFile(asciiBytes("Hello, World!"));
         server().add(
             "/", GET().apply(_ -> ok(ofFile(file))));
         var rsp = client().writeReadTextUntil(get(), "!");
