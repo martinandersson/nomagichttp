@@ -1,10 +1,7 @@
 package alpha.nomagichttp.core.mediumtest;
 
-import alpha.nomagichttp.event.RequestHeadReceived;
-import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.message.Request;
 import alpha.nomagichttp.message.Response;
-import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import alpha.nomagichttp.testutil.functional.HttpClientFacade;
 import alpha.nomagichttp.util.Throwing;
@@ -19,11 +16,8 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.LongAdder;
-import java.util.function.BiConsumer;
 
 import static alpha.nomagichttp.HttpConstants.HeaderName.CONTENT_LENGTH;
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
@@ -414,26 +408,6 @@ final class ExampleTest extends AbstractRealTest
                     .isExactlyInstanceOf(FileAlreadyExistsException.class);
             assertThat(Files.readString(file))
                     .isEqualTo("Foo");
-        }
-        
-        @Test
-        @DisplayName("CountRequestsByMethod/TestClient")
-        void countRequestsByMethod() throws IOException, InterruptedException {
-            final var freqs = new ConcurrentHashMap<String, LongAdder>();
-            
-            BiConsumer<RequestHeadReceived, RawRequest.Head> incrementer = (event, head) ->
-                    freqs.computeIfAbsent(head.line().method(), m -> new LongAdder()).increment();
-            
-            // We don't need to add routes here, sort of the whole point lol
-            server().events().on(RequestHeadReceived.class, incrementer);
-            // Must await the server before we assert the counter
-            var responseIgnored = client()
-                    .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
-            
-            assertThat(freqs.get("GET").sum())
-                  .isOne();
-            assertAwaitHandledAndLoggedExc()
-                  .isExactlyInstanceOf(NoRouteFoundException.class);
         }
     }
     

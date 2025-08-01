@@ -3,12 +3,16 @@ package alpha.nomagichttp.core.mediumtest;
 import alpha.nomagichttp.event.AbstractByteCountedStats;
 import alpha.nomagichttp.event.RequestHeadReceived;
 import alpha.nomagichttp.event.ResponseSent;
+import alpha.nomagichttp.message.RawRequest;
 import alpha.nomagichttp.route.NoRouteFoundException;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.function.BiConsumer;
 
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static java.lang.System.nanoTime;
@@ -21,6 +25,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 /// @author Martin Andersson (webmaster at martinandersson.com)
 final class EventTest extends AbstractRealTest
 {
+    ///  Count requests by method.
+    @Test
+    void example() throws IOException, InterruptedException {
+        final var freqs = new ConcurrentHashMap<String, LongAdder>();
+        
+        BiConsumer<RequestHeadReceived, RawRequest.Head> incrementer = (event, head) ->
+                freqs.computeIfAbsent(head.line().method(), m -> new LongAdder()).increment();
+        
+        // We don't need to add routes here, sort of the whole point lol
+        server().events().on(RequestHeadReceived.class, incrementer);
+        // Must await the server before we assert the counter
+        var responseIgnored = client()
+                .writeReadTextUntilNewlines("GET / HTTP/1.1" + CRLF + CRLF);
+        
+        assertThat(freqs.get("GET").sum())
+              .isOne();
+        assertAwaitHandledAndLoggedExc()
+              .isExactlyInstanceOf(NoRouteFoundException.class);
+    }
+    
     @Test
     void requestHeadReceived() throws IOException, InterruptedException {
         engine(RequestHeadReceived.class);
