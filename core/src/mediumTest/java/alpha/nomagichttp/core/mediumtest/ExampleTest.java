@@ -13,9 +13,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.opentest4j.TestAbortedException;
 
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -38,14 +35,19 @@ import static alpha.nomagichttp.testutil.functional.HttpClientFacade.ResponseFac
 import static alpha.nomagichttp.util.ScopedValues.channel;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Mimics all the examples provided in {@link alpha.nomagichttp.examples}.<p>
- * 
- * The purpose is to have a guarantee that new code changes won't break the
- * examples, and they are compatible across different clients.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- */
+/// Mimics all the examples provided in [alpha.nomagichttp.examples].
+/// 
+/// The purpose is to have a guarantee that new code changes won't break the
+/// examples, and they are compatible across different clients.
+/// 
+/// @see EventTest#example()
+/// @see MessageFramingTest.ResponseValid#cLength_toHEAD()
+/// @see MessageTest#charsetPreferenceThroughQ()
+/// @see MessageTest#responseOfFile()
+/// @see MessageTest#uploadFile()
+/// @see RequestTrailersTest#example()
+/// 
+/// @author Martin Andersson (webmaster at martinandersson.com)
 final class ExampleTest extends AbstractRealTest
 {
     @Nested
@@ -357,57 +359,6 @@ final class ExampleTest extends AbstractRealTest
                 ch.write(processing());
                 return text("Done!");
             }));
-        }
-    }
-    
-    /// Currently non-public examples.
-    /// 
-    /// We'll make these public once we have a user guide in place.
-    /// 
-    /// @see MessageFramingTest.ResponseValid#cLength_toHEAD()
-    /// @see RequestTrailersTest#example()
-    @Nested
-    class NonPublicExamples {
-        // TODO: Will wait until after we have done improved file serving.
-        //       The compatibility test ought to use a client-native API for uploading a file.
-        
-        // TODO: Add examples for streaming, both 102 (Processing) and infinite bodies
-        
-        @Test
-        @DisplayName("UploadFile/TestClient")
-        void uploadFile() throws IOException, InterruptedException {
-            // Destination file
-            Path file = Files.createTempDirectory("nomagic")
-                    .resolve("some-file.txt");
-            
-            // Handler saves the file bytes and return byte count as response body
-            server().add("/small-file", POST().apply(req ->
-                    text(Long.toString(req.body().toFile(file)))));
-            
-            final String reqHead =
-                "POST /small-file HTTP/1.1" + CRLF +
-                "Content-Length: 3"         + CRLF + CRLF;
-            
-            String res1 = client().writeReadTextUntil(reqHead + "Foo", "3");
-            
-            assertThat(res1).isEqualTo(
-                "HTTP/1.1 200 OK"                          + CRLF +
-                "Content-Type: text/plain; charset=utf-8"  + CRLF +
-                "Content-Length: 1"                        + CRLF + CRLF +
-                
-                "3");
-            assertThat(Files.readString(file)).isEqualTo("Foo");
-            
-            // By default, existing files are not overwritten
-            String res2 = client().writeReadTextUntilNewlines(reqHead + "Bar");
-            
-            assertThat(res2).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                "Content-Length: 0"                  + CRLF + CRLF);
-            assertAwaitHandledAndLoggedExc()
-                    .isExactlyInstanceOf(FileAlreadyExistsException.class);
-            assertThat(Files.readString(file))
-                    .isEqualTo("Foo");
         }
     }
     

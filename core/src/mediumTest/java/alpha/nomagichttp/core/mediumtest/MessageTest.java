@@ -4,11 +4,15 @@ import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static alpha.nomagichttp.core.mediumtest.util.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
+import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
@@ -94,6 +98,44 @@ final class MessageTest extends AbstractRealTest
             "true");
     }
     
+    // TODO: Make client-compatibility tests
+    @Test
+    void uploadFile() throws IOException, InterruptedException {
+        // Destination file
+        Path file = Files.createTempDirectory("nomagic")
+                .resolve("some-file.txt");
+        
+        // Handler saves the file bytes and return byte count as response body
+        server().add("/small-file", POST().apply(req ->
+                text(Long.toString(req.body().toFile(file)))));
+        
+        final String reqHead =
+            "POST /small-file HTTP/1.1" + CRLF +
+            "Content-Length: 3"         + CRLF + CRLF;
+        
+        String res1 = client().writeReadTextUntil(reqHead + "Foo", "3");
+        
+        assertThat(res1).isEqualTo(
+            "HTTP/1.1 200 OK"                          + CRLF +
+            "Content-Type: text/plain; charset=utf-8"  + CRLF +
+            "Content-Length: 1"                        + CRLF + CRLF +
+            
+            "3");
+        assertThat(Files.readString(file)).isEqualTo("Foo");
+        
+        // By default, existing files are not overwritten
+        String res2 = client().writeReadTextUntilNewlines(reqHead + "Bar");
+        
+        assertThat(res2).isEqualTo(
+            "HTTP/1.1 500 Internal Server Error" + CRLF +
+            "Content-Length: 0"                  + CRLF + CRLF);
+        assertAwaitHandledAndLoggedExc()
+                .isExactlyInstanceOf(FileAlreadyExistsException.class);
+        assertThat(Files.readString(file))
+                .isEqualTo("Foo");
+    }
+    
+    // TODO: Make client-compatibility tests
     @Test
     void responseOfFile() throws IOException {
         var file = writeTempFile(asciiBytes("Hello, World!"));;
