@@ -32,7 +32,7 @@ final class MessageTest extends AbstractRealTest
     /**
      * Can make an HTTP/1.0 request (receives HTTP/1.1 response).<p>
      * 
-     * See {@link ErrorTest} for cases related to unsupported versions.
+     * See {@link HttpVersionTest} for cases related to unsupported versions.
      */
     // TODO: Any client that can't do HTTP/1.0 can simply be ignored
     @Test
