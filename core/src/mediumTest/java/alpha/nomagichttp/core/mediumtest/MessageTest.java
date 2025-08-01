@@ -17,16 +17,11 @@ import static alpha.nomagichttp.util.ByteBufferIterables.ofFile;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Coarse+fine-grained HTTP exchanges.<p>
- * 
- * Tests here perform classical "GET ..." requests and then expect "HTTP/1.1
- * 200 ..." responses. The purpose is to ensure the NoMagicHTTP library can in
- * practice be used by different HTTP clients.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- */
-// TODO: Run tests using different clients
+/// Tests of message construction and serialization.
+/// 
+/// Many of these cases can probably be seen as non-public examples.
+/// 
+/// @author Martin Andersson (webmaster at martinandersson.com)
 final class MessageTest extends AbstractRealTest
 {
     // "Accept: text/plain; charset=utf-8; q=0.9, text/plain; charset=iso-8859-1"
@@ -66,7 +61,7 @@ final class MessageTest extends AbstractRealTest
      * 
      * See {@link HttpVersionTest} for cases related to unsupported versions.
      */
-    // TODO: Any client that can't do HTTP/1.0 can simply be ignored
+    // TODO: Make client-compatibility tests
     @Test
     void http_1_0() throws IOException {
         server().add("/", GET().apply(req ->
@@ -84,7 +79,8 @@ final class MessageTest extends AbstractRealTest
             "Received HTTP/1.0");
     }
     
-    // TODO: If this can't run using different clients, just do GET instead of POST
+    // TODO: Make client-compatibility tests.
+    //       If this can't run on some clients, do GET instead of POST.
     @Test
     void requestBodyEmpty() throws IOException {
         server().add("/",
