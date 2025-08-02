@@ -259,9 +259,9 @@ final class ChunkedCodingTest extends AbstractRealTest
         }
         
         // And what about testing a request body of unknown length?
-        // The request must specify Content-Length, or chunked encoding.
+        // The request must specify Content-Length or Transfer-Encoding.
         // Only the server's response may have unknown length terminated by
-        // connection close (RFC 9112 §6.3, bullet item 6 & 7).
+        // connection close (RFC 9112 §6.3, bullet item 7 & 8).
     }
     
     @Test
