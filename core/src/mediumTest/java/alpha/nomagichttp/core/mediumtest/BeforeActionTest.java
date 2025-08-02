@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Medium tests for before-actions.
- * I
+ * 
  * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class BeforeActionTest extends AbstractRealTest

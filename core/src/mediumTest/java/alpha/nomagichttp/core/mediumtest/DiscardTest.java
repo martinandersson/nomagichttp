@@ -21,7 +21,7 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-///  Tests of request body discarding.
+///  Tests of request discarding.
 /// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
 final class DiscardTest extends AbstractRealTest

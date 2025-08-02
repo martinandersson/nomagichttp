@@ -40,12 +40,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 /// The purpose is to have a guarantee that new code changes won't break the
 /// examples, and they are compatible across different clients.
 /// 
-/// @see EventTest#example()
-/// @see MessageFramingTest.ResponseValid#cLength_toHEAD()
-/// @see MessageTest.Request#bodyToFile()
-/// @see MessageTest.Request#charsetPreferenceThroughQ()
-/// @see MessageTest.Request#trailers()
-/// @see MessageTest.Response#okOfFile()
+/// Other tests which may be suitable to make into public examples:
+/// 
+/// - [EventTest#example()]
+/// - [MessageFramingTest.ResponseValid#cLength_toHEAD()]
+/// - [MessageTest.Request#bodyToFile()]
+/// - [MessageTest.Request#charsetPreferenceThroughQ()]
+/// - [MessageTest.Request#trailers()]
+/// - [MessageTest.Response#okOfFile()]
 /// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
 final class ExampleTest extends AbstractRealTest

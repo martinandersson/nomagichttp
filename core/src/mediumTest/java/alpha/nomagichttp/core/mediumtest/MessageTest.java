@@ -23,8 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /// Tests of message construction and serialization.
 /// 
-/// Many of these cases can probably be seen as non-public examples.
-/// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
 final class MessageTest extends AbstractRealTest
 {

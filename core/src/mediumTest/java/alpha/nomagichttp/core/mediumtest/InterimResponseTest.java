@@ -21,8 +21,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 ///  Tests of 1XX interim responses.
 /// 
-/// @see ExampleTest.KeepClientInformed
-/// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
 final class InterimResponseTest extends AbstractRealTest
 {

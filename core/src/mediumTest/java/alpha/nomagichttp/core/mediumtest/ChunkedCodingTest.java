@@ -38,6 +38,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 ///  Tests of "Transfer-Encoding: chunked".
+/// 
+/// @author Martin Andersson (webmaster at martinandersson.com)
 final class ChunkedCodingTest extends AbstractRealTest
 {
     @Nested

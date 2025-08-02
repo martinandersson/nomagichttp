@@ -16,13 +16,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /// Tests of HTTP version.
 /// 
-/// @apiNote
-/// Arguably, this class could've been `@Nested` in [HttpExchangeTest].
-/// 
-/// It is expected that loads of more tests will be upcoming, in particular
-/// related to upgrading. So consider this class a premature
-/// design-optimization.
-/// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
 final class HttpVersionTest extends AbstractRealTest
 {

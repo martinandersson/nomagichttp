@@ -39,11 +39,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /// Asserts legal and illegal variants of message bodies and related headers.
 /// 
-/// Most common, legal variants ought to be tested by {@link ExampleTest} and
-/// {@link MessageTest}. This test class is for very rare cases we don't wish to
-/// make an example of, nor are we interested in [or wouldn't be able to test]
-/// client compatibility.
-/// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
 class MessageFramingTest extends AbstractRealTest
 {

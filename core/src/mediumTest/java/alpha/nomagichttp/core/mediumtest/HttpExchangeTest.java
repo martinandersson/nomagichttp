@@ -27,9 +27,7 @@ import static java.time.Duration.ofMillis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/// Detailed tests of request-to-response processing.
-/// 
-/// For coarse-grained message exchanges, see [MessageTest].
+/// Tests that don't really fit anywhere else.
 /// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
 final class HttpExchangeTest extends AbstractRealTest
