@@ -145,7 +145,7 @@ final class MessageTest extends AbstractRealTest
     class Response {
         // TODO: Make client-compatibility tests
         @Test
-        void OkOfFile() throws IOException {
+        void okOfFile() throws IOException {
             var file = writeTempFile(asciiBytes("Hello, World!"));
             server().add(
                 "/", GET().apply(_ -> ok(ofFile(file))));
