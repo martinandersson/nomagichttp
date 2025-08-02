@@ -3,8 +3,11 @@ package alpha.nomagichttp.core.mediumtest;
 import alpha.nomagichttp.IdleConnectionException;
 import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeException;
+import alpha.nomagichttp.message.Request;
+import alpha.nomagichttp.message.Response;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
+import alpha.nomagichttp.util.Throwing;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -175,26 +178,42 @@ final class HttpExchangeTest extends AbstractRealTest
     }
     
     @Test
-    void writingTwoFinalResponses() throws IOException, InterruptedException {
-        server().add("/", GET().apply(_ -> {
+    void writingTwoFinalResponses_explicit() throws IOException, InterruptedException {
+        writingTwoFinalResponses_engine(_ -> {
             channel().write(noContent());
-            return text("this won't work");
-        }));
+            channel().write(text("blah"));
+            return null;
+        }, IllegalStateException.class,
+           "Already wrote a final response");
+    }
+    
+    @Test
+    void writingTwoFinalResponses_implicit() throws IOException, InterruptedException {
+        writingTwoFinalResponses_engine(_ -> {
+            channel().write(noContent());
+            return text("blah");
+        }, IllegalArgumentException.class,
+           "Request processing chain both wrote and returned a final response.");
+    }
+    
+    private void writingTwoFinalResponses_engine(
+            Throwing.Function<Request, Response, ? extends Exception> handler,
+            Class<? extends Throwable> thr, String msg)
+            throws IOException, InterruptedException {
+        server().add("/",
+            GET().apply(handler));
         String rsp = client().writeReadTextUntilNewlines(
-            "GET / HTTP/1.1"          + CRLF + CRLF);
+            "GET / HTTP/1.1" + CRLF + CRLF);
         // The first one succeeded
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 204 No Content" + CRLF + CRLF);
         // The second one caused some problems
-        // TODO: See below, is repeated in next test case
         logRecorder().assertAwaitRemove(
                 ERROR, """
                     Response bytes already sent, \
                     can not handle this exception (closing child).""",
-                IllegalArgumentException.class)
-            .hasMessage("""
-                Request processing chain \
-                both wrote and returned a final response.""")
+                thr)
+            .hasMessage(msg)
             .hasNoCause()
             .hasNoSuppressedExceptions();
     }
