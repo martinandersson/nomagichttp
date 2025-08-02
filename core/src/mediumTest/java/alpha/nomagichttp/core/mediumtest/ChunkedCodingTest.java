@@ -317,6 +317,8 @@ final class ChunkedCodingTest extends AbstractRealTest
                                .replace("$3", "dummy")
                                .replace("$4", "dummy");
             var rsp1 = client().writeReadTextUntilNewlines(req1);
+            logRecorder().assertContainsOnlyOnce(DEBUG,
+                    "Discarding request trailers");
             assertThat(rsp1).isEqualTo(
                     "HTTP/1.1 204 No Content\r\n\r\n");
             // Can push a message over the same conn and echo the last trailer
