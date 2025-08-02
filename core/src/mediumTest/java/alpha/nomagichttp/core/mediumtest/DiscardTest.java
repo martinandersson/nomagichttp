@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.core.mediumtest.util.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
@@ -48,9 +47,9 @@ final class DiscardTest extends AbstractRealTest
         
         @Test
         void discardWhole() throws IOException {
-            server().add("/",
-                    // Does not consume the body
-                    respondIsBodyEmpty());
+            server().add("/", POST().apply(req ->
+                // Does not consume the body
+                text(String.valueOf(req.body().isEmpty()))));
             
             IORunnable exchange = () -> {
                 String req = post("x".repeat(10)),
