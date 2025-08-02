@@ -62,6 +62,43 @@ final class MessageTest extends AbstractRealTest
                 "hello");
         }
         
+        // TODO: Make client-compatibility tests
+        @Test
+        void bodyToFile() throws IOException, InterruptedException {
+            // Destination file
+            Path file = Files.createTempDirectory("nomagic")
+                    .resolve("some-file.txt");
+            
+            // Handler saves the file bytes and return byte count as response body
+            server().add("/small-file", POST().apply(req ->
+                    text(Long.toString(req.body().toFile(file)))));
+            
+            final String reqHead =
+                "POST /small-file HTTP/1.1" + CRLF +
+                "Content-Length: 3"         + CRLF + CRLF;
+            
+            String res1 = client().writeReadTextUntil(reqHead + "Foo", "3");
+            
+            assertThat(res1).isEqualTo(
+                "HTTP/1.1 200 OK"                          + CRLF +
+                "Content-Type: text/plain; charset=utf-8"  + CRLF +
+                "Content-Length: 1"                        + CRLF + CRLF +
+                
+                "3");
+            assertThat(Files.readString(file)).isEqualTo("Foo");
+            
+            // By default, existing files are not overwritten
+            String res2 = client().writeReadTextUntilNewlines(reqHead + "Bar");
+            
+            assertThat(res2).isEqualTo(
+                "HTTP/1.1 500 Internal Server Error" + CRLF +
+                "Content-Length: 0"                  + CRLF + CRLF);
+            assertAwaitHandledAndLoggedExc()
+                    .isExactlyInstanceOf(FileAlreadyExistsException.class);
+            assertThat(Files.readString(file))
+                    .isEqualTo("Foo");
+        }
+        
         /**
          * Can make an HTTP/1.0 request (receives HTTP/1.1 response).<p>
          * 
@@ -129,43 +166,6 @@ final class MessageTest extends AbstractRealTest
                 .hasNoCause()
                 .hasNoSuppressedExceptions()
                 .hasMessage("Unsupported Transfer-Encoding: blabla");
-        }
-        
-        // TODO: Make client-compatibility tests
-        @Test
-        void bodyToFile() throws IOException, InterruptedException {
-            // Destination file
-            Path file = Files.createTempDirectory("nomagic")
-                    .resolve("some-file.txt");
-            
-            // Handler saves the file bytes and return byte count as response body
-            server().add("/small-file", POST().apply(req ->
-                    text(Long.toString(req.body().toFile(file)))));
-            
-            final String reqHead =
-                "POST /small-file HTTP/1.1" + CRLF +
-                "Content-Length: 3"         + CRLF + CRLF;
-            
-            String res1 = client().writeReadTextUntil(reqHead + "Foo", "3");
-            
-            assertThat(res1).isEqualTo(
-                "HTTP/1.1 200 OK"                          + CRLF +
-                "Content-Type: text/plain; charset=utf-8"  + CRLF +
-                "Content-Length: 1"                        + CRLF + CRLF +
-                
-                "3");
-            assertThat(Files.readString(file)).isEqualTo("Foo");
-            
-            // By default, existing files are not overwritten
-            String res2 = client().writeReadTextUntilNewlines(reqHead + "Bar");
-            
-            assertThat(res2).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                "Content-Length: 0"                  + CRLF + CRLF);
-            assertAwaitHandledAndLoggedExc()
-                    .isExactlyInstanceOf(FileAlreadyExistsException.class);
-            assertThat(Files.readString(file))
-                    .isEqualTo("Foo");
         }
     }
     
