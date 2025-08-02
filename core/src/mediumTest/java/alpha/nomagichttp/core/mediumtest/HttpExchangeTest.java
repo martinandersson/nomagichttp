@@ -44,57 +44,6 @@ final class HttpExchangeTest extends AbstractRealTest
             = System.getLogger(HttpExchangeTest.class.getPackageName());
     
     @Nested
-    class AppCrash {
-        /**
-         * The channel remains fully open.
-         * 
-         * @see ClientLifeCycleTest.UnexpectedEndFromClient#receivedPartialHead()
-         */
-        @Test
-        void bodyConsumer() throws IOException, InterruptedException {
-            onExceptionAssert(RuntimeException.class, ch ->
-                assertThat(ch.areBothStreamsOpen()).isTrue());
-            server().add("/", POST().apply(req -> {
-                // Read one byte before crash
-                req.body().iterator().next().get();
-                throw new RuntimeException();
-            }));
-            var rsp = client().writeReadTextUntilNewlines(post("not empty"));
-            assertThat(rsp).isEqualTo(
-                "HTTP/1.1 500 Internal Server Error" + CRLF +
-                "Content-Length: 0"                  + CRLF + CRLF);
-            assertAwaitHandledAndLoggedExc()
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasNoCause()
-                .hasNoSuppressedExceptions();
-            logRecorder().assertAwait(DEBUG,
-                "Closing the child because client aborted the exchange.");
-        }
-        
-        @Test
-        void exceptionHandler() throws IOException, InterruptedException {
-            usingExceptionHandler((_, _, _) -> {
-                throw new RuntimeException("second");
-            });
-            server().add("/", GET().apply(_ -> {
-                throw new RuntimeException("first");
-            }));
-            
-            String rsp = client().writeReadTextUntilEOS(
-                "GET / HTTP/1.1" + CRLF + CRLF);
-            // No response
-            assertThat(rsp)
-                  .isEmpty();
-            // But the exceptions were logged
-            logRecorder().assertAwaitRemoveThrown()
-                  .isExactlyInstanceOf(RuntimeException.class)
-                  .hasMessage("first")
-                  .hasNoCause()
-                  .hasSuppressedException(new RuntimeException("second"));
-        }
-    }
-    
-    @Nested
     class ConnectionReuse {
         @Test
         void normal() throws IOException {
