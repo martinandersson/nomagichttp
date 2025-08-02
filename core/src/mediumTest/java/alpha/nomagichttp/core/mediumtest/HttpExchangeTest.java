@@ -19,6 +19,7 @@ import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.noContent;
+import static alpha.nomagichttp.message.Responses.status;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static alpha.nomagichttp.testutil.functional.Environment.isGitHubActions;
@@ -29,6 +30,7 @@ import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.INFO;
 import static java.time.Duration.ofMillis;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /// Detailed tests of request-to-response processing.
@@ -170,6 +172,64 @@ final class HttpExchangeTest extends AbstractRealTest
             try (var _ = client().openConnection()) {
                 exchange.run();
                 exchange.run();
+            }
+        }
+    }
+    
+    @Nested
+    class ConnectionClose {
+        @Test
+        void remainingBytesLarge() throws IOException, InterruptedException {
+            server().add("/", GET().apply(_ -> {
+                var rsp = noContent();
+                // We're testing the server's native connection management
+                // without close-commands from the app.
+                assertFalse(rsp.headers().hasConnectionClose());
+                return rsp;
+            }));
+            try (var _ = client().openConnection()) {
+                var rsp = client().writeReadTextUntilEOS("""
+                    GET / HTTP/1.1
+                    Content-Length: 666
+                    
+                    ...""");
+                assertThat(rsp).isEqualTo("""
+                    HTTP/1.1 204 No Content\r
+                    Connection: close\r
+                    \r
+                    """);
+                logRecorder().assertContainsOnlyOnce(DEBUG, """
+                    Setting "Connection: close" because a satanic volume \
+                    of request data is remaining.""");
+                assertAwaitClosingChild();
+            }
+        }
+        
+        @Test
+        void remainingBytesUnknown() throws IOException, InterruptedException {
+            server().add("/", GET().apply(_ -> {
+                var rsp = status(499, "Naughty Request");
+                assertFalse(rsp.headers().hasConnectionClose());
+                return rsp;
+            }));
+            try (var _ = client().openConnection()) {
+                // "Expect: 100-continue" makes to difference for the test case
+                var rsp = client().writeReadTextUntilEOS("""
+                    GET / HTTP/1.1
+                    Expect: 100-continue
+                    Transfer-Encoding: chunked
+                    
+                    ...""");
+                assertThat(rsp).isEqualTo("""
+                    HTTP/1.1 499 Naughty Request\r
+                    Connection: close\r
+                    Content-Length: 0\r
+                    \r
+                    """);
+                logRecorder().assertContainsOnlyOnce(DEBUG, """
+                    Setting "Connection: close" because unknown length \
+                    of request data is remaining.""");
+                assertAwaitClosingChild();
             }
         }
     }
