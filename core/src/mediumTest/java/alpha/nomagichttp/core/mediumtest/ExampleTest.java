@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /// @see MessageFramingTest.ResponseValid#cLength_toHEAD()
 /// @see MessageTest.Request#charsetPreferenceThroughQ()
 /// @see MessageTest.Request#bodyToFile()
-/// @see MessageTest.Response#OkOfFile()
+/// @see MessageTest.Response#okOfFile()
 /// @see RequestTrailersTest#example()
 /// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
