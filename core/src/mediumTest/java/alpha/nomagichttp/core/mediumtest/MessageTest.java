@@ -105,7 +105,7 @@ final class MessageTest extends AbstractRealTest
         
         // TODO: Make client-compatibility tests
         @Test
-        void uploadFile() throws IOException, InterruptedException {
+        void bodyToFile() throws IOException, InterruptedException {
             // Destination file
             Path file = Files.createTempDirectory("nomagic")
                     .resolve("some-file.txt");
@@ -145,7 +145,7 @@ final class MessageTest extends AbstractRealTest
     class Response {
         // TODO: Make client-compatibility tests
         @Test
-        void responseOfFile() throws IOException {
+        void OkOfFile() throws IOException {
             var file = writeTempFile(asciiBytes("Hello, World!"));
             server().add(
                 "/", GET().apply(_ -> ok(ofFile(file))));
