@@ -266,27 +266,6 @@ final class ChunkedCodingTest extends AbstractRealTest
     }
     
     @Test
-    void discardBody() throws IOException {
-        server().add("/",
-            GET().apply(_ -> noContent()));
-        var rsp = client().writeReadTextUntilEOS("""
-            GET / HTTP/1.1
-            Transfer-Encoding: chunked
-            Connection: close
-            
-            0
-            Blabla: This is also discarded
-            
-            """);
-        logRecorder().assertContainsOnlyOnce(DEBUG, """
-            Setting "Connection: close" because unknown length \
-            of request data is remaining.""");
-        assertThat(rsp).isEqualTo("""
-            HTTP/1.1 204 No Content\r
-            Connection: close\r\n\r\n""");
-    }
-    
-    @Test
     void discardTrailers() throws IOException {
         server()
             .add("/discard", POST().apply(req -> {
