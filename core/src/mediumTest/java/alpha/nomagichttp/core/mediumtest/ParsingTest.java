@@ -58,6 +58,8 @@ final class ParsingTest extends AbstractRealTest
     
     @Nested
     class HeaderName {
+        ///  The trailer-equivalent test:
+        /// [DiscardTest.ConnectionClosed#badTrailerDuringDiscard()]
         @Test
         void whitespace() throws IOException, InterruptedException {
             server();

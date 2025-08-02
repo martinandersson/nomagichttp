@@ -216,6 +216,7 @@ final class DiscardTest extends AbstractRealTest
             }
         }
         
+        ///  The header-equivalent test: [ParsingTest.HeaderName#whitespace()]
         @Test
         void badTrailerDuringDiscard() throws IOException {
             server().add("/", POST().apply(req ->
