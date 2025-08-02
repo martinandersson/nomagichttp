@@ -266,7 +266,7 @@ final class ChunkedCodingTest extends AbstractRealTest
     }
     
     @Test
-    void requestBodyDiscard() throws IOException {
+    void discardBody() throws IOException {
         server().add("/",
             GET().apply(_ -> noContent()));
         var rsp = client().writeReadTextUntilEOS("""
@@ -287,7 +287,7 @@ final class ChunkedCodingTest extends AbstractRealTest
     }
     
     @Test
-    void connectionReuse() throws IOException {
+    void discardTrailers() throws IOException {
         server()
             .add("/discard", POST().apply(req -> {
                 var _ = req.body().toText();
