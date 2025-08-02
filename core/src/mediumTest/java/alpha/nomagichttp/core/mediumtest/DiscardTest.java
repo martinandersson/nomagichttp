@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 final class DiscardTest extends AbstractRealTest
 {
     @Nested
-    class ConnectionReuse {
+    class ConnectionReused {
         @Test
         void normal() throws IOException {
             // Echo request body
@@ -108,7 +108,7 @@ final class DiscardTest extends AbstractRealTest
     }
     
     @Nested
-    class ConnectionClose {
+    class ConnectionClosed {
         @Test
         void remainingBytesLarge() throws IOException, InterruptedException {
             server().add("/", GET().apply(_ -> {
