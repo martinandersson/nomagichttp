@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.message.Responses.badRequest;
 import static alpha.nomagichttp.message.Responses.noContent;
@@ -37,7 +36,7 @@ final class ChannelWriterTest extends AbstractRealTest
                 .removeHeaderValue("Connection", "close").build()));
         
         IORunnable sendBadRequest = () -> {
-            String rsp = client().writeReadTextUntilNewlines(get());
+            String rsp = client().writeReadTextUntilNewlines("GET / HTTP/1.1\n\n");
             assertThat(rsp).startsWith("HTTP/1.1 400 Bad Request");
         };
         

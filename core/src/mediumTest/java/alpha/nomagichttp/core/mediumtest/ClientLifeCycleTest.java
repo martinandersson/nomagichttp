@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Semaphore;
 
-import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.noContent;
@@ -235,8 +234,11 @@ final class ClientLifeCycleTest extends AbstractRealTest
                 return noContent();
             }));
             try (var _ = client().openConnection()) {
-                client().write(addConnCloseHeader ?
-                               get("Connection: close") : get())
+                var req = "GET / HTTP/1.1\n";
+                if (addConnCloseHeader) {
+                    req += "Connection: close\n";
+                }
+                client().write(req += "\n")
                         .shutdownOutput();
                 send.release();
                 var rsp = client().readTextUntilEOS();
@@ -323,7 +325,7 @@ final class ClientLifeCycleTest extends AbstractRealTest
                 return noContent();
             }));
             assertThat(client().writeReadTextUntilEOS(
-                    get()))
+                    "GET / HTTP/1.1" + CRLF + CRLF))
                 .isEqualTo(
                     "HTTP/1.1 204 No Content" + CRLF +
                     "Connection: close"       + CRLF + CRLF);

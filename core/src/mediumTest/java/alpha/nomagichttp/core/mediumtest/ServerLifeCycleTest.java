@@ -14,7 +14,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 
-import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.text;
@@ -149,7 +148,7 @@ final class ServerLifeCycleTest extends AbstractRealTest
                 throw new AssertionError("Thread supposed to be interrupted");
             }));
             try (var _ = client().openConnection()) {
-                client().write(get());
+                client().write("GET / HTTP/1.1\n\n");
                 stopServer.acquire();
                 Instant before = now();
                 stopServer(false);

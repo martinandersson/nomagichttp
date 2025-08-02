@@ -12,19 +12,6 @@ public final class TestRequests
     }
     
     /**
-     * Make a "GET / HTTP/1.1" request.
-     * 
-     * @param additionalHeaders as lines, e.g. "Connection: close"
-     * @return the request
-     */
-    public static String get(String... additionalHeaders) {
-        return "GET / HTTP/1.1"                    + CRLF +
-               "Accept: text/plain; charset=utf-8" + CRLF +
-               join(additionalHeaders)             +
-               "Content-Length: " + 0              + CRLF + CRLF;
-    }
-    
-    /**
      * Make a "POST / HTTP/1.1" request with a body.
      * 
      * @param body of request

@@ -10,7 +10,6 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.ok;
@@ -173,7 +172,7 @@ final class MessageTest extends AbstractRealTest
             var file = writeTempFile(asciiBytes("Hello, World!"));
             server().add(
                 "/", GET().apply(_ -> ok(ofFile(file))));
-            var rsp = client().writeReadTextUntil(get(), "!");
+            var rsp = client().writeReadTextUntil("GET / HTTP/1.1\n\n", "!");
             assertThat(rsp).isEqualTo("""
                 HTTP/1.1 200 OK\r
                 Content-Type: application/octet-stream\r

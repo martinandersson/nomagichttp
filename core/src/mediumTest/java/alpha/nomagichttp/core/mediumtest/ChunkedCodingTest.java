@@ -19,7 +19,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
-import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.ok;
@@ -104,7 +103,7 @@ final class ChunkedCodingTest extends AbstractRealTest
         void testClient() throws IOException {
             addRouteThatRespondChunked();
             var rsp = client().writeReadTextUntilEOS(
-                get());
+               "GET / HTTP/1.1\n\n");
             assertThat(rsp).isEqualTo("""
                 HTTP/1.1 200 OK\r
                 Content-Type: text/plain; charset=utf-8\r
@@ -220,7 +219,7 @@ final class ChunkedCodingTest extends AbstractRealTest
             server().add("/", GET().apply(_ ->
                 ok(body)));
             String rsp = client().writeReadTextUntil(
-                get(), "0\r\n\r\n");
+                "GET / HTTP/1.1\n\n", "0\r\n\r\n");
             assertThat(rsp).isEqualTo("""
                 HTTP/1.1 200 OK\r
                 Content-Type: application/octet-stream\r
@@ -245,8 +244,11 @@ final class ChunkedCodingTest extends AbstractRealTest
             };
             server().add("/", GET().apply(_ ->
                 ok(empty)));
-            String rsp = client().writeReadTextUntilEOS(
-                get("Connection: close"));
+            String rsp = client().writeReadTextUntilEOS("""
+                GET / HTTP/1.1
+                Connection: close
+                
+                """);
             assertThat(rsp).isEqualTo("""
                 HTTP/1.1 200 OK\r
                 Content-Type: application/octet-stream\r
