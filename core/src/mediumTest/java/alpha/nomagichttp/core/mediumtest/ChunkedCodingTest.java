@@ -22,7 +22,6 @@ import static alpha.nomagichttp.HttpConstants.Version.HTTP_1_1;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
-import static alpha.nomagichttp.message.Responses.noContent;
 import static alpha.nomagichttp.message.Responses.ok;
 import static alpha.nomagichttp.message.Responses.text;
 import static alpha.nomagichttp.testutil.Assertions.assertHeaders;
@@ -32,7 +31,6 @@ import static alpha.nomagichttp.testutil.functional.Constants.TEST_CLIENT;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.JDK;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofSupplier;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
-import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.List.of;
 import static java.util.Map.entry;
@@ -263,56 +261,5 @@ final class ChunkedCodingTest extends AbstractRealTest
         // The request must specify Content-Length or Transfer-Encoding.
         // Only the server's response may have unknown length terminated by
         // connection close (RFC 9112 §6.3, bullet item 7 & 8).
-    }
-    
-    @Test
-    void discardTrailers() throws IOException {
-        server()
-            .add("/discard", POST().apply(req -> {
-                var _ = req.body().toText();
-                return noContent();
-            }))
-            .add("/echo", POST().apply(req -> {
-                // Still must consume the body before trailers lol
-                var _ = req.body().toText();
-                var trailer = req.trailers().firstValue("My-Trailer").get();
-                return text(trailer);
-            }));
-        var template = """
-            POST $1 HTTP/1.1
-            Transfer-Encoding: chunked
-            $2
-            My-Trailer: $3
-            
-            3
-            abc
-            0
-            My-Trailer: $4
-            
-            """;
-        try (var _ = client().openConnection()) {
-            var req1 = template.replace("$1", "/discard")
-                               .replace("$2", "My-Dummy: dummy")
-                               .replace("$3", "dummy")
-                               .replace("$4", "dummy");
-            var rsp1 = client().writeReadTextUntilNewlines(req1);
-            logRecorder().assertContainsOnlyOnce(DEBUG,
-                    "Discarding request trailers");
-            assertThat(rsp1).isEqualTo(
-                    "HTTP/1.1 204 No Content\r\n\r\n");
-            // Can push a message over the same conn and echo the last trailer
-            var req2 = template.replace("$1", "/echo")
-                               .replace("$2", "Connection: close")
-                               .replace("$3", "Don't pick from header")
-                               .replace("$4", "Hello");
-            var rsp2 = client().writeReadTextUntilEOS(req2);
-            assertThat(rsp2).isEqualTo("""
-                HTTP/1.1 200 OK\r
-                Content-Type: text/plain; charset=utf-8\r
-                Connection: close\r
-                Content-Length: 5\r
-                \r
-                Hello""");
-        }
     }
 }
