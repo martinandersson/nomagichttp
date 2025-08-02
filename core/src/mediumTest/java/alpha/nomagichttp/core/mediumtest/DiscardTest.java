@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.accepted;
@@ -153,6 +152,13 @@ final class DiscardTest extends AbstractRealTest
                     \r
                     Hello""");
             }
+        }
+        
+        private static String post(String body) {
+            return "POST / HTTP/1.1"                  + CRLF +
+                   "Content-Length: " + body.length() + CRLF + CRLF +
+                   
+                   body;
         }
     }
     

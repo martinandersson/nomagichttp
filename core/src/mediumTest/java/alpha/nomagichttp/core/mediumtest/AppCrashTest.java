@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.testutil.TestConstants.CRLF;
@@ -28,7 +27,11 @@ final class AppCrashTest extends AbstractRealTest {
             req.body().iterator().next().get();
             throw new RuntimeException();
         }));
-        var rsp = client().writeReadTextUntilNewlines(post("not empty"));
+        var rsp = client().writeReadTextUntilNewlines("""
+                POST / HTTP/1.1
+                Content-Length: 1
+                
+                X""");
         assertThat(rsp).isEqualTo(
             "HTTP/1.1 500 Internal Server Error" + CRLF +
             "Content-Length: 0"                  + CRLF + CRLF);
