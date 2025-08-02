@@ -32,6 +32,7 @@ import static alpha.nomagichttp.testutil.functional.Constants.TEST_CLIENT;
 import static alpha.nomagichttp.testutil.functional.HttpClientFacade.Implementation.JDK;
 import static alpha.nomagichttp.util.ByteBufferIterables.ofSupplier;
 import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
+import static java.lang.System.Logger.Level.DEBUG;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.List.of;
 import static java.util.Map.entry;
@@ -277,6 +278,9 @@ final class ChunkedCodingTest extends AbstractRealTest
             Blabla: This is also discarded
             
             """);
+        logRecorder().assertContainsOnlyOnce(DEBUG, """
+            Setting "Connection: close" because unknown length \
+            of request data is remaining.""");
         assertThat(rsp).isEqualTo("""
             HTTP/1.1 204 No Content\r
             Connection: close\r\n\r\n""");
@@ -285,11 +289,11 @@ final class ChunkedCodingTest extends AbstractRealTest
     @Test
     void connectionReuse() throws IOException {
         server()
-            .add("/discard-body", POST().apply(req -> {
+            .add("/discard", POST().apply(req -> {
                 var _ = req.body().toText();
                 return noContent();
             }))
-            .add("/echo-trailer", POST().apply(req -> {
+            .add("/echo", POST().apply(req -> {
                 // Still must consume the body before trailers lol
                 var _ = req.body().toText();
                 var trailer = req.trailers().firstValue("My-Trailer").get();
@@ -308,7 +312,7 @@ final class ChunkedCodingTest extends AbstractRealTest
             
             """;
         try (var _ = client().openConnection()) {
-            var req1 = template.replace("$1", "/discard-body")
+            var req1 = template.replace("$1", "/discard")
                                .replace("$2", "My-Dummy: dummy")
                                .replace("$3", "dummy")
                                .replace("$4", "dummy");
@@ -316,7 +320,7 @@ final class ChunkedCodingTest extends AbstractRealTest
             assertThat(rsp1).isEqualTo(
                     "HTTP/1.1 204 No Content\r\n\r\n");
             // Can push a message over the same conn and echo the last trailer
-            var req2 = template.replace("$1", "/echo-trailer")
+            var req2 = template.replace("$1", "/echo")
                                .replace("$2", "Connection: close")
                                .replace("$3", "Don't pick from header")
                                .replace("$4", "Hello");
