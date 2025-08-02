@@ -222,7 +222,6 @@ final class DiscardTest extends AbstractRealTest
                     text(req.body().toText())));
             var rsp = client().writeReadTextUntilEOS("""
                     POST / HTTP/1.1
-                    Trailer: just to trigger discarding
                     Transfer-Encoding: chunked
                     
                     6
