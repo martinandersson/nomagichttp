@@ -1,5 +1,6 @@
 package alpha.nomagichttp.core.mediumtest;
 
+import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import org.junit.jupiter.api.Test;
 
@@ -116,6 +117,24 @@ final class MessageTest extends AbstractRealTest
                 .isExactlyInstanceOf(FileAlreadyExistsException.class);
         assertThat(Files.readString(file))
                 .isEqualTo("Foo");
+    }
+    
+    @Test
+    void unsupportedTransferCoding() throws IOException, InterruptedException {
+        server();
+        String rsp = client().writeReadTextUntilNewlines("""
+            GET / HTTP/1.1\r
+            Transfer-Encoding: blabla, chunked\r\n\r
+            """);
+        assertThat(rsp).isEqualTo("""
+            HTTP/1.1 501 Not Implemented\r
+            Connection: close\r
+            Content-Length: 0\r\n\r\n""");
+        assertThat(pollServerException())
+            .isExactlyInstanceOf(UnsupportedTransferCodingException.class)
+            .hasNoCause()
+            .hasNoSuppressedExceptions()
+            .hasMessage("Unsupported Transfer-Encoding: blabla");
     }
     
     // TODO: Make client-compatibility tests

@@ -3,7 +3,6 @@ package alpha.nomagichttp.core.mediumtest;
 import alpha.nomagichttp.IdleConnectionException;
 import alpha.nomagichttp.message.MaxRequestBodyBufferSizeException;
 import alpha.nomagichttp.message.MaxRequestHeadSizeException;
-import alpha.nomagichttp.message.UnsupportedTransferCodingException;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import org.junit.jupiter.api.Nested;
@@ -175,24 +174,6 @@ final class HttpExchangeTest extends AbstractRealTest
                 .hasNoSuppressedExceptions()
                 .hasMessage("Configured max tolerance is 1 bytes.");
         }
-    }
-    
-    @Test
-    void unsupportedTransferCoding() throws IOException, InterruptedException {
-        server();
-        String rsp = client().writeReadTextUntilNewlines("""
-            GET / HTTP/1.1\r
-            Transfer-Encoding: blabla, chunked\r\n\r
-            """);
-        assertThat(rsp).isEqualTo("""
-            HTTP/1.1 501 Not Implemented\r
-            Connection: close\r
-            Content-Length: 0\r\n\r\n""");
-        assertThat(pollServerException())
-            .isExactlyInstanceOf(UnsupportedTransferCodingException.class)
-            .hasNoCause()
-            .hasNoSuppressedExceptions()
-            .hasMessage("Unsupported Transfer-Encoding: blabla");
     }
     
     @Test
