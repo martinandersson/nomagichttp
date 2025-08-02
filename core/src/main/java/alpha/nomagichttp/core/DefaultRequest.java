@@ -21,8 +21,6 @@ import static alpha.nomagichttp.core.RequestTarget.requestTargetWithoutParams;
  * All other components of the request are shared throughout the HTTP exchange
  * as all created request objects will have a reference to the same underlying
  * {@link SkeletonRequest}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultRequest implements Request
 {

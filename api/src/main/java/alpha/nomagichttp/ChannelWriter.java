@@ -27,8 +27,6 @@ import java.io.IOException;
 /// 
 /// The implementation inherits the identity-based implementations of
 /// [Object#hashCode()] and [Object#equals(Object)].
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 public interface ChannelWriter
 {
     /// Writes a response.

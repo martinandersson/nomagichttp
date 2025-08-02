@@ -14,8 +14,6 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Default implementation of {@link Config}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultConfig implements Config {
     private final Builder  builder;

@@ -10,8 +10,6 @@ import static java.lang.System.Logger.Level.DEBUG;
 /**
  * Abstract parser.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @param <R> parsed result type
  */
 abstract class AbstractResultParser<R>

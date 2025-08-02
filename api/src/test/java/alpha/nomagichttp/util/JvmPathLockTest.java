@@ -21,8 +21,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests for {@link JvmPathLock}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class JvmPathLockTest
 {

@@ -216,8 +216,6 @@ import java.util.function.IntConsumer;
 /// 
 /// The implementation inherits the identity-based implementations of
 /// [Object#hashCode()] and [Object#equals(Object)].
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 public interface HttpServer extends RouteRegistry, ActionRegistry
 {
     /// Creates a new `HttpServer`.

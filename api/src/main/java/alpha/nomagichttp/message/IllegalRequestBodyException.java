@@ -18,8 +18,6 @@ import static java.util.Objects.requireNonNull;
  * object, because the request was never valid to begin with and consequently
  * not accepted by the server.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-9.3.8">RFC 9110 §9.3.8</a>
  * @see HttpServer
  * @see ExceptionHandler

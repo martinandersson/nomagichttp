@@ -8,8 +8,6 @@ import java.util.OptionalLong;
 
 /**
  * Extraction methods for content-related headers.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface ContentHeaders extends BetterHeaders
 {

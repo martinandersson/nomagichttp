@@ -8,8 +8,6 @@ import java.io.Serial;
  * Thrown by the server if the size of an inbound request head exceeds the
  * configured tolerance.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see Config#maxRequestHeadSize()
  */
 public final class MaxRequestHeadSizeException extends AbstractSizeException

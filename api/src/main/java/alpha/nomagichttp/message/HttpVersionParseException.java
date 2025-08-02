@@ -11,8 +11,6 @@ import static java.util.Objects.requireNonNull;
 /**
  * Thrown by the server if the HTTP-version field in the request head could not
  * be parsed into a {@link HttpConstants.Version} object.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class HttpVersionParseException
              extends RuntimeException implements HasResponse

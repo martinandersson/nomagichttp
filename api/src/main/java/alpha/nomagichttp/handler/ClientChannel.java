@@ -39,8 +39,6 @@ import static java.util.Objects.requireNonNull;
  * that query the channel state read non-volatile state. Javadoc implementation
  * notes on the state querying methods are valid as long as no happens-before
  * relationship was established by an external primitive.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface ClientChannel extends ChannelWriter, HasAttributes
 {

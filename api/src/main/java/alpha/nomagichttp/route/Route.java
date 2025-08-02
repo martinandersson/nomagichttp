@@ -156,8 +156,6 @@ import java.util.stream.Stream;
  * The implementation is thread-safe and immutable. It does not necessarily
  * implement {@code hashCode()} and {@code equals()}.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see RouteRegistry
  * @see Route.Builder
  * @see Request.Target
@@ -313,8 +311,6 @@ public interface Route
      * 
      * The implementation does not necessarily implement {@code hashCode()} and
      * {@code equals()}.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
      * 
      * @see Route
      */

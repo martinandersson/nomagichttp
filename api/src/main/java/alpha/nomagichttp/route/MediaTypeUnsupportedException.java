@@ -16,8 +16,6 @@ import static java.util.Objects.requireNonNull;
 /**
  * Thrown by {@link Route#lookup(String, MediaType, Collection)} if no
  * registered handler consumes the message payload.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class MediaTypeUnsupportedException
              extends NoHandlerResolvedException

@@ -324,8 +324,6 @@ import static alpha.nomagichttp.message.MediaType.parse;
  * Equality is fully based on the method token, consumes- and produces media
  * types. The request-processing function plays no part.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see ExceptionHandler
  */
 public interface RequestHandler extends Throwing.Function<Request, Response, Exception>
@@ -505,8 +503,6 @@ public interface RequestHandler extends Throwing.Function<Request, Response, Exc
      * 
      * The implementation is not required to implement {@code hashCode} and
      * {@code equals}.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
      */
     interface Builder
     {

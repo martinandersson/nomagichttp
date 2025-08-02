@@ -16,8 +16,6 @@ import static java.util.stream.Collectors.joining;
  * Thrown by {@link Route#lookup(String, MediaType, Collection)} if the
  * requested media type is not produced by any one of the registered handlers
  * (failed content negotiation).
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class MediaTypeNotAcceptedException
              extends NoHandlerResolvedException

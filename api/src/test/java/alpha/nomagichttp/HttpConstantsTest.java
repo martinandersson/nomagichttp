@@ -64,8 +64,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 
  * These arrays were originally put in place due to internal needs (see
  * {@link CodeAndPhraseCache}).
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class HttpConstantsTest
 {

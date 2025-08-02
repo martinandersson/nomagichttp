@@ -4,8 +4,6 @@ import java.io.Serial;
 
 /**
  * Parsing headers from a request head or parsing request trailers failed.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class HeaderParseException extends AbstractParseException
 {

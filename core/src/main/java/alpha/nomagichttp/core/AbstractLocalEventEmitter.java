@@ -31,8 +31,6 @@ import java.util.function.Consumer;
  * the code context in which the emitter executes.<p>
  * 
  * All enums in the subclass are emitted events.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 abstract class AbstractLocalEventEmitter extends AbstractEventEmitter {
     AbstractLocalEventEmitter() {

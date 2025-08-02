@@ -19,8 +19,6 @@ import static java.util.Objects.requireNonNull;
  * 
  * This class has the same characteristics as {@link Route.Builder};
  * specifically, it is not thread-safe and should be disposed after use. 
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class SegmentsBuilder
 {

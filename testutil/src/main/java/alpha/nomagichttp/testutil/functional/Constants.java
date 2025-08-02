@@ -2,8 +2,6 @@ package alpha.nomagichttp.testutil.functional;
 
 /**
  * Constants for functional tests.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class Constants {
     private Constants() {

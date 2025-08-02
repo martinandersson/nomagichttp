@@ -11,8 +11,6 @@ import static alpha.nomagichttp.message.Responses.badRequest;
  * 
  * A byte decoder decodes a stream of bytes into another stream of bytes, e.g.
  * HTTP/1.1 dechunking.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class DecoderException
              extends RuntimeException implements HasResponse

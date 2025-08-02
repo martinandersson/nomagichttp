@@ -80,8 +80,6 @@ import java.util.stream.Stream;
  * 
  * The request object does not implement {@code hashCode} and {@code equals}.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see Route
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-3">RFC 9112 §3</a>
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-6">RFC 9112 §6</a>
@@ -320,8 +318,6 @@ public interface Request extends HasHeaders, HasAttributes
      * 
      * The implementation is not required to implement {@code hashCode} and
      * {@code equals}.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
      * 
      * @see <a href="https://en.wikipedia.org/wiki/Query_string">"Query-string", Wikipedia</a>
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc3986#section-2.1">"2.1. Percent-Encoding", RFC 3986</a>
@@ -747,8 +743,6 @@ public interface Request extends HasHeaders, HasAttributes
      * a best effort to not move data into heap space. Whenever possible, pass
      * forward the bytebuffer to the next destination without reading the bytes
      * in application code.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
      */
     interface Body extends ByteBufferIterable
     {

@@ -7,8 +7,6 @@ import static java.lang.Math.addExact;
 
 /**
  * Is a namespace for things that doesn't belong anywhere.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class Blah
 {

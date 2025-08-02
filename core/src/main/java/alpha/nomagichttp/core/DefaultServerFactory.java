@@ -16,8 +16,6 @@ import alpha.nomagichttp.handler.ExceptionHandler;
  * get a legacy, non-modular Java app to load the provider using a provider
  * method. The configuration name is specified to be a fully qualified name, and
  * a method does not have a fully qualified name.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Replace with DefaultServer.provider() when configuration file adds support
 public class DefaultServerFactory implements HttpServerFactory

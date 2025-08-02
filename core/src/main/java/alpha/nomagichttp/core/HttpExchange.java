@@ -69,8 +69,6 @@ import static java.util.Optional.ofNullable;
  * with {@link ChannelReader}, who half-closes the child on end-of-stream, and
  * with {@link DefaultChannelWriter}, who bears the brunt of the burden to
  * half-close or close the child if the connection is deemed not persistent.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class HttpExchange
 {

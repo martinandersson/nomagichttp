@@ -20,8 +20,6 @@ import static java.lang.System.Logger.Level.WARNING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 ///  Tests of 1XX interim responses.
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 final class InterimResponseTest extends AbstractRealTest
 {
     @Nested

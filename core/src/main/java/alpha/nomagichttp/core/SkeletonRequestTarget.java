@@ -20,8 +20,6 @@ import static java.util.stream.Collectors.toMap;
  * This class has all components related to a request-target; the segments, the
  * query map, and the fragment. The complete {@link RequestTarget} adds the
  * missing path parameters.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class SkeletonRequestTarget
 {

@@ -2,8 +2,6 @@ package alpha.nomagichttp.core;
 
 /**
  * Require a virtual thread.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class VThreads
 {

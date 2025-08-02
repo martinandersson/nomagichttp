@@ -37,8 +37,6 @@ import java.nio.file.Path;
  * length, which will eventually become empty and stay empty. Many iterations
  * can over time come and go, but the implementation is not required to support
  * concurrent iterations.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface ResourceByteBufferIterable
 {

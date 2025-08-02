@@ -61,8 +61,6 @@ import static java.util.Objects.requireNonNullElse;
  * operation times out; then this class will also self-dismiss.<p>
  * 
  * The server must dismiss the writer after each HTTP exchange.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultChannelWriter implements ChannelWriter
 {

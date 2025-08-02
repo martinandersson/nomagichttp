@@ -2,8 +2,6 @@ package alpha.nomagichttp.event;
 
 /**
  * Contains a count of bytes processed.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Rename to AbstractByteTransferStats
 public abstract class AbstractByteCountedStats extends AbstractStats

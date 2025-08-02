@@ -123,8 +123,6 @@ import alpha.nomagichttp.message.Responses;
  * if given an exception that implements {@code HasResponse} — returns the
  * response provided, unmodified. No HTTP-aware exception classes in the library
  * produce a response with a body.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface HasResponse {
     /**

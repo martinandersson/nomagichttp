@@ -17,8 +17,6 @@ import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Tests of parsing.
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 final class ParsingTest extends AbstractRealTest
 {
     @Nested

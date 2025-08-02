@@ -4,8 +4,6 @@ import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 
 /**
  * Factory of HTTP requests (as strings).
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class TestRequests
 {

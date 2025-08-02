@@ -16,8 +16,6 @@ import static java.util.Objects.requireNonNull;
  * 
  * This class stores all listeners in non-blocking and thread-safe data
  * structures.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public abstract class AbstractScatteringEventEmitter
                 extends AbstractEventEmitter

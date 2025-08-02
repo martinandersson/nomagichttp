@@ -9,8 +9,6 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 
 /**
  * {@code ByteBuffer} utils.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class ByteBuffers
 {

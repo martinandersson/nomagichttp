@@ -32,8 +32,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Client-connection life-cycle tests.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ClientLifeCycleTest extends AbstractRealTest
 {

@@ -15,8 +15,6 @@ import alpha.nomagichttp.message.RawRequest;
  * 
  * The first attachment given to the listener is the {@link RawRequest.Head}.
  * The second attachment is an instance of {@link Stats}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public enum RequestHeadReceived {
     /**

@@ -32,8 +32,6 @@ import static java.util.stream.Collectors.toSet;
 
 /**
  * Default implementation of {@link Route}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class DefaultRoute implements Route
 {
@@ -298,8 +296,6 @@ public final class DefaultRoute implements Route
     
     /**
      * Default implementation of {@code Route.Builder}.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
      */
     static final class Builder implements Route.Builder
     {

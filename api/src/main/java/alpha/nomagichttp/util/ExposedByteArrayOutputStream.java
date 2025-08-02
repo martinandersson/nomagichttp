@@ -15,8 +15,6 @@ import java.io.ByteArrayOutputStream;
  * 
  * The buffer can only be retrieved once. To help with garbage collection, the
  * reference is set to null after first access.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class ExposedByteArrayOutputStream extends ByteArrayOutputStream {
     /**

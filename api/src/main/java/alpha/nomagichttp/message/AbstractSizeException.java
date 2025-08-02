@@ -9,8 +9,6 @@ import static alpha.nomagichttp.message.Responses.entityTooLarge;
 /**
  * Abstract superclass of exceptions thrown because a configured tolerance was
  * exceeded.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public sealed abstract class AbstractSizeException
        extends    RuntimeException

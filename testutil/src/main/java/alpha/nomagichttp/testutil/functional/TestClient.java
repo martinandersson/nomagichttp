@@ -138,8 +138,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * UTF-8 is backwards compatible with ASCII.<p>
  * 
  * This class is not thread-safe and all I/O operations block.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class TestClient
 {

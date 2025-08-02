@@ -6,8 +6,6 @@ package alpha.nomagichttp.message;
  * With raw is meant tokenized strings as received on the wire. An API for
  * accessing a parsed and <i>accepted</i> request head is embedded in the API of
  * {@link Request}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class RawRequest
 {

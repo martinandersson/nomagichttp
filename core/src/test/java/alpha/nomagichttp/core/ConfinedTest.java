@@ -6,8 +6,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Small tests for {@link Confined}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ConfinedTest
 {

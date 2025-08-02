@@ -15,8 +15,6 @@ import static alpha.nomagichttp.testutil.TestConstants.CRLF;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Tests of HTTP version.
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 final class HttpVersionTest extends AbstractRealTest
 {
     // Some newer versions are currently not supported

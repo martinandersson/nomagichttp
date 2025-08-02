@@ -15,8 +15,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests of {@link ParserOf}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ParserOfTest
 {

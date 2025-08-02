@@ -28,8 +28,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests for {@link DefaultActionRegistry}.
- *
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultActionRegistryTest
 {

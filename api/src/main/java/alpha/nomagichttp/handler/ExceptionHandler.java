@@ -86,8 +86,6 @@ import static java.util.stream.Stream.of;
  * entity in the request processing chain is free to handle exceptions however
  * the application sees fit.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see ExceptionHandler#apply(Exception, NonThrowingChain, Request)
  */
 // TODO: 1) We want to have a fallback response for outbound FileNotFoundExc

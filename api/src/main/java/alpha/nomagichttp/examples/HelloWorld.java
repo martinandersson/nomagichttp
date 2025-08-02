@@ -9,8 +9,6 @@ import java.io.IOException;
 
 /**
  * Responds "Hello World!" to the client.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class HelloWorld
 {

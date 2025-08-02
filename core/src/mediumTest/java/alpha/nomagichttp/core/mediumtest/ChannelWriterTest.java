@@ -24,8 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 ///  Tests of writing responses.
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 final class ChannelWriterTest extends AbstractRealTest
 {
     private static final System.Logger LOG

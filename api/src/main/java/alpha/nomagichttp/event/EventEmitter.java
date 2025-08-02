@@ -148,8 +148,6 @@ import java.util.function.Consumer;
  * smaller than the emitter itself, then one should probably also unsubscribe in
  * a "pre destroy" container callback - or you know, just stop all the magic and
  * start writing real code instead.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface EventEmitter {
     /**

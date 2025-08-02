@@ -10,8 +10,6 @@ import static alpha.nomagichttp.handler.RequestHandler.GET;
 
 /**
  * Echoes the requests headers.
- *
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class EchoHeaders
 {

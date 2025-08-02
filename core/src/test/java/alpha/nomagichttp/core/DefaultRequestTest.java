@@ -28,8 +28,6 @@ import static org.mockito.Mockito.mock;
 
 /**
  * Small tests of {@link DefaultRequest}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultRequestTest
 {

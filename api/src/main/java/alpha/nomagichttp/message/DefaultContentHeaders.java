@@ -32,8 +32,6 @@ import static java.util.stream.Collectors.toCollection;
 
 /**
  * Default implementation of {@link ContentHeaders}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class DefaultContentHeaders implements ContentHeaders
 {

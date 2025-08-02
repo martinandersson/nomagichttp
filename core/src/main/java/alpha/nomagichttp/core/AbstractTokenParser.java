@@ -12,8 +12,6 @@ import static java.util.Objects.requireNonNull;
  * 
  * This class does not contain parsing logic. It models a previous- and current
  * byte, a token builder, and some helpful methods on top of it all.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 abstract class AbstractTokenParser
 {

@@ -19,8 +19,6 @@ import static java.util.Objects.requireNonNull;
  * Default implementation of {@link RequestHandler}.<p>
  * 
  * Nothing special about this guy, or the builder. They are both value objects.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultRequestHandler implements RequestHandler
 {
@@ -128,8 +126,6 @@ final class DefaultRequestHandler implements RequestHandler
     
     /**
      * Default implementation of {@code RequestHandler.Builder}.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
      */
     static class Builder implements RequestHandler.Builder {
         private final String m;

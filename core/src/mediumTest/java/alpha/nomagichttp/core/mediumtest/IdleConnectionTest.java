@@ -14,8 +14,6 @@ import static java.time.Duration.ofMillis;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Tests of idling connection.
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 final class IdleConnectionTest extends AbstractRealTest
 {
     @Test

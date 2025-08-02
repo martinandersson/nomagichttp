@@ -11,8 +11,6 @@ import static java.util.Objects.requireNonNull;
 /**
  * A coding listed in the request's {@value
  * HttpConstants.HeaderName#TRANSFER_ENCODING} header is not supported.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class UnsupportedTransferCodingException
              extends RuntimeException implements HasResponse

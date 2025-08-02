@@ -12,8 +12,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Small tests of {@link ByteBuffers}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ByteBuffersTest
 {

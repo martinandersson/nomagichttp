@@ -15,8 +15,6 @@ import static alpha.nomagichttp.message.Responses.requestTimeout;
  * operation on the client channel, after a background thread triggered by the
  * timeout shuts down the respective stream.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see Config#timeoutIdleConnection()
  */
 public final class IdleConnectionException

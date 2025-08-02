@@ -13,8 +13,6 @@ import static java.util.stream.StreamSupport.stream;
 /**
  * Thrown by a route registry that failed to lookup a route because the route
  * was not found.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class NoRouteFoundException
              extends RuntimeException implements HasResponse

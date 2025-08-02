@@ -100,7 +100,6 @@ import static java.util.stream.Collectors.joining;
  * 
  * @see HttpConstants.HeaderName#CONTENT_TYPE
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc9110#section-8.3.1">RFC 9110 §8.3.1</a>
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class MediaType
 {

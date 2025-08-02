@@ -10,8 +10,6 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * String utilities.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class Strings
 {

@@ -19,8 +19,6 @@ import static java.util.Collections.unmodifiableMap;
  * This class gets most if its data from {@link SkeletonRequestTarget}. What
  * this class may add is path parameters, which are mapped from the resource's
  * segments/pattern.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class RequestTarget implements Request.Target
 {

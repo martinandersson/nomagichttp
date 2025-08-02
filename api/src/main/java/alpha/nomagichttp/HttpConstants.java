@@ -20,8 +20,6 @@ import static java.util.OptionalInt.of;
  * 
  * For values to use in a {@link HeaderName#CONTENT_TYPE Content-Type} header,
  * see {@link MediaType}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class HttpConstants {
     // TODO: No need to repeat modifiers in this class. Currently done only

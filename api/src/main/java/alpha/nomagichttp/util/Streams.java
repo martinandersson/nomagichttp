@@ -7,8 +7,6 @@ import static java.util.stream.Stream.of;
 
 /**
  * Utils for working with streams.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class Streams {
     private Streams() {

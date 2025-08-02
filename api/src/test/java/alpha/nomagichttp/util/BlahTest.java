@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Small tests for {@link Blah}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class BlahTest
 {

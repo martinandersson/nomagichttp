@@ -8,8 +8,6 @@ import java.io.Serial;
  * Thrown by the server if the size of request trailers exceeds the configured
  * tolerance.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see Config#maxRequestTrailersSize()
  */
 public final class MaxRequestTrailersSizeException extends AbstractSizeException

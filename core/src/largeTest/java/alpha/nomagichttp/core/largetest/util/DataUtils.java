@@ -4,8 +4,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Utils for producing data.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class DataUtils
 {

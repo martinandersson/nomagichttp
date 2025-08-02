@@ -13,8 +13,6 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static org.assertj.core.api.Assertions.assertThat;
 
 ///  Tests of crashing application code.
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 final class AppCrashTest extends AbstractRealTest {
     /**
      * The channel remains fully open.

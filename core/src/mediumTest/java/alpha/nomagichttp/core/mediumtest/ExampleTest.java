@@ -48,8 +48,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 /// - [MessageTest.Request#charsetPreferenceThroughQ()]
 /// - [MessageTest.Request#trailers()]
 /// - [MessageTest.Response#okOfFile()]
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 final class ExampleTest extends AbstractRealTest
 {
     @Nested

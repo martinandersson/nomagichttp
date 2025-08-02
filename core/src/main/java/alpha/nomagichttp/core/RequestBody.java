@@ -43,8 +43,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Default implementation of {@code Request.Body}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class RequestBody implements Request.Body
 {

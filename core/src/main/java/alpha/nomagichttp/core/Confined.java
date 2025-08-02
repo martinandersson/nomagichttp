@@ -39,7 +39,6 @@ import static java.util.Objects.requireNonNull;
  * <a href="../../../../java.base/java/util/concurrent/package-summary.html#MemoryVisibility">
  * <i>happen-before</i></a> any actions taken by the thread dropping the value.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  * @param <V> type of thing in the box
  */
 public final class Confined<V>

@@ -15,8 +15,6 @@ import static java.util.Optional.ofNullable;
 
 /**
  * Utilities for {@link AtomicReference}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class AtomicReferences
 {

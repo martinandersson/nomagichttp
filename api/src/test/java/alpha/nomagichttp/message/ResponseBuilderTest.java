@@ -21,8 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Small tests of {@link Response.Builder}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ResponseBuilderTest
 {

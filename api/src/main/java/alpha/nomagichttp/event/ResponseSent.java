@@ -13,8 +13,6 @@ import alpha.nomagichttp.message.Response;
  * 
  * The first attachment given to the listener is the {@link Response} sent. The
  * second attachment is an instance of {@link Stats}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public enum ResponseSent {
     /**

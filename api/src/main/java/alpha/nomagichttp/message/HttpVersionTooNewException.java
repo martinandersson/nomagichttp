@@ -20,8 +20,6 @@ import static java.util.Objects.requireNonNull;
  * (RFC 9113 §3 "Starting HTTP/2"). Or in other words, this exception should
  * never be observed.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see HttpServer
  * @see Config#minHttpVersion()
  */

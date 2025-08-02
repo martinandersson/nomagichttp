@@ -63,8 +63,6 @@ import static java.lang.System.Logger.Level.DEBUG;
  * https://github.com/eclipse/jetty.project/issues/1116 <br>
  * https://stackoverflow.com/a/31324422/1268003
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @param <H> parsed header's type
  * 
  * @see SkeletonRequest.TrParsingStatus

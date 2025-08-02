@@ -25,8 +25,6 @@ import static org.mockito.Mockito.when;
 
 /**
  * Small tests for {@link ChannelReader}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ChannelReaderTest
 {

@@ -115,8 +115,6 @@ import alpha.nomagichttp.util.Throwing;
  * request handler or in one of its collaborators. This likely includes
  * transaction demarcation.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see ActionRegistry
  */
 @FunctionalInterface

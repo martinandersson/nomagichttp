@@ -24,8 +24,6 @@ import static java.util.Objects.requireNonNull;
 /// The former is a fail-fast mechanism. But the request's HTTP method can only
 /// be checked during a live HTTP exchange.
 /// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
-/// 
 /// @see HttpServer
 /// @see ExceptionHandler
 /// @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-6.3">RFC 9112 §6.3</a></a>

@@ -18,8 +18,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests building a route.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class RouteBuilderTest
 {

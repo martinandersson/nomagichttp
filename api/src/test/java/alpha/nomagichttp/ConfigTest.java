@@ -7,8 +7,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Small tests of {@link Config}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ConfigTest {
     @Test

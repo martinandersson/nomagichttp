@@ -18,8 +18,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Assertion utils.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class Assertions {
     private Assertions() {

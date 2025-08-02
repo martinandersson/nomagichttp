@@ -21,8 +21,6 @@ import static java.text.MessageFormat.format;
 
 /**
  * Default implementation of {@link RouteRegistry}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultRouteRegistry implements RouteRegistry
 {

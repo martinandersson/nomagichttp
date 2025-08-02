@@ -162,8 +162,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 
  * This class is not thread-safe and does not implement {@code hashCode} or
  * {@code equals}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: After modules, separate into its own package
 // TODO: Add throws Exception, and one has to go to each impl's JavaDoc to see which ones

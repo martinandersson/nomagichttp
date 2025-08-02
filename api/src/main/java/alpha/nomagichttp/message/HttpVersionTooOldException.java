@@ -16,8 +16,6 @@ import static java.util.Objects.requireNonNull;
  * 
  * Any HTTP version below 1.0 is too old.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see HttpServer
  * @see Config#minHttpVersion()
  */

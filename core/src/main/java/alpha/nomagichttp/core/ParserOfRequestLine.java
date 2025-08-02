@@ -43,8 +43,6 @@ import alpha.nomagichttp.message.RequestLineParseException;
  * </blockquote>
  * 
  * This parser follows the "MAY" part.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Document, impl, and test various forms for request-target?
 //       https://datatracker.ietf.org/doc/html/rfc9112#section-3.2

@@ -51,8 +51,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * A fully JDK-based {@code HttpServer} implementation using virtual threads.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class DefaultServer implements HttpServer
 {

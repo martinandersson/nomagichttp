@@ -20,8 +20,6 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Default implementation of {@code Response}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultResponse implements Response
 {
@@ -94,8 +92,6 @@ final class DefaultResponse implements Response
     
     /**
      * Default implementation of {@code Response.Builder}.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
      */
     static final class DefaultBuilder
             extends AbstractImmutableBuilder<DefaultBuilder.MutableState>

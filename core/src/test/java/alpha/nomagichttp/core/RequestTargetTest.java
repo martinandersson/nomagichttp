@@ -15,8 +15,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * SkeletonRequestTarget}), query- and fragment parsing. Path params which are
  * dependent on the resource is tested by {@link DefaultRouteRegistryTest} and
  * {@link DefaultActionRegistryTest} respectively.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class RequestTargetTest
 {

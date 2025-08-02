@@ -14,7 +14,6 @@ import static java.util.Objects.requireNonNull;
  * store is a modifying action, which is replayed against a mutable state
  * container during {@link #constructState(Supplier) construction time}.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  * @param <S> mutable state container
  */
 public abstract class AbstractImmutableBuilder<S> {

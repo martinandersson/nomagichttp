@@ -8,7 +8,6 @@ import static java.util.Objects.requireNonNull;
 /**
  * A {@link Function} that may throw an {@code IOException}.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  * @param <T> the function argument type
  * @param <R> the function result type
  */

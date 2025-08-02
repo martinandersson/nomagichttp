@@ -2,8 +2,6 @@ package alpha.nomagichttp.message;
 
 /**
  * Adds {@link #attributes()}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface HasAttributes {
     /**

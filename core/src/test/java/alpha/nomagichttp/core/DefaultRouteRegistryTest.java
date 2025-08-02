@@ -24,8 +24,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests for {@link DefaultRouteRegistry}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultRouteRegistryTest
 {

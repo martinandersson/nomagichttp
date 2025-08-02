@@ -20,8 +20,6 @@ import static java.util.Collections.newSetFromMap;
  * are no more intermittent handlers which is when the abstract method
  * {@code callFinalHandler} executes.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @param <E> type of intermittent handler
  */
 abstract class AbstractChain<E>

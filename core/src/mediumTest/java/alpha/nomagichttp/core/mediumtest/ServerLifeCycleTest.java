@@ -30,8 +30,6 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 /**
  * Server life-cycle tests.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ServerLifeCycleTest extends AbstractRealTest
 {

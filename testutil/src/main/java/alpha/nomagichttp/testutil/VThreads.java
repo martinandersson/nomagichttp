@@ -12,8 +12,6 @@ import static java.util.concurrent.StructuredTaskScope.Subtask.State.FAILED;
 
 /**
  * Getting a result by using a virtual thread.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class VThreads {
     private VThreads() {

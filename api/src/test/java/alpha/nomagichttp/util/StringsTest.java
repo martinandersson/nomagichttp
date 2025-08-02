@@ -9,8 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for utility class {@code Strings}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class StringsTest
 {

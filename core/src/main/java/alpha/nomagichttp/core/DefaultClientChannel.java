@@ -20,8 +20,6 @@ import static java.lang.System.Logger.Level.WARNING;
  * {@link ChannelWriter}.<p>
  * 
  * For life cycle details, see {@link #use(ChannelWriter)}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultClientChannel implements ClientChannel
 {

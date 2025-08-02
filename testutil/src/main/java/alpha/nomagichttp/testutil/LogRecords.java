@@ -19,8 +19,6 @@ import static org.assertj.core.api.Assertions.tuple;
 
 /**
  * Utils for JUL's {@link LogRecord} and related types.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class LogRecords {
     private LogRecords() {

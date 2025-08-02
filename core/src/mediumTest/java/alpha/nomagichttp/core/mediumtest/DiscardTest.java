@@ -22,8 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 ///  Tests of request discarding.
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 final class DiscardTest extends AbstractRealTest
 {
     @Nested

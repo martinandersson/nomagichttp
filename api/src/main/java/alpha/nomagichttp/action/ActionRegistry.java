@@ -165,8 +165,6 @@ import alpha.nomagichttp.route.RouteRegistry;
  * security and metrics are likely setup once during initialization with no need
  * to ever turn them off again. This could of course be implemented in the
  * action itself by using a feature flag or whatever.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface ActionRegistry {
      /**

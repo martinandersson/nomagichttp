@@ -20,8 +20,6 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * This class and all subclasses are thread-safe.<p>
  * 
  * This class and all subclasses implements {@code equals} and {@code hashCode}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public abstract class AbstractStats
 {

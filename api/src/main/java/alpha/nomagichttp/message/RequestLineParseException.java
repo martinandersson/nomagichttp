@@ -4,8 +4,6 @@ import java.io.Serial;
 
 /**
  * Parsing a request-line from a request head failed.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class RequestLineParseException extends AbstractParseException
 {

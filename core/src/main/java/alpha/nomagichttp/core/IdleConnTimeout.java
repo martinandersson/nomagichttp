@@ -39,8 +39,6 @@ import static java.util.Objects.requireNonNull;
  * significance. As explained in the Javadoc of {@link IdleConnectionException},
  * a <i>second</i> attempt at writing a response on a channel that just timed
  * out would be quite a dumb thing to do.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Fire event
 final class IdleConnTimeout {

@@ -2,8 +2,6 @@ package alpha.nomagichttp.message;
 
 /**
  * Adds the method {@link #headers()}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface HasHeaders {
     /**

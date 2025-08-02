@@ -22,8 +22,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests for {@link ChunkedDecoder}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ChunkedDecoderTest
 {

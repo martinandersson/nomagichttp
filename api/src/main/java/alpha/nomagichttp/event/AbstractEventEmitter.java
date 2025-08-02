@@ -51,8 +51,6 @@ import static java.util.Objects.requireNonNull;
  *   // Listeners will now always be able to retrieve the scoped value
  *   emitter.dispatch("event");
  * }
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public abstract class AbstractEventEmitter implements EventEmitter
 {

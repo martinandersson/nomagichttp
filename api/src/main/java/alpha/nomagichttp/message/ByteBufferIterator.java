@@ -27,8 +27,6 @@ import static java.util.Objects.requireNonNull;
  * 
  * The implementation is not thread-safe.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see ResourceByteBufferIterable
  */
 public interface ByteBufferIterator extends Closeable

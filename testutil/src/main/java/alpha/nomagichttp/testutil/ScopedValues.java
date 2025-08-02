@@ -10,8 +10,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /// Utils for binding values.
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 public final class ScopedValues {
     private ScopedValues() {
         // Empty

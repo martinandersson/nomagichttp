@@ -9,8 +9,6 @@ import static alpha.nomagichttp.message.Responses.text;
 
 /**
  * Responds a greeting using a name provided by the request body.
- *
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class GreetBody
 {

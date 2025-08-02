@@ -51,8 +51,6 @@ import java.util.stream.Stream;
  * The implementation <i>does not</i> implement {@code hashCode} and
  * {@code equals}.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see HttpConstants.HeaderName
  */
 // TODO: Rename to Headers

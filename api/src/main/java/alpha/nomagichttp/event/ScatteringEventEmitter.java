@@ -6,8 +6,6 @@ import alpha.nomagichttp.util.TriConsumer;
  * Semantically equivalent to {@link EventEmitter}, except this interface
  * defines methods to subscribe a listener that will receive all events emitted
  * no matter the event type.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface ScatteringEventEmitter {
     /**

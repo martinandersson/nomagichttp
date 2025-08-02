@@ -17,8 +17,6 @@ import static java.lang.System.Logger.Level.DEBUG;
 
 /**
  * Is a request processing chain turning a request into a response.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class RequestProcessor
 {

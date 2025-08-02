@@ -12,8 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Small tests of {@code DefaultEventHub}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultEventHubTest {
     private final Set<String> events = new HashSet<>();

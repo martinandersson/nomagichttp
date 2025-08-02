@@ -13,8 +13,6 @@ import static alpha.nomagichttp.message.Responses.methodNotAllowed;
  * Thrown by {@link Route#lookup(String, MediaType, Collection)} if the
  * requested HTTP method is not allowed - or in other words, no request handler
  * has been added that supports the method.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class MethodNotAllowedException extends NoHandlerResolvedException
 {

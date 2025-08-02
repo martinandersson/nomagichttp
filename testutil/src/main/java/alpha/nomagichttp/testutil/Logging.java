@@ -14,8 +14,6 @@ import static java.lang.System.Logger.Level;
 
 /**
  * Logging utilities.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class Logging {
     private Logging() {

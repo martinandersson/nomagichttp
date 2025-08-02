@@ -20,8 +20,6 @@ import java.time.Instant;
  * port, immediately <i>after</i> the same thread first closed the port,
  * actually succeeds; and so a new HTTP exchange begins. This is a clear
  * violation of {@code ServerSocketChannel.accept()}'s contract.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public enum HttpServerStopped {
     /**

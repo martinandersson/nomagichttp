@@ -38,8 +38,6 @@ import static java.util.Objects.requireNonNull;
  * The reader must be invalidated at the end of the HTTP exchange by calling the
  * method {@link #dismiss() dismiss}. This class self-dismisses on channel
  * failure and on an unexpected end-of-stream.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Must ensure we have a "echo large body" test,
 //       i.e. reader and writer active at the same time

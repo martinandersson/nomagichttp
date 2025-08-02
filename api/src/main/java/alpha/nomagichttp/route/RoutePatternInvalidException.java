@@ -4,8 +4,6 @@ import java.io.Serial;
 
 /**
  * Thrown by {@link Route#builder(String)} if a route pattern is invalid.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class RoutePatternInvalidException extends RuntimeException
 {

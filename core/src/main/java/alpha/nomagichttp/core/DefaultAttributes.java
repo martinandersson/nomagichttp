@@ -10,8 +10,6 @@ import static java.util.Optional.ofNullable;
 
 /**
  * Default implementation of {@link Attributes}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultAttributes implements Attributes {
     // does not allow null as key or value

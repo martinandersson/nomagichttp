@@ -14,8 +14,6 @@ import static alpha.nomagichttp.util.Streams.stream;
  * events from internal components which are not otherwise exposed to application
  * code.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see EventEmitter
  */
 public interface EventHub extends ScatteringEventEmitter, EventEmitter

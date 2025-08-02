@@ -7,8 +7,6 @@ import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 
 /**
  * Factories to create {@code ReadableByteChannel}s.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class ReadableByteChannels
 {

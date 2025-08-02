@@ -81,9 +81,6 @@ import java.util.Map;
  * 
  * In regards to identity, all rules of {@link MediaType} apply. This class
  * does not add quality as a factor. I.e., "text/*; q=0.5" equals "text/*; q=1".
- * 
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class MediaRange extends MediaType {
     private final double quality;

@@ -18,8 +18,6 @@ import static java.util.stream.Collectors.joining;
 
 /**
  * Utils for {@code ByteBufferIterable}s.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class ByteBufferIterables {
     private ByteBufferIterables() {

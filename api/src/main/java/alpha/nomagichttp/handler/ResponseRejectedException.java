@@ -17,8 +17,6 @@ import static java.util.Objects.requireNonNull;
  * Is thrown by {@link ChannelWriter#write(Response)} if a response is rejected
  * for a {@link #reason()}.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see Config#discardRejectedInformational()
  */
 public final class ResponseRejectedException

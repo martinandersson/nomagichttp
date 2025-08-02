@@ -56,8 +56,6 @@ import static java.util.function.Function.identity;
  * having set a {@code null} value.
  * 
  * @param <V> type of the node's associated value
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class Tree<V>
 {
@@ -456,8 +454,6 @@ final class Tree<V>
      * Most importantly, traversing the tree uses no <i>mutually exclusive</i>
      * locks imposed by this class and does not generally block (at the
      * discretion of the {@code ConcurrentMap} sub-component).
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
      */
     private final class NodeImpl implements ReadNode<V>, WriteNode<V>
     {

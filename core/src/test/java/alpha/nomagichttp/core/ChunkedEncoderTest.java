@@ -13,8 +13,6 @@ import static alpha.nomagichttp.util.ByteBuffers.asciiBytes;
 
 /**
  * Small tests for {@link ChunkedEncoder}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ChunkedEncoderTest
 {

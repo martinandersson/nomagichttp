@@ -8,8 +8,6 @@ import static java.util.stream.Collectors.toMap;
 
 /**
  * Utility enumeration of char values relevant to the HTTP protocol.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public enum Char {
     /** The tab character {@code \t}. */

@@ -2,8 +2,6 @@ package alpha.nomagichttp.util;
 
 /**
  * Namespace for functions that throw checked exceptions.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Consider to not type the exception, just do Exception (makes RequestHandler simpler)
 public final class Throwing {

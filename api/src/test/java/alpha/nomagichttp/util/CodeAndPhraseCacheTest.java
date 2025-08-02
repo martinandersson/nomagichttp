@@ -12,8 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Small tests for {@link CodeAndPhraseCache}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class CodeAndPhraseCacheTest {
     @Test

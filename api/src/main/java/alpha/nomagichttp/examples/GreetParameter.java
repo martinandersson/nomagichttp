@@ -11,8 +11,6 @@ import static alpha.nomagichttp.message.Responses.text;
 
 /**
  * Responds a greeting using a name taken from a path- or query parameter.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class GreetParameter
 {

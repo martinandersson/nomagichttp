@@ -8,8 +8,6 @@ import java.util.function.Supplier;
  * Non-blocking implementation of {@link EventHub}.<p>
  * 
  * The behavior of this class is documented in {@link EventEmitter}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class DefaultEventHub extends AbstractScatteringEventEmitter implements EventHub
 {

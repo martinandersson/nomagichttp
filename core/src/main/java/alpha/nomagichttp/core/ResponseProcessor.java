@@ -33,8 +33,6 @@ import static java.lang.System.Logger.Level.DEBUG;
 
 /**
  * Makes a response ready for transmission.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ResponseProcessor
 {

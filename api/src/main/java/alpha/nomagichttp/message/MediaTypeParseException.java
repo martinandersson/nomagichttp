@@ -8,8 +8,6 @@ import static java.text.MessageFormat.format;
  * Thrown by {@link MediaType#parse(String)} if a {@code String} can not be
  * parsed into a {@code MediaType}.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see MediaType#parse(String) 
  */
 public final class MediaTypeParseException extends RuntimeException

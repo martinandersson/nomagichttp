@@ -4,8 +4,6 @@ import java.io.Serial;
 
 /**
  * Thrown by {@link ActionRegistry} if an action pattern is invalid.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public class ActionPatternInvalidException extends RuntimeException
 {

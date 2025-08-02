@@ -10,9 +10,7 @@ import java.io.IOException;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static org.assertj.core.api.Assertions.assertThat;
 
-///  Tests of exceeding configured size-tolerance.
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
+/// Tests of exceeding configured size-tolerance.
 final class MaxRequestSizeTest extends AbstractRealTest
 {
     @Test

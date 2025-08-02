@@ -17,8 +17,6 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 /**
  * Medium tests for after-actions.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class AfterActionTest extends AbstractRealTest
 {

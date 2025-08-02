@@ -12,8 +12,6 @@ import static java.util.Collections.unmodifiableList;
 /**
  * Util for percent-decoding.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see Route
  */
 public final class PercentDecoder

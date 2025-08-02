@@ -16,8 +16,6 @@ import static java.lang.System.Logger.Level.INFO;
  * If the specified {@code duration} is zero or negative, the calling thread
  * will be interrupted immediately and enter the action in an interrupted state.
  * Otherwise, the interrupt is done by a background thread.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class Interrupt
 {

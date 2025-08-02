@@ -18,8 +18,6 @@ import alpha.nomagichttp.handler.RequestHandler;
  * 
  * How routes are matched and the details of the pattern used to register routes
  * have been documented in the JavaDoc of {@link Route}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface RouteRegistry
 {

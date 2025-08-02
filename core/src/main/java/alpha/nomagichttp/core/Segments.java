@@ -7,8 +7,6 @@ import static java.util.stream.Collectors.toList;
 
 /**
  * Util class for segments.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class Segments
 {

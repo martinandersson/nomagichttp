@@ -6,8 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Small tests of {@link RequestHandler.Builder}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class RequestHandlerBuilderTest
 {

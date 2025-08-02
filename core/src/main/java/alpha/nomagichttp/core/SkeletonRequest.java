@@ -20,8 +20,6 @@ import static alpha.nomagichttp.util.ScopedValues.httpServer;
  * 
  * This class contains almost all components needed for a complete
  * {@link DefaultRequest}. The one thing missing is path parameters.
- * 
- * @author Martin Andersson (webmaster@martinandersson.com)
  */
 final class SkeletonRequest
 {

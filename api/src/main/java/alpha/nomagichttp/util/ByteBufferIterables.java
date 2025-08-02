@@ -72,8 +72,6 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * relative get or relative bulk get methods (which is what the
  * {@link ChannelWriter#write(Response) ChannelWriter} do; no sweat!).
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see ResourceByteBufferIterable
  */
 public final class ByteBufferIterables

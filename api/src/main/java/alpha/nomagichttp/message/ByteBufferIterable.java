@@ -17,8 +17,6 @@ import java.io.IOException;
  * Even though not closeable, the iterator may still perform I/O operations.
  * Meaning that {@code next} and {@code forEachRemaining} may throw
  * {@link IOException}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public interface ByteBufferIterable extends ResourceByteBufferIterable
 {

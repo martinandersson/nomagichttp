@@ -36,8 +36,6 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * @apiNote
  * This class should be used for all background tasks in the default server and
  * uses one background daemon thread to do the work.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DelayedTask
 {

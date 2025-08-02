@@ -9,8 +9,6 @@ import static alpha.nomagichttp.util.ByteBuffers.asArray;
 
 /**
  * Utils for files.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class TestFiles
 {

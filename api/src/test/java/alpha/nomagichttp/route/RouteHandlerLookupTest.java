@@ -21,8 +21,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tests for {@code Route.lookup()}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class RouteHandlerLookupTest
 {

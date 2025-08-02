@@ -42,8 +42,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * POST a big file (40 MB) to server, verify disk contents, respond the file.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 @TestClassOrder(OrderAnnotation.class)
 final class BigFileRequestTest extends AbstractLargeRealTest

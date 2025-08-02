@@ -47,8 +47,6 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
  * the same connection. Other clients do not expose an API to handle the
  * connection or even query its characteristics, but they should nonetheless all
  * be using a persistent connection (see {@link HttpClientFacade}).
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: A similar test, but with loads of concurrent clients
 // TODO: Assert persistent connections (e.g. by counting children on the server)

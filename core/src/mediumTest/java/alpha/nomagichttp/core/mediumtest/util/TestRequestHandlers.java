@@ -7,8 +7,6 @@ import static alpha.nomagichttp.message.Responses.text;
 
 /**
  * Test request handlers.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class TestRequestHandlers {
     private TestRequestHandlers() {

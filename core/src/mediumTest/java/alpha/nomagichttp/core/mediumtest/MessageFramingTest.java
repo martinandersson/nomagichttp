@@ -38,8 +38,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /// Asserts legal and illegal variants of message bodies and related headers.
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 class MessageFramingTest extends AbstractRealTest
 {
     @Nested

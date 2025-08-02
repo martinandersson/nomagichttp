@@ -20,8 +20,6 @@ import static java.lang.ScopedValue.newInstance;
  * 
  * The static fields must never be rebound to {@code null}, as the server
  * itself may access the values, and is free to assume the presence of a value.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Rename to NoMagicHTTP/Standard/Library ScopedValues ?
 public final class ScopedValues {

@@ -21,8 +21,6 @@ import static java.util.Objects.requireNonNull;
  * The NoMagicHTTP library reserves the right to use the namespace
  * "alpha.nomagichttp.*" exclusively. Applications are encouraged to avoid
  * using this prefix in their names.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 // TODO: Update JavaDoc. ScopedValue from BeforeAction is the preferred method
 public interface Attributes {

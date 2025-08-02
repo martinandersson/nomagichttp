@@ -18,7 +18,6 @@ import static java.util.Arrays.stream;
  * the status codes (after applied offset). It is hard to see how this could
  * have been made faster. Sparsity uses more memory, which is the price paid.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  * @param <T> type of cached thing
  */
 public final class CodeAndPhraseCache<T>

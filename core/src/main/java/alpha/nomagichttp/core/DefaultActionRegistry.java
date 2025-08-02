@@ -32,8 +32,6 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Default implementation of {@link ActionRegistry}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class DefaultActionRegistry implements ActionRegistry
 {

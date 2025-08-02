@@ -48,8 +48,6 @@ import java.util.concurrent.TimeUnit;
 /// 
 /// The implementation inherits the identity-based implementations of
 /// [Object#hashCode()] and [Object#equals(Object)].
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 public interface Config
 {
     /// The configuration used by [HttpServer].
@@ -341,8 +339,6 @@ public interface Config
      * 
      * The implementation does not necessarily implement {@code hashCode()} and
      * {@code equals()}.
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
      */
     interface Builder {
         /**

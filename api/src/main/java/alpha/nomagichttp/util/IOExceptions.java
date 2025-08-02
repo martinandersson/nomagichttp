@@ -4,8 +4,6 @@ import java.io.IOException;
 
 /**
  * Utils for {@link IOException}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class IOExceptions
 {

@@ -14,8 +14,6 @@ import static java.lang.String.CASE_INSENSITIVE_ORDER;
 
 /**
  * Utility methods for constructing headers.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class Headers
 {

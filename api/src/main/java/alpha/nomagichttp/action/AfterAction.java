@@ -45,8 +45,6 @@ import java.util.function.BiFunction;
  * the after-action will never be {@code null}.<p>
  * 
  * The action may be called concurrently and must be thread-safe.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 @FunctionalInterface
 public interface AfterAction extends BiFunction<Request, Response, Response> {

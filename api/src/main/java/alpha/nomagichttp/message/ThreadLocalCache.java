@@ -31,8 +31,6 @@ import static java.util.Objects.requireNonNull;
  *           return cached;
  *   });
  * }</pre>
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 @Deprecated // Not good for virtual threads
 final class ThreadLocalCache

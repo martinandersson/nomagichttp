@@ -2,8 +2,6 @@ package alpha.nomagichttp.core;
 
 /**
  * A reusable string builder.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ReusableStringBuilder {
     private final StringBuilder str = new StringBuilder();

@@ -44,8 +44,6 @@ import static java.util.HexFormat.fromHexDigitsToLong;
  * to 0 as soon as the first (and only) decoding operation is done. The
  * underlying channel reader can then be used to parse request trailers.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc9112#section-7.1">RFC 9112 §7.1</a>
  */
 public final class ChunkedDecoder implements ByteBufferIterable

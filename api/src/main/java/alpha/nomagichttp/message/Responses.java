@@ -89,8 +89,6 @@ import static java.util.Locale.ROOT;
  * However that may be, creating a new response object is very fast and nothing
  * that should raise concerns for a mature object-oriented language like
  * Java.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class Responses
 {

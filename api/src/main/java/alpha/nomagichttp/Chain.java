@@ -34,8 +34,6 @@ import alpha.nomagichttp.util.ScopedValues;
 /// [Object#hashCode()] and [Object#equals(Object)].
 /// 
 /// @see ScopedValues#channel()
-/// 
-/// @author Martin Andersson (webmaster at martinandersson.com)
 @FunctionalInterface
 public interface Chain
 {

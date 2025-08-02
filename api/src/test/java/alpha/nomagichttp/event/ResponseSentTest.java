@@ -7,8 +7,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Small tests for {@link ResponseSent}.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 final class ResponseSentTest {
     @Test

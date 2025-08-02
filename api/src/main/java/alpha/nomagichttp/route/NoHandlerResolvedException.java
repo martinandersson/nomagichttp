@@ -18,8 +18,6 @@ import static java.util.Objects.requireNonNull;
  * Is thrown by {@link Route#lookup(String, MediaType, Collection)}. In fact, the
  * getters in this class will return the route instance called and the arguments
  * used.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public abstract class NoHandlerResolvedException
                 extends RuntimeException implements HasResponse

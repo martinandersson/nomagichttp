@@ -13,8 +13,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 /**
  * Will simulate a lengthy request process and keep the client informed about
  * the progress.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class KeepClientInformed
 {

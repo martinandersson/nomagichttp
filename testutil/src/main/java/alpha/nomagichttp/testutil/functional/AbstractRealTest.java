@@ -137,8 +137,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Please note that currently, the {@code TestClient} is not thread-safe nor is
  * this class. This may change when work commences to add tests that execute
  * requests in parallel.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public abstract class AbstractRealTest
 {

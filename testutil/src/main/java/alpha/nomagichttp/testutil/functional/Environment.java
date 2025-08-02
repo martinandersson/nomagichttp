@@ -2,8 +2,6 @@ package alpha.nomagichttp.testutil.functional;
 
 /**
  * Util class for checking the environment.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class Environment {
     private Environment() {

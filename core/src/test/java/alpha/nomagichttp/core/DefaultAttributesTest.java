@@ -9,9 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Small tests for {@link DefaultAttributes}
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
+ * Small tests for {@link DefaultAttributes}.
  */
 final class DefaultAttributesTest {
     private final Attributes testee = new DefaultAttributes();

@@ -9,8 +9,6 @@ import static alpha.nomagichttp.message.Responses.badRequest;
 /**
  * Thrown by a subtype of {@link BetterHeaders} if parsing a header value from
  * string to another Java type fails.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class BadHeaderException
              extends RuntimeException implements HasResponse

@@ -59,8 +59,6 @@ import static alpha.nomagichttp.HttpConstants.StatusCode;
  * The implementation does not necessarily implement {@code hashCode} and
  * {@code equals}.
  * 
- * @author Martin Andersson (webmaster at martinandersson.com)
- * 
  * @see Response.Builder
  * @see RequestHandler
  * @see HttpServer
@@ -273,8 +271,6 @@ public interface Response extends HasHeaders
      * et cetera (
      * <a href="https://datatracker.ietf.org/doc/html/rfc7231#section-7.1">RFC 7231 §7.1. Control Data</a>
      * ).
-     * 
-     * @author Martin Andersson (webmaster at martinandersson.com)
      * 
      * @see HttpConstants.HeaderName
      */

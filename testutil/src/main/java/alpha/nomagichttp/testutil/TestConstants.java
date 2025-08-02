@@ -6,8 +6,6 @@ import java.util.List;
 
 /**
  * Test constants.
- * 
- * @author Martin Andersson (webmaster at martinandersson.com)
  */
 public final class TestConstants
 {
