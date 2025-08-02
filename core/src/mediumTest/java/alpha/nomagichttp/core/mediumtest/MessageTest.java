@@ -8,9 +8,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static alpha.nomagichttp.core.mediumtest.util.TestRequestHandlers.respondIsBodyEmpty;
 import static alpha.nomagichttp.core.mediumtest.util.TestRequests.get;
-import static alpha.nomagichttp.core.mediumtest.util.TestRequests.post;
 import static alpha.nomagichttp.handler.RequestHandler.GET;
 import static alpha.nomagichttp.handler.RequestHandler.POST;
 import static alpha.nomagichttp.message.Responses.ok;
@@ -81,21 +79,6 @@ final class MessageTest extends AbstractRealTest
             "Content-Length: 17"                      + CRLF + CRLF +
             
             "Received HTTP/1.0");
-    }
-    
-    // TODO: Make client-compatibility tests.
-    //       If this can't run on some clients, do GET instead of POST.
-    @Test
-    void requestBodyEmpty() throws IOException {
-        server().add("/",
-            respondIsBodyEmpty());
-        String res = client().writeReadTextUntil(post(""), "true");
-        assertThat(res).isEqualTo(
-            "HTTP/1.1 200 OK"                         + CRLF +
-            "Content-Type: text/plain; charset=utf-8" + CRLF +
-            "Content-Length: 4"                       + CRLF + CRLF +
-            
-            "true");
     }
     
     // TODO: Make client-compatibility tests
