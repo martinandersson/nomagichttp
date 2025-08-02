@@ -86,6 +86,34 @@ final class MessageTest extends AbstractRealTest
         }
         
         @Test
+        void trailers() throws IOException {
+            // Echo body and append trailer value
+            server().add("/", POST().apply(req ->
+                    text(req.body().toText() +
+                         req.trailers().firstValue("Append-This").get())));
+            
+            var rsp = client().writeReadTextUntilEOS("""
+                POST / HTTP/1.1
+                Transfer-Encoding: chunked
+                Connection: close
+                
+                6
+                Hello\s
+                0
+                Append-This: World!
+                
+                """);
+            
+            assertThat(rsp).isEqualTo("""
+                HTTP/1.1 200 OK\r
+                Content-Type: text/plain; charset=utf-8\r
+                Connection: close\r
+                Content-Length: 12\r
+                \r
+                Hello World!""");
+        }
+        
+        @Test
         void unsupportedTransferCoding() throws IOException, InterruptedException {
             server();
             String rsp = client().writeReadTextUntilNewlines("""
