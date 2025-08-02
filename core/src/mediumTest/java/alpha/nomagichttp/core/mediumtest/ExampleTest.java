@@ -42,9 +42,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /// 
 /// @see EventTest#example()
 /// @see MessageFramingTest.ResponseValid#cLength_toHEAD()
-/// @see MessageTest#charsetPreferenceThroughQ()
-/// @see MessageTest#responseOfFile()
-/// @see MessageTest#uploadFile()
+/// @see MessageTest.Request#charsetPreferenceThroughQ()
+/// @see MessageTest.Request#bodyToFile()
+/// @see MessageTest.Response#OkOfFile()
 /// @see RequestTrailersTest#example()
 /// 
 /// @author Martin Andersson (webmaster at martinandersson.com)
