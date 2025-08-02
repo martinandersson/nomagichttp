@@ -1,5 +1,6 @@
 package alpha.nomagichttp.core.mediumtest;
 
+import alpha.nomagichttp.message.HeaderParseException;
 import alpha.nomagichttp.testutil.IORunnable;
 import alpha.nomagichttp.testutil.functional.AbstractRealTest;
 import org.junit.jupiter.api.Nested;
@@ -213,6 +214,38 @@ final class DiscardTest extends AbstractRealTest
                     of request data is remaining.""");
                 assertAwaitClosingChild();
             }
+        }
+        
+        @Test
+        void badTrailerDuringDiscard() throws IOException {
+            server().add("/", POST().apply(req ->
+                    text(req.body().toText())));
+            var rsp = client().writeReadTextUntilEOS("""
+                    POST / HTTP/1.1
+                    Trailer: just to trigger discarding
+                    Transfer-Encoding: chunked
+                    
+                    6
+                    Hello\s
+                    0
+                    Crash Plz: Whitespace in header name!
+                    
+                    """);
+            assertThat(rsp).isEqualTo("""
+                    HTTP/1.1 200 OK\r
+                    Content-Type: text/plain; charset=utf-8\r
+                    Content-Length: 6\r
+                    \r
+                    Hello\s""");
+            logRecorder().assertRemove(
+                    DEBUG, "Error while discarding request trailers, shutting down the input stream.",
+                    HeaderParseException.class)
+                .hasToString("""
+                    HeaderParseException{prev=(hex:0x68, decimal:104, char:"h"), \
+                    curr=(hex:0x20, decimal:32, char:" "), pos=N/A, \
+                    msg=Whitespace in header name or before colon is not accepted.}""")
+                .hasNoCause()
+                .hasNoSuppressedExceptions();
         }
     }
 }
