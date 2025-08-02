@@ -43,28 +43,6 @@ final class HttpExchangeTest extends AbstractRealTest
     
     @Nested
     class AppCrash {
-        @Test
-        void exceptionHandler() throws IOException, InterruptedException {
-            usingExceptionHandler((_, _, _) -> {
-                throw new RuntimeException("second");
-            });
-            server().add("/", GET().apply(_ -> {
-                throw new RuntimeException("first");
-            }));
-            
-            String rsp = client().writeReadTextUntilEOS(
-                "GET / HTTP/1.1" + CRLF + CRLF);
-            // No response
-            assertThat(rsp)
-                  .isEmpty();
-            // But the exceptions were logged
-            logRecorder().assertAwaitRemoveThrown()
-                  .isExactlyInstanceOf(RuntimeException.class)
-                  .hasMessage("first")
-                  .hasNoCause()
-                  .hasSuppressedException(new RuntimeException("second"));
-        }
-        
         /**
          * The channel remains fully open.
          * 
@@ -89,6 +67,28 @@ final class HttpExchangeTest extends AbstractRealTest
                 .hasNoSuppressedExceptions();
             logRecorder().assertAwait(DEBUG,
                 "Closing the child because client aborted the exchange.");
+        }
+        
+        @Test
+        void exceptionHandler() throws IOException, InterruptedException {
+            usingExceptionHandler((_, _, _) -> {
+                throw new RuntimeException("second");
+            });
+            server().add("/", GET().apply(_ -> {
+                throw new RuntimeException("first");
+            }));
+            
+            String rsp = client().writeReadTextUntilEOS(
+                "GET / HTTP/1.1" + CRLF + CRLF);
+            // No response
+            assertThat(rsp)
+                  .isEmpty();
+            // But the exceptions were logged
+            logRecorder().assertAwaitRemoveThrown()
+                  .isExactlyInstanceOf(RuntimeException.class)
+                  .hasMessage("first")
+                  .hasNoCause()
+                  .hasSuppressedException(new RuntimeException("second"));
         }
     }
     
